@@ -9,6 +9,7 @@ Track all the movies you've watched with rich metadata from TMDB.
 - **Personal Ratings**: Rate movies 1-10 and write your own reviews
 - **Watchlist**: Maintain a list of movies you want to watch
 - **Statistics**: See your viewing stats by genre, platform, and more
+- **Multilingual**: Full internationalization support (German, Spanish, French, Italian, Dutch)
 
 ## Requirements
 
