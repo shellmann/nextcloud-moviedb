@@ -32,6 +32,12 @@ Track all the movies you've watched with rich metadata from TMDB.
     <bugs>https://github.com/shellmann/nextcloud-moviedb/issues</bugs>
     <repository type="git">https://github.com/shellmann/nextcloud-moviedb.git</repository>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/dashboard.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/my-movies.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/movie-detail.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/watchlist.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/search_add-movie.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/search_add-movie2.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/settings.png</screenshot>
     <dependencies>
         <nextcloud min-version="32" max-version="99"/>
     </dependencies>
