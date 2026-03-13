@@ -26,14 +26,14 @@ Track all the movies you've watched with rich metadata from TMDB.
     ]]></description>
     <version>1.0.0</version>
     <licence>agpl</licence>
-    <author mail="your-email@example.com">Your Name</author>
+    <author>shellmann</author>
     <namespace>MovieDB</namespace>
     <category>multimedia</category>
-    <bugs>https://github.com/yourusername/nextcloud-moviedb/issues</bugs>
-    <repository type="git">https://github.com/yourusername/nextcloud-moviedb.git</repository>
-    <screenshot>https://raw.githubusercontent.com/yourusername/nextcloud-moviedb/main/screenshots/dashboard.png</screenshot>
+    <bugs>https://github.com/shellmann/nextcloud-moviedb/issues</bugs>
+    <repository type="git">https://github.com/shellmann/nextcloud-moviedb.git</repository>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/dashboard.png</screenshot>
     <dependencies>
-        <nextcloud min-version="25" max-version="32"/>
+        <nextcloud min-version="32" max-version="99"/>
     </dependencies>
     <navigations>
         <navigation>
