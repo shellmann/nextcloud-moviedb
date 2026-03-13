@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+    <id>moviedb</id>
+    <name>MovieDB</name>
+    <summary>Personal movie database to track your watched movies</summary>
+    <description><![CDATA[
+# MovieDB - Personal Movie Database
+
+Track all the movies you've watched with rich metadata from TMDB.
+
+## Features
+
+- **Movie Tracking**: Log movies with where you watched them (Netflix, Disney+, cinema, etc.)
+- **TMDB Integration**: Automatically fetch movie posters, cast, and plot information
+- **Personal Ratings**: Rate movies 1-10 and write your own reviews
+- **Watch History**: Track when you watched each movie and in what language
+- **Watchlist**: Maintain a list of movies you want to watch
+- **Statistics**: See your viewing stats by genre, platform, and more
+
+## Getting Started
+
+1. Get a free API key from [TMDB](https://www.themoviedb.org/settings/api)
+2. Enter your API key in the app settings
+3. Start adding movies to your collection!
+    ]]></description>
+    <version>1.0.0</version>
+    <licence>agpl</licence>
+    <author mail="your-email@example.com">Your Name</author>
+    <namespace>MovieDB</namespace>
+    <category>multimedia</category>
+    <bugs>https://github.com/yourusername/nextcloud-moviedb/issues</bugs>
+    <repository type="git">https://github.com/yourusername/nextcloud-moviedb.git</repository>
+    <screenshot>https://raw.githubusercontent.com/yourusername/nextcloud-moviedb/main/screenshots/dashboard.png</screenshot>
+    <dependencies>
+        <nextcloud min-version="25" max-version="32"/>
+    </dependencies>
+    <navigations>
+        <navigation>
+            <name>MovieDB</name>
+            <route>moviedb.page.index</route>
+            <icon>app.svg</icon>
+            <order>10</order>
+        </navigation>
+    </navigations>
+</info>

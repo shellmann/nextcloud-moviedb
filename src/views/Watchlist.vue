@@ -1,0 +1,445 @@
+<template>
+	<div class="watchlist">
+		<div class="list-header">
+			<h2>{{ t('moviedb', 'Watchlist') }}</h2>
+			<NcButton type="primary" @click="$router.push({ name: 'add-to-watchlist' })">
+				<template #icon>
+					<Plus :size="20" />
+				</template>
+				{{ t('moviedb', 'Add Movie') }}
+			</NcButton>
+		</div>
+
+		<div v-if="loading" class="loading">
+			<NcLoadingIcon :size="44" />
+		</div>
+
+		<div v-else-if="items.length" class="watchlist-grid">
+			<div v-for="item in items" :key="item.id" class="watchlist-item">
+				<div class="item-poster">
+					<img v-if="item.posterPath"
+						:src="getPosterUrl(item.posterPath)"
+						:alt="item.title">
+					<div v-else class="no-poster">
+						{{ t('moviedb', 'No poster') }}
+					</div>
+				</div>
+				<div class="item-info">
+					<div class="item-header">
+						<h4>{{ item.title }}</h4>
+						<span v-if="item.priority > 0" class="priority-badge" :class="getPriorityColor(item.priority)">
+							{{ getPriorityLabel(item.priority) }}
+						</span>
+					</div>
+					<p v-if="item.releaseDate" class="release-date">
+						{{ item.releaseDate.substring(0, 4) }}
+					</p>
+					<p v-if="item.notes" class="notes">
+						{{ item.notes }}
+					</p>
+					<div class="item-actions">
+						<NcButton type="primary" @click="openWatchedModal(item)">
+							<template #icon>
+								<Check :size="20" />
+							</template>
+							{{ t('moviedb', 'Mark as Watched') }}
+						</NcButton>
+						<NcButton @click="openEditModal(item)">
+							<template #icon>
+								<Pencil :size="20" />
+							</template>
+						</NcButton>
+						<NcButton type="error" @click="removeFromWatchlist(item.id)">
+							<template #icon>
+								<Delete :size="20" />
+							</template>
+						</NcButton>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<NcEmptyContent v-else :name="t('moviedb', 'Your watchlist is empty')">
+			<template #icon>
+				<PlaylistPlay :size="64" />
+			</template>
+			<template #action>
+				<NcButton @click="$router.push({ name: 'add-to-watchlist' })">
+					{{ t('moviedb', 'Search for movies to add') }}
+				</NcButton>
+			</template>
+		</NcEmptyContent>
+
+		<!-- Mark as Watched Modal -->
+		<NcModal v-if="showWatchedModal" @close="showWatchedModal = false">
+			<div class="watched-modal">
+				<h3>{{ t('moviedb', 'Mark as Watched') }}: "{{ selectedItem?.title }}"</h3>
+				<div class="form-group">
+					<label>{{ t('moviedb', 'Platform') }}</label>
+					<NcSelect v-model="watchedData.platform"
+						:options="platformOptions"
+						:placeholder="t('moviedb', 'Select platform')" />
+				</div>
+				<div class="form-group">
+					<label>{{ t('moviedb', 'Language Watched') }}</label>
+					<NcSelect v-model="watchedData.language"
+						:options="languageOptions"
+						:placeholder="t('moviedb', 'Select language')" />
+				</div>
+				<div class="form-group">
+					<label>{{ t('moviedb', 'Date Watched') }}</label>
+					<NcTextField v-model="watchedData.dateWatched" type="date" />
+				</div>
+				<div class="form-group">
+					<label>{{ t('moviedb', 'Rating') }}</label>
+					<NcSelect v-model="watchedData.rating"
+						:options="ratingOptions"
+						:placeholder="t('moviedb', 'Select rating')" />
+				</div>
+				<div class="modal-actions">
+					<NcButton @click="showWatchedModal = false">
+						{{ t('moviedb', 'Cancel') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="saving" @click="confirmWatched">
+						{{ t('moviedb', 'Save') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
+
+		<!-- Edit Watchlist Item Modal -->
+		<NcModal v-if="showEditModal" @close="showEditModal = false">
+			<div class="edit-modal">
+				<h3>{{ t('moviedb', 'Edit') }}: "{{ selectedItem?.title }}"</h3>
+				<div class="form-group">
+					<label>{{ t('moviedb', 'Priority') }}</label>
+					<NcSelect v-model="editData.priority"
+						:options="priorityOptions"
+						:placeholder="t('moviedb', 'Select priority')" />
+				</div>
+				<div class="form-group">
+					<label>{{ t('moviedb', 'Notes') }}</label>
+					<textarea v-model="editData.notes"
+						rows="3"
+						:placeholder="t('moviedb', 'Why do you want to watch this?')" />
+				</div>
+				<div class="modal-actions">
+					<NcButton @click="showEditModal = false">
+						{{ t('moviedb', 'Cancel') }}
+					</NcButton>
+					<NcButton type="primary" :disabled="saving" @click="saveEdit">
+						{{ t('moviedb', 'Save') }}
+					</NcButton>
+				</div>
+			</div>
+		</NcModal>
+	</div>
+</template>
+
+<script>
+import { NcButton, NcLoadingIcon, NcEmptyContent, NcModal, NcSelect, NcTextField } from '@nextcloud/vue'
+import { showSuccess, showError } from '@nextcloud/dialogs'
+import Check from 'vue-material-design-icons/Check.vue'
+import Delete from 'vue-material-design-icons/Delete.vue'
+import Pencil from 'vue-material-design-icons/Pencil.vue'
+import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
+import Plus from 'vue-material-design-icons/Plus.vue'
+import { LANGUAGE_OPTIONS, getRatingOptions, getPriorityOptions, getPriorityLabel, getPriorityColor } from '../constants.js'
+import { getPosterUrl } from '../composables/usePosterUrl.js'
+import { useWatchlistStore } from '../stores/watchlist.js'
+import { usePlatformsStore } from '../stores/platforms.js'
+
+export default {
+	name: 'Watchlist',
+	components: {
+		NcButton,
+		NcLoadingIcon,
+		NcEmptyContent,
+		NcModal,
+		NcSelect,
+		NcTextField,
+		Check,
+		Delete,
+		Pencil,
+		PlaylistPlay,
+		Plus,
+	},
+	setup() {
+		const watchlistStore = useWatchlistStore()
+		const platformsStore = usePlatformsStore()
+		return { watchlistStore, platformsStore }
+	},
+	data() {
+		return {
+			showWatchedModal: false,
+			showEditModal: false,
+			selectedItem: null,
+			watchedData: {
+				platform: null,
+				language: null,
+				dateWatched: new Date().toISOString().split('T')[0],
+				rating: null,
+			},
+			editData: {
+				priority: null,
+				notes: '',
+			},
+			languageOptions: LANGUAGE_OPTIONS,
+			ratingOptions: getRatingOptions(),
+			priorityOptions: getPriorityOptions(),
+			saving: false,
+		}
+	},
+	computed: {
+		items() {
+			return this.watchlistStore.items
+		},
+		loading() {
+			return this.watchlistStore.loading
+		},
+		platforms() {
+			return this.platformsStore.platforms
+		},
+		platformOptions() {
+			return this.platforms.map(p => ({ id: p.id, label: p.name }))
+		},
+	},
+	created() {
+		this.watchlistStore.fetchAll()
+	},
+	methods: {
+		getPosterUrl,
+		getPriorityLabel,
+		getPriorityColor,
+		openWatchedModal(item) {
+			this.selectedItem = item
+			this.watchedData = {
+				platform: null,
+				language: this.languageOptions[0], // Default to English (first in list)
+				dateWatched: new Date().toISOString().split('T')[0],
+				rating: null,
+			}
+			this.showWatchedModal = true
+		},
+		async confirmWatched() {
+			this.saving = true
+			try {
+				await this.watchlistStore.moveToWatched(this.selectedItem.id, {
+					platformId: this.watchedData.platform?.id,
+					languageWatched: this.watchedData.language?.id,
+					dateWatched: this.watchedData.dateWatched,
+					rating: this.watchedData.rating?.id,
+				})
+				showSuccess(t('moviedb', 'Moved to watched movies.'))
+				this.showWatchedModal = false
+			} catch (error) {
+				showError(t('moviedb', 'Failed to move to watched. Please try again.'))
+			} finally {
+				this.saving = false
+			}
+		},
+		async removeFromWatchlist(id) {
+			if (confirm(t('moviedb', 'Remove from watchlist?'))) {
+				try {
+					await this.watchlistStore.delete(id)
+					showSuccess(t('moviedb', 'Removed from watchlist.'))
+				} catch (error) {
+					showError(t('moviedb', 'Failed to remove from watchlist. Please try again.'))
+				}
+			}
+		},
+		openEditModal(item) {
+			this.selectedItem = item
+			this.editData = {
+				priority: this.priorityOptions.find(p => p.id === item.priority) || this.priorityOptions[0],
+				notes: item.notes || '',
+			}
+			this.showEditModal = true
+		},
+		async saveEdit() {
+			if (this.saving) return
+
+			this.saving = true
+			try {
+				await this.watchlistStore.update(this.selectedItem.id, {
+					priority: this.editData.priority?.id ?? 0,
+					notes: this.editData.notes,
+				})
+				showSuccess(t('moviedb', 'Watchlist item updated.'))
+				this.showEditModal = false
+			} catch (error) {
+				console.error('Failed to update watchlist item:', error)
+				showError(t('moviedb', 'Failed to update watchlist item. Please try again.'))
+			} finally {
+				this.saving = false
+			}
+		},
+	},
+}
+</script>
+
+<style lang="scss" scoped>
+.watchlist {
+    padding: 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+.list-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+
+    h2 {
+        margin: 0;
+        font-size: 24px;
+    }
+}
+
+.loading {
+    display: flex;
+    justify-content: center;
+    padding: 40px;
+}
+
+.watchlist-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.watchlist-item {
+    display: flex;
+    gap: 16px;
+    background: var(--color-background-dark);
+    border-radius: 8px;
+    padding: 16px;
+
+    @media (max-width: 600px) {
+        flex-direction: column;
+    }
+}
+
+.item-poster {
+    flex-shrink: 0;
+    width: 100px;
+
+    img {
+        width: 100%;
+        border-radius: 4px;
+    }
+
+    .no-poster {
+        width: 100%;
+        aspect-ratio: 2/3;
+        background: var(--color-background-darker);
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        color: var(--color-text-lighter);
+    }
+}
+
+.item-info {
+    flex: 1;
+
+    .item-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 4px;
+    }
+
+    h4 {
+        margin: 0;
+    }
+
+    .priority-badge {
+        font-size: 11px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: bold;
+        text-transform: uppercase;
+        background: var(--color-background-darker);
+        color: var(--color-text-lighter);
+
+        &.warning {
+            background: var(--color-warning);
+            color: white;
+        }
+
+        &.error {
+            background: var(--color-error);
+            color: white;
+        }
+    }
+
+    .release-date {
+        color: var(--color-text-lighter);
+        margin: 0 0 8px;
+    }
+
+    .notes {
+        font-style: italic;
+        margin: 0 0 12px;
+    }
+}
+
+.item-actions {
+    display: flex;
+    gap: 8px;
+}
+
+.watched-modal {
+    padding: 20px;
+    min-width: 350px;
+
+    h3 {
+        margin: 0 0 20px;
+    }
+}
+
+.edit-modal {
+    padding: 20px;
+    min-width: 350px;
+
+    h3 {
+        margin: 0 0 20px;
+    }
+
+    textarea {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        background: var(--color-main-background);
+        color: var(--color-main-text);
+        resize: vertical;
+
+        &:focus {
+            border-color: var(--color-primary);
+            outline: none;
+        }
+    }
+}
+
+.form-group {
+    margin-bottom: 16px;
+
+    label {
+        display: block;
+        margin-bottom: 4px;
+        font-weight: bold;
+    }
+}
+
+.modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    margin-top: 20px;
+}
+</style>

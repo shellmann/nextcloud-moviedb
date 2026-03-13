@@ -1,0 +1,48 @@
+{
+    "name": "nextcloud-moviedb",
+    "version": "1.0.0",
+    "description": "Personal movie database for Nextcloud",
+    "main": "index.js",
+    "scripts": {
+        "build": "npm run l10n && webpack --mode production",
+        "dev": "webpack --mode development",
+        "watch": "webpack --mode development --watch",
+        "lint": "eslint --ext .js,.vue src",
+        "lint:fix": "eslint --ext .js,.vue src --fix",
+        "l10n": "node l10n/build-l10n.js",
+        "test": "vitest run",
+        "test:watch": "vitest",
+        "test:coverage": "vitest run --coverage"
+    },
+    "dependencies": {
+        "@nextcloud/axios": "^2.5.0",
+        "@nextcloud/dialogs": "^7.3.0",
+        "@nextcloud/initial-state": "^3.0.0",
+        "@nextcloud/l10n": "^3.4.0",
+        "@nextcloud/router": "^3.1.0",
+        "@nextcloud/vue": "^9.5.0",
+        "pinia": "^2.1.0",
+        "vue": "^3.5.0",
+        "vue-material-design-icons": "^5.3.1",
+        "vue-router": "^4.2.0"
+    },
+    "devDependencies": {
+        "@nextcloud/babel-config": "^1.0.0",
+        "@nextcloud/browserslist-config": "^3.0.0",
+        "@nextcloud/eslint-config": "^8.3.0",
+        "@nextcloud/webpack-vue-config": "^6.0.0",
+        "@vitejs/plugin-vue": "^5.0.0",
+        "@vitest/coverage-v8": "^2.0.0",
+        "@vue/compiler-sfc": "^3.4.0",
+        "@vue/test-utils": "^2.4.0",
+        "eslint": "^8.56.0",
+        "eslint-webpack-plugin": "^4.0.1",
+        "jsdom": "^24.0.0",
+        "vitest": "^2.0.0",
+        "webpack": "^5.89.0",
+        "webpack-cli": "^6.0.1"
+    },
+    "browserslist": [
+        "extends @nextcloud/browserslist-config"
+    ]
+}

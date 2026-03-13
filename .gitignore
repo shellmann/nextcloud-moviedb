@@ -1,0 +1,40 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build output
+/js/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+
+# Test coverage
+coverage/
+
+# Temp files
+*.tmp
+*.temp
+
+# Deployment artifacts
+*.tar.gz
+
+# PHP Unit cache
+.phpunit.cache/
+
+# Development documentation (contains project-specific notes)
+CLAUDE.md
+
+# Lock files (regenerated on install)
+package-lock.json
+composer.lock

@@ -1,0 +1,21 @@
+name: Lint info.xml
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  xml-lint:
+    runs-on: ubuntu-latest
+    name: info.xml lint
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Download info.xml schema
+        run: wget https://apps.nextcloud.com/schema/apps/info.xsd
+
+      - name: Validate info.xml
+        run: xmllint --schema info.xsd appinfo/info.xml --noout
