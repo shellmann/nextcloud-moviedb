@@ -28,11 +28,13 @@ We take the security of MovieDB seriously. If you discover a security vulnerabil
 
 ### What to Expect
 
-- **Acknowledgment**: We will acknowledge receipt of your report within 48 hours
-- **Assessment**: We will assess the vulnerability and determine its severity
-- **Updates**: We will keep you informed about the progress of the fix
-- **Resolution**: We aim to release a patch within 30 days for critical issues
-- **Credit**: If you wish, we will credit you in the security advisory (unless you prefer to remain anonymous)
+- **Acknowledgment**: I will try to acknowledge receipt of your report when I can
+- **Assessment**: I will assess the vulnerability and determine its severity when possible
+- **Updates**: I will try to keep you informed about progress
+- **Resolution**: I will try to work on fixes as my schedule allows - critical issues will be prioritized when feasible
+- **Credit**: If you wish, I will credit you in the security advisory (unless you prefer to remain anonymous)
+
+**Note**: This is a personal hobby project maintained in my spare time. While I take security seriously and will try to address issues, I cannot guarantee response times or fix timelines. Please understand this is a volunteer effort without dedicated support resources.
 
 ### Security Best Practices for Users
 
