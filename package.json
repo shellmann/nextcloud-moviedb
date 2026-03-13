@@ -30,7 +30,7 @@
         "@nextcloud/babel-config": "^1.0.0",
         "@nextcloud/browserslist-config": "^3.0.0",
         "@nextcloud/eslint-config": "^8.3.0",
-        "@nextcloud/webpack-vue-config": "^6.0.0",
+        "@nextcloud/webpack-vue-config": "^7.0.2",
         "@vitejs/plugin-vue": "^5.0.0",
         "@vitest/coverage-v8": "^2.0.0",
         "@vue/compiler-sfc": "^3.4.0",
