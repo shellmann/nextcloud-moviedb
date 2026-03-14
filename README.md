@@ -166,10 +166,45 @@ npm run lint:fix
 
 ### Testing
 
+#### JavaScript Tests (Quick - Run Anywhere)
 ```bash
 npm test              # Run all tests once
 npm run test:watch    # Watch mode for development
 npm run test:coverage # Generate coverage report
+```
+
+**Status:** ✅ 37 tests passing (formatters, stores, components)
+
+#### PHP Unit Tests (Requires Nextcloud Environment)
+```bash
+# Inside Nextcloud installation at custom_apps/moviedb/
+composer test         # Run all PHP tests
+./vendor/bin/phpunit --testdox  # Detailed output
+```
+
+**Status:** ✅ 39 tests written (services, controllers)
+
+**Note:** PHP tests must run inside a Nextcloud installation. See [TESTING.md](TESTING.md) for complete setup instructions including:
+- Local Nextcloud setup with symlinks
+- Docker container configuration
+- CI/CD integration examples
+- How other Nextcloud apps handle testing
+
+**Quick Setup:**
+```bash
+# Option 1: Symlink for easy development
+ln -s /path/to/your/dev/moviedb /path/to/nextcloud/custom_apps/moviedb
+
+# Option 2: Copy to Nextcloud
+cp -r . /path/to/nextcloud/custom_apps/moviedb
+```
+
+Then enable the app and run tests:
+```bash
+cd /path/to/nextcloud
+php occ app:enable moviedb
+cd custom_apps/moviedb
+composer test
 ```
 
 ## Configuration
