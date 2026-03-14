@@ -7,35 +7,36 @@ namespace OCA\MovieDB\Controller;
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\WatchlistService;
 use OCA\MovieDB\Service\MovieService;
-use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
+use Psr\Log\LoggerInterface;
 
-class WatchlistController extends Controller {
+class WatchlistController extends AuthenticatedController {
     private WatchlistService $service;
     private MovieService $movieService;
-    private ?string $userId;
+    private LoggerInterface $logger;
 
     public function __construct(
         IRequest $request,
         WatchlistService $service,
         MovieService $movieService,
-        IUserSession $userSession
+        IUserSession $userSession,
+        LoggerInterface $logger
     ) {
-        parent::__construct(Application::APP_ID, $request);
+        parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
         $this->movieService = $movieService;
-        $this->userId = $userSession->getUser()?->getUID();
+        $this->logger = $logger;
     }
 
     #[NoAdminRequired]
     public function index(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $filters = [
@@ -55,8 +56,8 @@ class WatchlistController extends Controller {
 
     #[NoAdminRequired]
     public function show(int $id): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         try {
@@ -69,8 +70,8 @@ class WatchlistController extends Controller {
 
     #[NoAdminRequired]
     public function create(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $data = $this->request->getParams();
@@ -88,14 +89,22 @@ class WatchlistController extends Controller {
             $item = $this->service->create($this->userId, $data);
             return new JSONResponse(['item' => $item], Http::STATUS_CREATED);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to create watchlist item', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'data' => $data,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to add to watchlist. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 
     #[NoAdminRequired]
     public function update(int $id): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $data = $this->request->getParams();
@@ -106,14 +115,23 @@ class WatchlistController extends Controller {
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Item not found'], Http::STATUS_NOT_FOUND);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to update watchlist item', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'itemId' => $id,
+                'data' => $data,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to update watchlist item. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 
     #[NoAdminRequired]
     public function destroy(int $id): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         try {
@@ -129,8 +147,8 @@ class WatchlistController extends Controller {
      */
     #[NoAdminRequired]
     public function moveToWatched(int $id): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         try {
@@ -164,7 +182,15 @@ class WatchlistController extends Controller {
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Item not found'], Http::STATUS_NOT_FOUND);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to move watchlist item to watched', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'itemId' => $id,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to move to watched. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 }

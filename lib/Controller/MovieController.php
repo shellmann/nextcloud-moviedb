@@ -6,13 +6,13 @@ namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\MovieService;
-use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
+use Psr\Log\LoggerInterface;
 
 /**
  * Controller for movie CRUD operations.
@@ -20,18 +20,19 @@ use OCP\IUserSession;
  * Handles HTTP requests for managing the user's watched movies collection.
  * Supports listing with pagination/filters, single movie retrieval, and CRUD.
  */
-class MovieController extends Controller {
+class MovieController extends AuthenticatedController {
     private MovieService $service;
-    private ?string $userId;
+    private LoggerInterface $logger;
 
     public function __construct(
         IRequest $request,
         MovieService $service,
-        IUserSession $userSession
+        IUserSession $userSession,
+        LoggerInterface $logger
     ) {
-        parent::__construct(Application::APP_ID, $request);
+        parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
-        $this->userId = $userSession->getUser()?->getUID();
+        $this->logger = $logger;
     }
 
     /**
@@ -52,8 +53,8 @@ class MovieController extends Controller {
      */
     #[NoAdminRequired]
     public function index(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $page = (int)$this->request->getParam('page', 1);
@@ -90,8 +91,8 @@ class MovieController extends Controller {
      */
     #[NoAdminRequired]
     public function show(int $id): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         try {
@@ -117,8 +118,8 @@ class MovieController extends Controller {
      */
     #[NoAdminRequired]
     public function create(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $data = $this->request->getParams();
@@ -131,7 +132,15 @@ class MovieController extends Controller {
             $movie = $this->service->create($this->userId, $data);
             return new JSONResponse(['movie' => $movie], Http::STATUS_CREATED);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to create movie', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'data' => $data,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to create movie. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 
@@ -143,8 +152,8 @@ class MovieController extends Controller {
      */
     #[NoAdminRequired]
     public function update(int $id): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $data = $this->request->getParams();
@@ -155,7 +164,16 @@ class MovieController extends Controller {
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Movie not found'], Http::STATUS_NOT_FOUND);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to update movie', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'movieId' => $id,
+                'data' => $data,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to update movie. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 
@@ -167,8 +185,8 @@ class MovieController extends Controller {
      */
     #[NoAdminRequired]
     public function destroy(int $id): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         try {

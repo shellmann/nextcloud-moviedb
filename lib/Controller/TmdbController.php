@@ -6,7 +6,6 @@ namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\TmdbService;
-use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -14,25 +13,27 @@ use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
+use Psr\Log\LoggerInterface;
 
-class TmdbController extends Controller {
+class TmdbController extends AuthenticatedController {
     private TmdbService $service;
-    private ?string $userId;
+    private LoggerInterface $logger;
 
     public function __construct(
         IRequest $request,
         TmdbService $service,
-        IUserSession $userSession
+        IUserSession $userSession,
+        LoggerInterface $logger
     ) {
-        parent::__construct(Application::APP_ID, $request);
+        parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
-        $this->userId = $userSession->getUser()?->getUID();
+        $this->logger = $logger;
     }
 
     #[NoAdminRequired]
     public function search(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $query = $this->request->getParam('query');
@@ -54,14 +55,22 @@ class TmdbController extends Controller {
             );
             return new JSONResponse($results);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to search TMDB movies', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'query' => $query,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to search movies. Please check your API key and try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 
     #[NoAdminRequired]
     public function details(int $tmdbId): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $language = $this->request->getParam('language', 'en-US');
@@ -70,14 +79,22 @@ class TmdbController extends Controller {
             $movie = $this->service->getMovieDetails($tmdbId, $this->userId, $language);
             return new JSONResponse(['movie' => $movie]);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to get TMDB movie details', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'tmdbId' => $tmdbId,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to load movie details. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 
     #[NoAdminRequired]
     public function genres(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $language = $this->request->getParam('language', 'en-US');
@@ -86,14 +103,21 @@ class TmdbController extends Controller {
             $genres = $this->service->getGenres($this->userId, $language);
             return new JSONResponse($genres);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to get TMDB genres', [
+                'exception' => $e,
+                'userId' => $this->userId,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to load genres. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 
     #[NoAdminRequired]
     public function checkApiKey(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         return new JSONResponse([

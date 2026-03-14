@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
-use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
@@ -13,24 +12,22 @@ use OCP\IConfig;
 use OCP\IRequest;
 use OCP\IUserSession;
 
-class SettingsController extends Controller {
+class SettingsController extends AuthenticatedController {
     private IConfig $config;
-    private ?string $userId;
 
     public function __construct(
         IRequest $request,
         IConfig $config,
         IUserSession $userSession
     ) {
-        parent::__construct(Application::APP_ID, $request);
+        parent::__construct(Application::APP_ID, $request, $userSession);
         $this->config = $config;
-        $this->userId = $userSession->getUser()?->getUID();
     }
 
     #[NoAdminRequired]
     public function get(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $apiKey = $this->config->getUserValue($this->userId, Application::APP_ID, 'tmdb_api_key', '');
@@ -47,8 +44,8 @@ class SettingsController extends Controller {
 
     #[NoAdminRequired]
     public function update(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $data = $this->request->getParams();

@@ -6,32 +6,33 @@ namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\PlatformService;
-use OCP\AppFramework\Controller;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
+use Psr\Log\LoggerInterface;
 
-class PlatformController extends Controller {
+class PlatformController extends AuthenticatedController {
     private PlatformService $service;
-    private ?string $userId;
+    private LoggerInterface $logger;
 
     public function __construct(
         IRequest $request,
         PlatformService $service,
-        IUserSession $userSession
+        IUserSession $userSession,
+        LoggerInterface $logger
     ) {
-        parent::__construct(Application::APP_ID, $request);
+        parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
-        $this->userId = $userSession->getUser()?->getUID();
+        $this->logger = $logger;
     }
 
     #[NoAdminRequired]
     public function index(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $platforms = $this->service->findAllForUser($this->userId);
@@ -43,8 +44,8 @@ class PlatformController extends Controller {
 
     #[NoAdminRequired]
     public function create(): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $data = $this->request->getParams();
@@ -57,14 +58,22 @@ class PlatformController extends Controller {
             $platform = $this->service->create($this->userId, $data);
             return new JSONResponse(['platform' => $platform], Http::STATUS_CREATED);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to create platform', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'data' => $data,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to create platform. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 
     #[NoAdminRequired]
     public function update(int $id): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         $data = $this->request->getParams();
@@ -75,14 +84,23 @@ class PlatformController extends Controller {
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Platform not found'], Http::STATUS_NOT_FOUND);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to update platform', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'platformId' => $id,
+                'data' => $data,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to update platform. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 
     #[NoAdminRequired]
     public function destroy(int $id): JSONResponse {
-        if ($this->userId === null) {
-            return new JSONResponse(['error' => 'Not authenticated'], Http::STATUS_UNAUTHORIZED);
+        if ($error = $this->requireAuth()) {
+            return $error;
         }
 
         try {
@@ -91,7 +109,15 @@ class PlatformController extends Controller {
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Platform not found'], Http::STATUS_NOT_FOUND);
         } catch (\Exception $e) {
-            return new JSONResponse(['error' => $e->getMessage()], Http::STATUS_BAD_REQUEST);
+            $this->logger->error('Failed to delete platform', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'platformId' => $id,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to delete platform. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
         }
     }
 }
