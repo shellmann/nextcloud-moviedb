@@ -21,7 +21,7 @@ class WatchlistMapper extends QBMapper {
     /**
      * @throws DoesNotExistException
      */
-    public function find(int $id, string $userId): WatchlistItem {
+    public function find(int $id, ?string $userId = null): WatchlistItem {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select('*')

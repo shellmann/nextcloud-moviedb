@@ -21,7 +21,7 @@ class MovieMapper extends QBMapper {
     /**
      * @throws DoesNotExistException
      */
-    public function find(int $id, string $userId): Movie {
+    public function find(int $id, ?string $userId = null): Movie {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select('*')

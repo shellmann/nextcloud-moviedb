@@ -21,7 +21,7 @@ class PlatformMapper extends QBMapper {
     /**
      * @throws DoesNotExistException
      */
-    public function find(int $id): Platform {
+    public function find(int $id, ?string $userId = null): Platform {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select('*')
