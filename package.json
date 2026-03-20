@@ -35,7 +35,7 @@
         "@vitest/coverage-v8": "^2.0.0",
         "@vue/compiler-sfc": "^3.4.0",
         "@vue/test-utils": "^2.4.0",
-        "eslint": "^8.56.0",
+        "eslint": "^10.1.0",
         "eslint-webpack-plugin": "^4.0.1",
         "jsdom": "^24.0.0",
         "vitest": "^2.0.0",
