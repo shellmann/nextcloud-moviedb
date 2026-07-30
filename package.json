@@ -3,6 +3,9 @@
     "version": "1.0.0",
     "description": "Personal movie database for Nextcloud",
     "main": "index.js",
+    "engines": {
+        "node": ">=26"
+    },
     "scripts": {
         "build": "npm run l10n && webpack --mode production",
         "dev": "webpack --mode development",
