@@ -11,7 +11,7 @@ Please be respectful and constructive in all interactions. We aim to maintain a 
 ### Prerequisites
 - Nextcloud 32+ development environment
 - PHP 8.0 or higher
-- Node.js 16+ and npm
+- Node.js 26+ and npm (see `.nvmrc`; CI runs on Node 26)
 - Composer
 - Git
 
@@ -152,12 +152,19 @@ For feature requests, please describe:
 
 ## Translation
 
+**IMPORTANT:** Whenever you add or change a user-facing string wrapped in
+`t('moviedb', '...')`, you MUST add its translation to **every** locale JSON in
+`l10n/` (not just your own). Missing keys fall back to raw English and look
+broken. See `TRANSLATIONS.md` for the full workflow and an audit script that
+reports any missing translations per locale.
+
 To contribute translations:
 
 1. Edit the JSON file for your language in `l10n/`
 2. Run `npm run l10n` to regenerate the compiled files
-3. Test your translations in the app
-4. Submit a pull request
+3. Run the audit in `TRANSLATIONS.md` to confirm no keys are missing
+4. Test your translations in the app
+5. Submit a pull request
 
 Available languages:
 - German (de.json)

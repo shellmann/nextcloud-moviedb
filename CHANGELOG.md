@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- Genre filter dropdown and sort-direction toggle on the movie list
+- Favorites toggle on the movie list
+- Watchlist sorting (Priority / Date Added / Title) and a "Pick Random" button
+- Genre tags on movie cards and watchlist items
+- Clickable dashboard stat cards
+- Full TMDB detail fetch (runtime, director, cast, backdrop) when marking a
+  watchlist item as watched
+- `GENRE_OPTIONS` constant with the 18 TMDB genres
+- `TRANSLATIONS.md` documenting the l10n workflow and a missing-key audit script
+- CI workflows now run on Node 26 (`.nvmrc`, `engines.node >=26`)
+- `terser-webpack-plugin` as an explicit build dependency
+
+### Changed
+- Committed `package-lock.json` (pinned to the public npm registry) for
+  reproducible `npm ci` builds in CI
+- Bumped CI Node version from 20 to 26 to match the dev/deploy runtime
+
+### Fixed
+- SSRF vulnerability in the TMDB image proxy (auth, path validation, no redirects)
+- Genre filter false positives caused by naive `LIKE '%N%'` matching
+- Redundant per-request database query removed from app boot
+- Duplicate toast notifications across several views
+- `PlatformMapper::find()` authorization bypass
+- Added missing translations for 12 strings across all 5 locales
+- `xmllint` availability in the info.xml lint workflow
+
 ## [1.0.0] - 2026-03-13
 
 ### Added
