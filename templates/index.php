@@ -4,11 +4,12 @@
  * Loads the Vue.js application
  */
 
-// Set the app favicon
-$appPath = \OC::$server->getURLGenerator()->imagePath('moviedb', 'favicon.svg');
+/** @var array $_ */
+$appPath = $_['faviconPath'];
+$nonce = \OCP\Server::get(\OC\Security\CSP\ContentSecurityPolicyNonceManager::class)->getNonce();
 ?>
 <div id="moviedb"></div>
-<script nonce="<?php p(\OC::$server->getContentSecurityPolicyNonceManager()->getNonce()); ?>">
+<script nonce="<?php p($nonce); ?>">
 	(function() {
 		var link = document.querySelector("link[rel*='icon']") || document.createElement('link');
 		link.type = 'image/svg+xml';
