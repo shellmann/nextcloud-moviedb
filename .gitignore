@@ -35,6 +35,7 @@ coverage/
 # Development documentation (contains project-specific notes)
 CLAUDE.md
 
-# Lock files (regenerated on install)
-package-lock.json
+# Lock files
+# package-lock.json is committed for reproducible CI builds (npm ci).
+# It is excluded from the deploy tarball, so deploys are unaffected.
 composer.lock
