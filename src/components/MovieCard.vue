@@ -26,6 +26,9 @@
 				{{ movie.title }}
 			</h4>
 			<span v-if="movie.releaseYear" class="year">{{ movie.releaseYear }}</span>
+			<div v-if="genreLabels.length" class="genre-pills">
+				<span v-for="genre in genreLabels" :key="genre" class="genre-pill">{{ genre }}</span>
+			</div>
 			<div class="meta-row">
 				<span v-if="movie.dateWatched" class="watched-date">
 					<Calendar :size="12" />
@@ -44,7 +47,7 @@ import Movie from 'vue-material-design-icons/Movie.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
 import Calendar from 'vue-material-design-icons/Calendar.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { getLanguageFlag } from '../constants.js'
+import { getLanguageFlag, GENRE_OPTIONS } from '../constants.js'
 import { formatDate } from '../utils/formatters.js'
 
 /**
@@ -76,6 +79,15 @@ export default {
 	computed: {
 		posterUrl() {
 			return getPosterUrl(this.movie.posterPath, 'w300')
+		},
+		genreLabels() {
+			const genreIds = this.movie.genreIds
+			if (!genreIds) return []
+			const ids = Array.isArray(genreIds) ? genreIds : JSON.parse(genreIds || '[]')
+			return ids
+				.map(id => GENRE_OPTIONS.find(g => g.id === id)?.label)
+				.filter(Boolean)
+				.slice(0, 2)
 		},
 	},
 	methods: {
@@ -162,6 +174,22 @@ export default {
         font-size: 12px;
         color: var(--color-text-lighter);
         display: block;
+    }
+
+    .genre-pills {
+        display: flex;
+        gap: 4px;
+        margin-top: 4px;
+        flex-wrap: wrap;
+    }
+
+    .genre-pill {
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 8px;
+        background: var(--color-primary-element-light);
+        color: var(--color-primary-element-light-text);
+        white-space: nowrap;
     }
 
     .meta-row {

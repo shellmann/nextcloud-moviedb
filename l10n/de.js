@@ -138,6 +138,18 @@ OC.L10N.register(
         "4 - Below Average": "4 - Unterdurchschnittlich",
         "3 - Poor": "3 - Schwach",
         "2 - Bad": "2 - Schlecht",
-        "1 - Terrible": "1 - Furchtbar"
+        "1 - Terrible": "1 - Furchtbar",
+        "All genres": "Alle Genres",
+        "Favorites": "Favoriten",
+        "Ascending": "Aufsteigend",
+        "Descending": "Absteigend",
+        "Toggle sort direction": "Sortierreihenfolge umschalten",
+        "Date Added": "Hinzugefügt am",
+        "Pick Random": "Zufällig auswählen",
+        "Back to Movies": "Zurück zu Filmen",
+        "Remove": "Entfernen",
+        "Remove from Watchlist": "Von Merkliste entfernen",
+        "Delete Platform": "Plattform löschen",
+        "Page {page} of {total}": "Seite {page} von {total}"
     },
 "nplurals=2; plural=(n != 1);");

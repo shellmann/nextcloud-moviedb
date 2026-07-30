@@ -138,6 +138,18 @@ OC.L10N.register(
         "4 - Below Average": "4 - Ondergemiddeld",
         "3 - Poor": "3 - Zwak",
         "2 - Bad": "2 - Slecht",
-        "1 - Terrible": "1 - Verschrikkelijk"
+        "1 - Terrible": "1 - Verschrikkelijk",
+        "All genres": "Alle genres",
+        "Favorites": "Favorieten",
+        "Ascending": "Oplopend",
+        "Descending": "Aflopend",
+        "Toggle sort direction": "Sorteervolgorde wisselen",
+        "Date Added": "Datum toegevoegd",
+        "Pick Random": "Willekeurig kiezen",
+        "Back to Movies": "Terug naar films",
+        "Remove": "Verwijderen",
+        "Remove from Watchlist": "Verwijderen uit kijklijst",
+        "Delete Platform": "Platform verwijderen",
+        "Page {page} of {total}": "Pagina {page} van {total}"
     },
 "nplurals=2; plural=(n != 1);");

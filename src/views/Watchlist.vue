@@ -2,12 +2,28 @@
 	<div class="watchlist">
 		<div class="list-header">
 			<h2>{{ t('moviedb', 'Watchlist') }}</h2>
-			<NcButton type="primary" @click="$router.push({ name: 'add-to-watchlist' })">
-				<template #icon>
-					<Plus :size="20" />
-				</template>
-				{{ t('moviedb', 'Add Movie') }}
-			</NcButton>
+			<div class="header-actions">
+				<NcButton type="primary" @click="$router.push({ name: 'add-to-watchlist' })">
+					<template #icon>
+						<Plus :size="20" />
+					</template>
+					{{ t('moviedb', 'Add Movie') }}
+				</NcButton>
+				<NcButton :aria-label="t('moviedb', 'Pick Random')"
+					:title="t('moviedb', 'Pick Random')"
+					@click="pickRandom">
+					<template #icon>
+						<DiceMultiple :size="20" />
+					</template>
+				</NcButton>
+			</div>
+		</div>
+
+		<div class="filters">
+			<NcSelect v-model="selectedSort"
+				:options="sortOptions"
+				:placeholder="t('moviedb', 'Sort by')"
+				@update:modelValue="onSortChange" />
 		</div>
 
 		<div v-if="loading" class="loading">
@@ -15,7 +31,11 @@
 		</div>
 
 		<div v-else-if="items.length" class="watchlist-grid">
-			<div v-for="item in items" :key="item.id" class="watchlist-item">
+			<div v-for="item in items"
+				:key="item.id"
+				:ref="'item-' + item.id"
+				class="watchlist-item"
+				:class="{ highlighted: highlightedId === item.id }">
 				<div class="item-poster">
 					<img v-if="item.posterPath"
 						:src="getPosterUrl(item.posterPath)"
@@ -33,6 +53,9 @@
 					</div>
 					<p v-if="item.releaseDate" class="release-date">
 						{{ item.releaseDate.substring(0, 4) }}
+						<span v-if="getGenreNames(item.genreIds).length" class="genre-tags">
+							<span v-for="genre in getGenreNames(item.genreIds)" :key="genre" class="genre-tag">{{ genre }}</span>
+						</span>
 					</p>
 					<p v-if="item.notes" class="notes">
 						{{ item.notes }}
@@ -155,10 +178,11 @@
 import { NcButton, NcLoadingIcon, NcEmptyContent, NcModal, NcSelect, NcTextField, NcDialog } from '@nextcloud/vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
+import DiceMultiple from 'vue-material-design-icons/DiceMultiple.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
-import { LANGUAGE_OPTIONS, getRatingOptions, getPriorityOptions, getPriorityLabel, getPriorityColor } from '../constants.js'
+import { LANGUAGE_OPTIONS, GENRE_OPTIONS, getRatingOptions, getPriorityOptions, getPriorityLabel, getPriorityColor } from '../constants.js'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
 import { usePlatformsStore } from '../stores/platforms.js'
@@ -175,6 +199,7 @@ export default {
 		NcDialog,
 		Check,
 		Delete,
+		DiceMultiple,
 		Pencil,
 		PlaylistPlay,
 		Plus,
@@ -191,6 +216,8 @@ export default {
 			showRemoveDialog: false,
 			selectedItem: null,
 			pendingRemoveId: null,
+			highlightedId: null,
+			selectedSort: null,
 			watchedData: {
 				platform: null,
 				language: null,
@@ -204,6 +231,11 @@ export default {
 			languageOptions: LANGUAGE_OPTIONS,
 			ratingOptions: getRatingOptions(),
 			priorityOptions: getPriorityOptions(),
+			sortOptions: [
+				{ id: 'priority', label: t('moviedb', 'Priority') },
+				{ id: 'created_at', label: t('moviedb', 'Date Added') },
+				{ id: 'title', label: t('moviedb', 'Title') },
+			],
 			saving: false,
 		}
 	},
@@ -222,12 +254,41 @@ export default {
 		},
 	},
 	created() {
+		this.selectedSort = this.sortOptions[0]
 		this.watchlistStore.fetchAll()
 	},
 	methods: {
 		getPosterUrl,
 		getPriorityLabel,
 		getPriorityColor,
+		onSortChange(selected) {
+			if (selected) {
+				this.watchlistStore.setSort(selected.id, 'DESC')
+			}
+		},
+		pickRandom() {
+			if (!this.items.length) return
+			const randomIndex = Math.floor(Math.random() * this.items.length)
+			const item = this.items[randomIndex]
+			this.highlightedId = item.id
+			this.$nextTick(() => {
+				const el = this.$refs['item-' + item.id]
+				if (el && el[0]) {
+					el[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
+				}
+			})
+			setTimeout(() => {
+				this.highlightedId = null
+			}, 2000)
+		},
+		getGenreNames(genreIds) {
+			if (!genreIds) return []
+			const ids = Array.isArray(genreIds) ? genreIds : JSON.parse(genreIds || '[]')
+			return ids
+				.map(id => GENRE_OPTIONS.find(g => g.id === id)?.label)
+				.filter(Boolean)
+				.slice(0, 2)
+		},
 		openWatchedModal(item) {
 			this.selectedItem = item
 			this.watchedData = {
@@ -302,6 +363,19 @@ export default {
         margin: 0;
         font-size: 24px;
     }
+
+    .header-actions {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+    }
+}
+
+.filters {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
 }
 
 .loading {
@@ -322,9 +396,25 @@ export default {
     background: var(--color-background-dark);
     border-radius: 8px;
     padding: 16px;
+    transition: box-shadow 0.3s, background-color 0.3s;
+
+    &.highlighted {
+        animation: highlight-pulse 2s ease-out;
+    }
 
     @media (max-width: 600px) {
         flex-direction: column;
+    }
+}
+
+@keyframes highlight-pulse {
+    0% {
+        box-shadow: 0 0 0 3px var(--color-primary);
+        background-color: var(--color-primary-element-light);
+    }
+    100% {
+        box-shadow: 0 0 0 0 transparent;
+        background-color: var(--color-background-dark);
     }
 }
 
@@ -387,6 +477,20 @@ export default {
     .release-date {
         color: var(--color-text-lighter);
         margin: 0 0 8px;
+    }
+
+    .genre-tags {
+        margin-left: 8px;
+    }
+
+    .genre-tag {
+        display: inline-block;
+        font-size: 10px;
+        padding: 1px 6px;
+        border-radius: 8px;
+        background: var(--color-primary-element-light);
+        color: var(--color-primary-element-light-text);
+        margin-left: 4px;
     }
 
     .notes {

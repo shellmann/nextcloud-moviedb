@@ -23,10 +23,23 @@
 				:placeholder="t('moviedb', 'All platforms')"
 				:clearable="true"
 				@update:modelValue="applyFilters" />
+			<NcSelect v-model="selectedGenre"
+				:options="genreOptions"
+				:placeholder="t('moviedb', 'All genres')"
+				:clearable="true"
+				@update:modelValue="applyFilters" />
 			<NcSelect v-model="sortBy"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
 				@update:modelValue="applyFilters" />
+			<NcButton :aria-label="t('moviedb', 'Toggle sort direction')"
+				:title="sortDirection === 'DESC' ? t('moviedb', 'Descending') : t('moviedb', 'Ascending')"
+				@click="toggleSortDirection">
+				<template #icon>
+					<SortDescending v-if="sortDirection === 'DESC'" :size="20" />
+					<SortAscending v-else :size="20" />
+				</template>
+			</NcButton>
 			<NcButton :type="showFavoritesOnly ? 'primary' : 'secondary'"
 				@click="toggleFavorites">
 				<template #icon>
@@ -77,10 +90,13 @@ import { NcTextField, NcButton, NcSelect, NcLoadingIcon, NcEmptyContent } from '
 import Plus from 'vue-material-design-icons/Plus.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
+import SortAscending from 'vue-material-design-icons/SortAscending.vue'
+import SortDescending from 'vue-material-design-icons/SortDescending.vue'
 import MovieCard from '../components/MovieCard.vue'
 import { debounce } from '../utils/debounce.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
+import { GENRE_OPTIONS } from '../constants.js'
 
 export default {
 	name: 'MovieList',
@@ -93,6 +109,8 @@ export default {
 		Plus,
 		Heart,
 		Movie,
+		SortAscending,
+		SortDescending,
 		MovieCard,
 	},
 	setup() {
@@ -104,7 +122,9 @@ export default {
 		return {
 			searchQuery: '',
 			selectedPlatform: null,
+			selectedGenre: null,
 			sortBy: null,
+			sortDirection: 'DESC',
 			showFavoritesOnly: false,
 		}
 	},
@@ -127,6 +147,9 @@ export default {
 		platformOptions() {
 			return this.platforms.map(p => ({ id: p.id, label: p.name }))
 		},
+		genreOptions() {
+			return GENRE_OPTIONS
+		},
 		sortOptions() {
 			return [
 				{ id: 'date_watched', label: t('moviedb', 'Date Watched') },
@@ -146,9 +169,15 @@ export default {
 			this.moviesStore.setFilters({
 				search: this.searchQuery,
 				platform: this.selectedPlatform?.id || null,
+				genre: this.selectedGenre?.id || null,
 				sort: this.sortBy?.id || 'date_watched',
+				dir: this.sortDirection,
 				favorite: this.showFavoritesOnly,
 			})
+		},
+		toggleSortDirection() {
+			this.sortDirection = this.sortDirection === 'DESC' ? 'ASC' : 'DESC'
+			this.applyFilters()
 		},
 		toggleFavorites() {
 			this.showFavoritesOnly = !this.showFavoritesOnly

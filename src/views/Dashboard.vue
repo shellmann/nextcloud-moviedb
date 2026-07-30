@@ -17,7 +17,11 @@
 		</div>
 
 		<div class="stats-grid">
-			<div class="stat-card">
+			<div class="stat-card clickable"
+				role="link"
+				tabindex="0"
+				@click="$router.push({ name: 'movies' })"
+				@keydown.enter="$router.push({ name: 'movies' })">
 				<div class="stat-value">
 					{{ stats.totalMovies }}
 				</div>
@@ -41,7 +45,11 @@
 					{{ t('moviedb', 'Avg Rating') }}
 				</div>
 			</div>
-			<div class="stat-card">
+			<div class="stat-card clickable"
+				role="link"
+				tabindex="0"
+				@click="$router.push({ name: 'watchlist' })"
+				@keydown.enter="$router.push({ name: 'watchlist' })">
 				<div class="stat-value">
 					{{ stats.watchlistCount }}
 				</div>
@@ -175,6 +183,21 @@ export default {
     border-radius: 8px;
     padding: 20px;
     text-align: center;
+
+    &.clickable {
+        cursor: pointer;
+        transition: transform 0.2s, box-shadow 0.2s;
+
+        &:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        &:focus-visible {
+            outline: 2px solid var(--color-primary);
+            outline-offset: 2px;
+        }
+    }
 
     .stat-value {
         font-size: 32px;

@@ -7,6 +7,7 @@ namespace OCA\MovieDB\Controller;
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\WatchlistService;
 use OCA\MovieDB\Service\MovieService;
+use OCA\MovieDB\Service\TmdbService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -19,6 +20,7 @@ use Psr\Log\LoggerInterface;
 class WatchlistController extends AuthenticatedController {
     private WatchlistService $service;
     private MovieService $movieService;
+    private TmdbService $tmdbService;
     private IDBConnection $db;
     private LoggerInterface $logger;
 
@@ -26,6 +28,7 @@ class WatchlistController extends AuthenticatedController {
         IRequest $request,
         WatchlistService $service,
         MovieService $movieService,
+        TmdbService $tmdbService,
         IDBConnection $db,
         IUserSession $userSession,
         LoggerInterface $logger
@@ -33,6 +36,7 @@ class WatchlistController extends AuthenticatedController {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
         $this->movieService = $movieService;
+        $this->tmdbService = $tmdbService;
         $this->db = $db;
         $this->logger = $logger;
     }
@@ -176,6 +180,22 @@ class WatchlistController extends AuthenticatedController {
                 'rating' => $watchData['rating'] ?? null,
                 'review' => $watchData['review'] ?? null,
             ];
+
+            // Fetch full TMDB details if tmdbId is available
+            if ($item->getTmdbId()) {
+                try {
+                    $tmdbDetails = $this->tmdbService->getMovieDetails($item->getTmdbId(), $this->userId);
+                    $movieData['runtime'] = $tmdbDetails['runtime'] ?? null;
+                    $movieData['director'] = $tmdbDetails['director'] ?? null;
+                    $movieData['castData'] = !empty($tmdbDetails['cast']) ? json_encode($tmdbDetails['cast']) : null;
+                    $movieData['backdropPath'] = $tmdbDetails['backdrop_path'] ?? null;
+                } catch (\Exception $e) {
+                    $this->logger->warning('Failed to fetch TMDB details for movie ' . $item->getTmdbId(), [
+                        'exception' => $e,
+                    ]);
+                    // Continue without TMDB details - graceful fallback
+                }
+            }
 
             // Use a transaction to ensure atomicity
             $this->db->beginTransaction();

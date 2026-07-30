@@ -15,6 +15,10 @@ export const useWatchlistStore = defineStore('watchlist', {
 		total: 0,
 		/** @type {boolean} Whether a fetch operation is in progress */
 		loading: false,
+		/** @type {string} Current sort field */
+		sort: 'priority',
+		/** @type {string} Current sort direction */
+		dir: 'DESC',
 	}),
 
 	getters: {
@@ -29,7 +33,7 @@ export const useWatchlistStore = defineStore('watchlist', {
 		async fetchAll() {
 			this.loading = true
 			try {
-				const response = await api.getWatchlist()
+				const response = await api.getWatchlist({ sort: this.sort, dir: this.dir })
 				this.items = response.data.items
 				this.total = response.data.total
 			} catch (error) {
@@ -38,6 +42,18 @@ export const useWatchlistStore = defineStore('watchlist', {
 			} finally {
 				this.loading = false
 			}
+		},
+
+		/**
+		 * Sets sort field and direction, then re-fetches.
+		 * @param {string} sort - Sort field
+		 * @param {string} dir - Sort direction (ASC or DESC)
+		 * @return {Promise<void>}
+		 */
+		async setSort(sort, dir) {
+			this.sort = sort
+			this.dir = dir
+			await this.fetchAll()
 		},
 
 		/**

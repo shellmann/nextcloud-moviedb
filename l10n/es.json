@@ -137,7 +137,19 @@
         "4 - Below Average": "4 - Por debajo de la media",
         "3 - Poor": "3 - Floja",
         "2 - Bad": "2 - Mala",
-        "1 - Terrible": "1 - Terrible"
+        "1 - Terrible": "1 - Terrible",
+        "All genres": "Todos los géneros",
+        "Favorites": "Favoritos",
+        "Ascending": "Ascendente",
+        "Descending": "Descendente",
+        "Toggle sort direction": "Cambiar dirección de orden",
+        "Date Added": "Fecha de adición",
+        "Pick Random": "Elegir al azar",
+        "Back to Movies": "Volver a películas",
+        "Remove": "Eliminar",
+        "Remove from Watchlist": "Quitar de la lista",
+        "Delete Platform": "Eliminar plataforma",
+        "Page {page} of {total}": "Página {page} de {total}"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }
