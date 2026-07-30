@@ -258,6 +258,96 @@ jobs:
 
 ---
 
+## Nextcloud Version Compatibility Testing
+
+Before bumping `max-version` in `appinfo/info.xml` (and before an App Store
+release), smoke-test the app against the target Nextcloud version in a throwaway
+Docker container. This catches API removals between major NC versions (e.g. a
+legacy `\OC::$server->...` method being deleted) that unit tests cannot.
+
+### Prerequisites
+
+Any Docker runtime works. On macOS without Docker Desktop, Colima is a
+lightweight option:
+
+```bash
+brew install docker colima
+colima start
+docker ps   # verify the daemon is reachable
+```
+
+### Spin up a target NC version and install the app
+
+Replace `34` with the Nextcloud major version you want to test.
+
+```bash
+# 1. Start Nextcloud (SQLite, no external DB needed for a smoke test)
+docker run -d --name nc-test -p 8888:80 nextcloud:34
+
+# 2. Wait ~25s for the entrypoint, then install with an admin user
+docker exec -u www-data nc-test php occ maintenance:install \
+  --admin-user=admin --admin-pass=admin_test_pw
+
+# 3. Trust the local domain
+docker exec -u www-data nc-test php occ config:system:set \
+  trusted_domains 1 --value="localhost:8888"
+
+# 4. Build + package the app (contents at the tarball root)
+npm run build
+tar -czf /tmp/moviedb.tar.gz \
+  --exclude='node_modules' --exclude='.git' --exclude='package-lock.json' \
+  --exclude='tests' --exclude='*.map' --exclude='.env' --exclude='.env.*' \
+  -C /path/to/nextcloud-moviedb .
+
+# 5. Deploy into the container
+docker cp /tmp/moviedb.tar.gz nc-test:/tmp/moviedb.tar.gz
+docker exec nc-test bash -c 'cd /var/www/html/custom_apps/ && \
+  rm -rf moviedb && mkdir moviedb && \
+  tar -xzf /tmp/moviedb.tar.gz -C moviedb && \
+  chown -R www-data:www-data moviedb'
+
+# 6. Enable it — this runs migrations and the min/max-version gate
+docker exec -u www-data nc-test php occ app:enable moviedb
+```
+
+### Smoke test
+
+1. Open `http://localhost:8888` (login `admin` / `admin_test_pw`).
+2. Go to the MovieDB app. If a page throws **Internal Server Error**, inspect
+   the log for the real cause:
+   ```bash
+   docker exec nc-test tail -20 /var/www/html/data/nextcloud.log
+   ```
+3. Configure a TMDB API key in Settings, then search + add a movie to exercise
+   the TMDB proxy, DB writes, and CSP image domain.
+4. Check the browser console for JS errors.
+
+### Iterating on a PHP-only fix
+
+You do not need to rebuild the whole tarball for PHP changes — copy the file
+and clear caches:
+
+```bash
+docker cp lib/Controller/PageController.php \
+  nc-test:/var/www/html/custom_apps/moviedb/lib/Controller/PageController.php
+docker exec nc-test chown -R www-data:www-data /var/www/html/custom_apps/moviedb
+docker exec -u www-data nc-test php occ maintenance:repair
+```
+
+### Cleanup
+
+```bash
+docker stop nc-test && docker rm nc-test
+colima stop   # optional, frees the VM
+```
+
+> Gotcha: after swapping app files under a running server, PHP opcache can
+> segfault Apache workers (`exit signal Segmentation fault (11)`). If a live
+> instance misbehaves right after a deploy, restart the container (or reload
+> PHP-FPM/Apache) to clear opcache.
+
+---
+
 ## Test Commands Reference
 
 ### JavaScript Tests

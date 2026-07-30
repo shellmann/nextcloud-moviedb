@@ -35,6 +35,11 @@ coverage/
 # Development documentation (contains project-specific notes)
 CLAUDE.md
 
+# Local environment / secrets (e.g. TMDB API key for local testing)
+.env
+.env.*
+!.env.example
+
 # Lock files
 # package-lock.json is committed for reproducible CI builds (npm ci).
 # It is excluded from the deploy tarball, so deploys are unaffected.

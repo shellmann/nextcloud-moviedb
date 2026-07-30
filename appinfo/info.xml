@@ -15,7 +15,8 @@ Track all the movies you've watched with rich metadata from TMDB.
 - **TMDB Integration**: Automatically fetch movie posters, cast, and plot information
 - **Personal Ratings**: Rate movies 1-10 and write your own reviews
 - **Watch History**: Track when you watched each movie and in what language
-- **Watchlist**: Maintain a list of movies you want to watch
+- **Watchlist**: Maintain a list of movies you want to watch, with priorities and a random picker
+- **Filtering & Sorting**: Filter by genre, platform and favorites, and sort in either direction
 - **Statistics**: See your viewing stats by genre, platform, and more
 
 ## Getting Started
@@ -24,7 +25,7 @@ Track all the movies you've watched with rich metadata from TMDB.
 2. Enter your API key in the app settings
 3. Start adding movies to your collection!
     ]]></description>
-    <version>1.0.0</version>
+    <version>1.1.0</version>
     <licence>agpl</licence>
     <author>shellmann</author>
     <namespace>MovieDB</namespace>
@@ -39,7 +40,7 @@ Track all the movies you've watched with rich metadata from TMDB.
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/search_add-movie2.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/settings.png</screenshot>
     <dependencies>
-        <nextcloud min-version="32" max-version="99"/>
+        <nextcloud min-version="32" max-version="34"/>
     </dependencies>
     <navigations>
         <navigation>
