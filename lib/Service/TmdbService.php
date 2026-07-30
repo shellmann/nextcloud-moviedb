@@ -5,34 +5,38 @@ declare(strict_types=1);
 namespace OCA\MovieDB\Service;
 
 use OCA\MovieDB\AppInfo\Application;
+use OCP\Config\IUserConfig;
 use OCP\Http\Client\IClientService;
-use OCP\IConfig;
+use OCP\IAppConfig;
 
 class TmdbService {
     private const BASE_URL = 'https://api.themoviedb.org/3';
     public const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p';
 
     private IClientService $clientService;
-    private IConfig $config;
+    private IUserConfig $userConfig;
+    private IAppConfig $appConfig;
 
     public function __construct(
         IClientService $clientService,
-        IConfig $config
+        IUserConfig $userConfig,
+        IAppConfig $appConfig
     ) {
         $this->clientService = $clientService;
-        $this->config = $config;
+        $this->userConfig = $userConfig;
+        $this->appConfig = $appConfig;
     }
 
     private function getApiKey(?string $userId = null): string {
         // Check user-level API key first
         if ($userId !== null) {
-            $userKey = $this->config->getUserValue($userId, Application::APP_ID, 'tmdb_api_key', '');
+            $userKey = $this->userConfig->getValueString($userId, Application::APP_ID, 'tmdb_api_key', '');
             if (!empty($userKey)) {
                 return $userKey;
             }
         }
         // Fall back to app-level API key
-        return $this->config->getAppValue(Application::APP_ID, 'tmdb_api_key', '');
+        return $this->appConfig->getValueString(Application::APP_ID, 'tmdb_api_key', '');
     }
 
     public function hasApiKey(?string $userId = null): bool {

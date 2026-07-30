@@ -8,20 +8,20 @@ use OCA\MovieDB\AppInfo\Application;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
-use OCP\IConfig;
+use OCP\Config\IUserConfig;
 use OCP\IRequest;
 use OCP\IUserSession;
 
 class SettingsController extends AuthenticatedController {
-    private IConfig $config;
+    private IUserConfig $userConfig;
 
     public function __construct(
         IRequest $request,
-        IConfig $config,
+        IUserConfig $userConfig,
         IUserSession $userSession
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession);
-        $this->config = $config;
+        $this->userConfig = $userConfig;
     }
 
     #[NoAdminRequired]
@@ -30,9 +30,9 @@ class SettingsController extends AuthenticatedController {
             return $error;
         }
 
-        $apiKey = $this->config->getUserValue($this->userId, Application::APP_ID, 'tmdb_api_key', '');
-        $defaultLanguage = $this->config->getUserValue($this->userId, Application::APP_ID, 'default_language', 'de-DE');
-        $appLanguage = $this->config->getUserValue($this->userId, Application::APP_ID, 'app_language', 'auto');
+        $apiKey = $this->userConfig->getValueString($this->userId, Application::APP_ID, 'tmdb_api_key', '');
+        $defaultLanguage = $this->userConfig->getValueString($this->userId, Application::APP_ID, 'default_language', 'de-DE');
+        $appLanguage = $this->userConfig->getValueString($this->userId, Application::APP_ID, 'app_language', 'auto');
 
         return new JSONResponse([
             'tmdbApiKey' => !empty($apiKey) ? '••••••••' : '', // Don't expose the actual key
@@ -54,7 +54,7 @@ class SettingsController extends AuthenticatedController {
         if (isset($data['tmdbApiKey']) && $data['tmdbApiKey'] !== '••••••••') {
             if ($data['tmdbApiKey'] === '') {
                 // Remove the API key
-                $this->config->deleteUserValue(
+                $this->userConfig->deleteUserConfig(
                     $this->userId,
                     Application::APP_ID,
                     'tmdb_api_key'
@@ -65,12 +65,14 @@ class SettingsController extends AuthenticatedController {
                 if (strlen($apiKey) > 500 || !preg_match('/^[a-zA-Z0-9._\-]+$/', $apiKey)) {
                     return new JSONResponse(['error' => 'Invalid API key format'], Http::STATUS_BAD_REQUEST);
                 }
-                // Set new API key
-                $this->config->setUserValue(
+                // Set new API key (stored as sensitive)
+                $this->userConfig->setValueString(
                     $this->userId,
                     Application::APP_ID,
                     'tmdb_api_key',
-                    $apiKey
+                    $apiKey,
+                    false,
+                    IUserConfig::FLAG_SENSITIVE
                 );
             }
         }
@@ -82,7 +84,7 @@ class SettingsController extends AuthenticatedController {
             if (!preg_match('/^[a-z]{2}(-[A-Z]{2})?$/', $language)) {
                 return new JSONResponse(['error' => 'Invalid language format'], Http::STATUS_BAD_REQUEST);
             }
-            $this->config->setUserValue(
+            $this->userConfig->setValueString(
                 $this->userId,
                 Application::APP_ID,
                 'default_language',
@@ -96,7 +98,7 @@ class SettingsController extends AuthenticatedController {
             if (strlen($appLanguage) > 10 || !preg_match('/^[a-z]{2,5}(-[A-Z]{2})?$|^auto$/', $appLanguage)) {
                 return new JSONResponse(['error' => 'Invalid app language format'], Http::STATUS_BAD_REQUEST);
             }
-            $this->config->setUserValue(
+            $this->userConfig->setValueString(
                 $this->userId,
                 Application::APP_ID,
                 'app_language',
