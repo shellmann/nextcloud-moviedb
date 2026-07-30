@@ -8,6 +8,15 @@
 			<div class="movie-backdrop" :style="backdropStyle" />
 
 			<div class="movie-content">
+				<div class="back-link">
+					<NcButton @click="$router.push({ name: 'movies' })">
+						<template #icon>
+							<ArrowLeft :size="20" />
+						</template>
+						{{ t('moviedb', 'Back to Movies') }}
+					</NcButton>
+				</div>
+
 				<div class="movie-poster">
 					<img v-if="movie.posterPath" :src="posterUrl" :alt="movie.title">
 					<div v-else class="no-poster">
@@ -109,9 +118,9 @@
 
 <script>
 import { NcButton, NcLoadingIcon, NcEmptyContent, NcDialog } from '@nextcloud/vue'
-import { showError, showSuccess } from '@nextcloud/dialogs'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
+import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
 import RatingStars from '../components/RatingStars.vue'
 import { getLanguageName } from '../constants.js'
@@ -129,6 +138,7 @@ export default {
 		NcDialog,
 		Pencil,
 		Delete,
+		ArrowLeft,
 		Movie,
 		RatingStars,
 	},
@@ -191,13 +201,11 @@ export default {
 			this.showDeleteDialog = true
 		},
 		async deleteMovie() {
-			try {
-				await this.moviesStore.delete(this.id)
-				showSuccess(t('moviedb', 'Movie deleted successfully.'))
+			const success = await this.moviesStore.delete(this.id)
+			if (success) {
 				this.$router.push({ name: 'movies' })
-			} catch (error) {
-				showError(t('moviedb', 'Failed to delete movie. Please try again.'))
 			}
+			this.showDeleteDialog = false
 		},
 	},
 }
@@ -234,12 +242,18 @@ export default {
     padding-top: 100px;
     max-width: 1000px;
     margin: 0 auto;
+    flex-wrap: wrap;
 
     @media (max-width: 768px) {
         flex-direction: column;
         align-items: center;
         padding-top: 40px;
     }
+}
+
+.back-link {
+    width: 100%;
+    margin-bottom: 8px;
 }
 
 .movie-poster {

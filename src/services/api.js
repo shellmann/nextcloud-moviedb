@@ -1,22 +1,7 @@
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import { TMDB_IMAGE_BASE_URL } from '../constants.js'
 
 const baseUrl = generateUrl('/apps/moviedb/api')
-
-/**
- * Get TMDB image URL (direct, no proxy)
- *
- * @param {string} path - Image path from TMDB
- * @param {string} size - Image size (w200, w300, w500, w1280, original)
- * @return {string|null} Full image URL or null if no path
- */
-export function getTmdbImageUrl(path, size = 'w200') {
-	if (!path) return null
-	// Remove leading slash if present
-	const cleanPath = path.replace(/^\//, '')
-	return `${TMDB_IMAGE_BASE_URL}/${size}/${cleanPath}`
-}
 
 export default {
 	// Movies

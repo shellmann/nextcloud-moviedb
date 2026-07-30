@@ -30,7 +30,12 @@
 				<div v-for="movie in searchResults"
 					:key="movie.id"
 					class="result-item"
-					@click="$emit('select', movie)">
+					role="button"
+					tabindex="0"
+					:aria-label="movie.title"
+					@click="$emit('select', movie)"
+					@keydown.enter="$emit('select', movie)"
+					@keydown.space.prevent="$emit('select', movie)">
 					<img v-if="movie.poster_path"
 						:src="getImageUrl(movie.poster_path)"
 						:alt="movie.title">
@@ -96,6 +101,13 @@ export default {
 			return this.settingsStore.defaultLanguage || 'en-US'
 		},
 	},
+	mounted() {
+		// Auto-focus the search field
+		this.$nextTick(() => {
+			const input = this.$el?.querySelector('input[type="text"]')
+			if (input) input.focus()
+		})
+	},
 	methods: {
 		getImageUrl(path) {
 			return getPosterUrl(path, 'w200')
@@ -122,12 +134,6 @@ export default {
 			} finally {
 				this.searching = false
 			}
-		},
-		reset() {
-			this.searchQuery = ''
-			this.searchYear = ''
-			this.searchResults = []
-			this.searched = false
 		},
 	},
 }

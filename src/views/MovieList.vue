@@ -7,11 +7,12 @@
 					:label="t('moviedb', 'Search')"
 					:placeholder="t('moviedb', 'Search movies...')"
 					@update:modelValue="debouncedSearch" />
-				<NcButton @click="$router.push({ name: 'add-movie' })">
+				<NcButton :aria-label="t('moviedb', 'Add Movie')"
+					:title="t('moviedb', 'Add Movie')"
+					@click="$router.push({ name: 'add-movie' })">
 					<template #icon>
 						<Plus :size="20" />
 					</template>
-					{{ t('moviedb', 'Add Movie') }}
 				</NcButton>
 			</div>
 		</div>
@@ -26,6 +27,13 @@
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
 				@update:modelValue="applyFilters" />
+			<NcButton :type="showFavoritesOnly ? 'primary' : 'secondary'"
+				@click="toggleFavorites">
+				<template #icon>
+					<Heart :size="20" />
+				</template>
+				{{ t('moviedb', 'Favorites') }}
+			</NcButton>
 		</div>
 
 		<div v-if="loading" class="loading">
@@ -67,6 +75,7 @@
 <script>
 import { NcTextField, NcButton, NcSelect, NcLoadingIcon, NcEmptyContent } from '@nextcloud/vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
+import Heart from 'vue-material-design-icons/Heart.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
 import MovieCard from '../components/MovieCard.vue'
 import { debounce } from '../utils/debounce.js'
@@ -82,6 +91,7 @@ export default {
 		NcLoadingIcon,
 		NcEmptyContent,
 		Plus,
+		Heart,
 		Movie,
 		MovieCard,
 	},
@@ -95,6 +105,7 @@ export default {
 			searchQuery: '',
 			selectedPlatform: null,
 			sortBy: null,
+			showFavoritesOnly: false,
 		}
 	},
 	computed: {
@@ -136,7 +147,12 @@ export default {
 				search: this.searchQuery,
 				platform: this.selectedPlatform?.id || null,
 				sort: this.sortBy?.id || 'date_watched',
+				favorite: this.showFavoritesOnly,
 			})
+		},
+		toggleFavorites() {
+			this.showFavoritesOnly = !this.showFavoritesOnly
+			this.applyFilters()
 		},
 		goToPage(page) {
 			this.moviesStore.setPage(page)

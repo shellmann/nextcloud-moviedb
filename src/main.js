@@ -15,5 +15,3 @@ app.use(pinia)
 app.use(router)
 
 app.mount('#moviedb')
-
-export default app

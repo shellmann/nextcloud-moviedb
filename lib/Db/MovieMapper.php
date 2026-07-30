@@ -42,26 +42,7 @@ class MovieMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
-        // Apply filters
-        if (!empty($filters['genre'])) {
-            $qb->andWhere($qb->expr()->like('genre_ids',
-                $qb->createNamedParameter('%' . $filters['genre'] . '%')));
-        }
-        if (!empty($filters['year'])) {
-            $qb->andWhere($qb->expr()->eq('release_year',
-                $qb->createNamedParameter((int)$filters['year'], IQueryBuilder::PARAM_INT)));
-        }
-        if (!empty($filters['platform'])) {
-            $qb->andWhere($qb->expr()->eq('platform_id',
-                $qb->createNamedParameter((int)$filters['platform'], IQueryBuilder::PARAM_INT)));
-        }
-        if (!empty($filters['search'])) {
-            $qb->andWhere($qb->expr()->iLike('title',
-                $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search']) . '%')));
-        }
-        if (isset($filters['favorite']) && $filters['favorite']) {
-            $qb->andWhere($qb->expr()->eq('is_favorite', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));
-        }
+        $this->applyFilters($qb, $filters);
 
         // Sorting
         $sortField = $filters['sort'] ?? 'date_watched';
@@ -86,10 +67,30 @@ class MovieMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
 
-        // Apply same filters as findAll
+        $this->applyFilters($qb, $filters);
+
+        $result = $qb->executeQuery();
+        $row = $result->fetch();
+        $result->closeCursor();
+
+        return (int)($row['count'] ?? 0);
+    }
+
+    /**
+     * Apply shared filter logic to a query builder.
+     */
+    private function applyFilters(IQueryBuilder $qb, array $filters): void {
         if (!empty($filters['genre'])) {
-            $qb->andWhere($qb->expr()->like('genre_ids',
-                $qb->createNamedParameter('%' . $filters['genre'] . '%')));
+            // Use delimiters to avoid false positives (e.g., genre 2 matching 12, 20, etc.)
+            $genreId = (int)$filters['genre'];
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    $qb->expr()->like('genre_ids', $qb->createNamedParameter('[' . $genreId . ']')),
+                    $qb->expr()->like('genre_ids', $qb->createNamedParameter('[' . $genreId . ',%')),
+                    $qb->expr()->like('genre_ids', $qb->createNamedParameter('%,' . $genreId . ',%')),
+                    $qb->expr()->like('genre_ids', $qb->createNamedParameter('%,' . $genreId . ']'))
+                )
+            );
         }
         if (!empty($filters['year'])) {
             $qb->andWhere($qb->expr()->eq('release_year',
@@ -103,12 +104,9 @@ class MovieMapper extends QBMapper {
             $qb->andWhere($qb->expr()->iLike('title',
                 $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search']) . '%')));
         }
-
-        $result = $qb->executeQuery();
-        $row = $result->fetch();
-        $result->closeCursor();
-
-        return (int)($row['count'] ?? 0);
+        if (isset($filters['favorite']) && $filters['favorite']) {
+            $qb->andWhere($qb->expr()->eq('is_favorite', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));
+        }
     }
 
     public function findByTmdbId(string $userId, int $tmdbId): ?Movie {

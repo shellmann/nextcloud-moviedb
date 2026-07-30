@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace OCA\MovieDB\AppInfo;
 
-use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Listener\CspListener;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
@@ -28,18 +27,7 @@ class Application extends App implements IBootstrap {
     }
 
     public function boot(IBootContext $context): void {
-        // Initialize default platforms if they don't exist
-        $server = $context->getServerContainer();
-
-        try {
-            /** @var PlatformMapper $platformMapper */
-            $platformMapper = $server->get(PlatformMapper::class);
-
-            if (!$platformMapper->hasDefaults()) {
-                $platformMapper->createDefaults();
-            }
-        } catch (\Exception $e) {
-            // Silently fail if database isn't ready yet (e.g., during installation)
-        }
+        // Default platforms are created during migration (postSchemaChange).
+        // No runtime initialization needed here.
     }
 }

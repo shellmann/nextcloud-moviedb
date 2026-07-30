@@ -28,6 +28,16 @@ class PlatformMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
 
+        // If userId is provided, restrict to user's own platforms or defaults
+        if ($userId !== null) {
+            $qb->andWhere(
+                $qb->expr()->orX(
+                    $qb->expr()->eq('is_default', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)),
+                    $qb->expr()->eq('user_id', $qb->createNamedParameter($userId))
+                )
+            );
+        }
+
         return $this->findEntity($qb);
     }
 

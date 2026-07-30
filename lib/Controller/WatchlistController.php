@@ -11,6 +11,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\IDBConnection;
 use OCP\IRequest;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
@@ -18,18 +19,21 @@ use Psr\Log\LoggerInterface;
 class WatchlistController extends AuthenticatedController {
     private WatchlistService $service;
     private MovieService $movieService;
+    private IDBConnection $db;
     private LoggerInterface $logger;
 
     public function __construct(
         IRequest $request,
         WatchlistService $service,
         MovieService $movieService,
+        IDBConnection $db,
         IUserSession $userSession,
         LoggerInterface $logger
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
         $this->movieService = $movieService;
+        $this->db = $db;
         $this->logger = $logger;
     }
 
@@ -173,10 +177,16 @@ class WatchlistController extends AuthenticatedController {
                 'review' => $watchData['review'] ?? null,
             ];
 
-            $movie = $this->movieService->create($this->userId, $movieData);
-
-            // Delete from watchlist
-            $this->service->delete($id, $this->userId);
+            // Use a transaction to ensure atomicity
+            $this->db->beginTransaction();
+            try {
+                $movie = $this->movieService->create($this->userId, $movieData);
+                $this->service->delete($id, $this->userId);
+                $this->db->commit();
+            } catch (\Exception $e) {
+                $this->db->rollBack();
+                throw $e;
+            }
 
             return new JSONResponse(['movie' => $movie]);
         } catch (DoesNotExistException $e) {

@@ -102,4 +102,9 @@ export default {
 #moviedb {
     height: 100%;
 }
+
+// Offset content to avoid overlapping with the navigation toggle button
+#app-content-vue {
+    padding-left: 36px;
+}
 </style>

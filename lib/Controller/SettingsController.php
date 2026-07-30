@@ -60,33 +60,47 @@ class SettingsController extends AuthenticatedController {
                     'tmdb_api_key'
                 );
             } else {
+                // Validate API key format (alphanumeric, reasonable length)
+                $apiKey = (string)$data['tmdbApiKey'];
+                if (strlen($apiKey) > 500 || !preg_match('/^[a-zA-Z0-9._\-]+$/', $apiKey)) {
+                    return new JSONResponse(['error' => 'Invalid API key format'], Http::STATUS_BAD_REQUEST);
+                }
                 // Set new API key
                 $this->config->setUserValue(
                     $this->userId,
                     Application::APP_ID,
                     'tmdb_api_key',
-                    $data['tmdbApiKey']
+                    $apiKey
                 );
             }
         }
 
         // Update default language
         if (isset($data['defaultLanguage'])) {
+            $language = (string)$data['defaultLanguage'];
+            // Validate BCP-47 language format (e.g., en-US, de-DE)
+            if (!preg_match('/^[a-z]{2}(-[A-Z]{2})?$/', $language)) {
+                return new JSONResponse(['error' => 'Invalid language format'], Http::STATUS_BAD_REQUEST);
+            }
             $this->config->setUserValue(
                 $this->userId,
                 Application::APP_ID,
                 'default_language',
-                $data['defaultLanguage']
+                $language
             );
         }
 
         // Update app language
         if (isset($data['appLanguage'])) {
+            $appLanguage = (string)$data['appLanguage'];
+            if (strlen($appLanguage) > 10 || !preg_match('/^[a-z]{2,5}(-[A-Z]{2})?$|^auto$/', $appLanguage)) {
+                return new JSONResponse(['error' => 'Invalid app language format'], Http::STATUS_BAD_REQUEST);
+            }
             $this->config->setUserValue(
                 $this->userId,
                 Application::APP_ID,
                 'app_language',
-                $data['appLanguage']
+                $appLanguage
             );
         }
 

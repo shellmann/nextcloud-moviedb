@@ -78,7 +78,6 @@
 
 <script>
 import { NcNoteCard, NcButton, NcSelect } from '@nextcloud/vue'
-import { showSuccess, showError } from '@nextcloud/dialogs'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import PlaylistPlus from 'vue-material-design-icons/PlaylistPlus.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
@@ -135,25 +134,20 @@ export default {
 		},
 		async addToWatchlist() {
 			this.saving = true
-			try {
-				await this.watchlistStore.create({
-					tmdbId: this.selectedMovie.tmdbId,
-					title: this.selectedMovie.title,
-					posterPath: this.selectedMovie.posterPath,
-					overview: this.selectedMovie.overview,
-					releaseDate: this.selectedMovie.releaseDate,
-					genreIds: this.selectedMovie.genreIds,
-					notes: this.notes,
-					priority: this.selectedPriority?.id || 0,
-				})
-				showSuccess(t('moviedb', 'Added to watchlist.'))
+			const item = await this.watchlistStore.create({
+				tmdbId: this.selectedMovie.tmdbId,
+				title: this.selectedMovie.title,
+				posterPath: this.selectedMovie.posterPath,
+				overview: this.selectedMovie.overview,
+				releaseDate: this.selectedMovie.releaseDate,
+				genreIds: this.selectedMovie.genreIds,
+				notes: this.notes,
+				priority: this.selectedPriority?.id || 0,
+			})
+			if (item) {
 				this.$router.push({ name: 'watchlist' })
-			} catch (error) {
-				console.error('Failed to add to watchlist:', error)
-				showError(t('moviedb', 'Failed to add to watchlist. Please try again.'))
-			} finally {
-				this.saving = false
 			}
+			this.saving = false
 		},
 	},
 }

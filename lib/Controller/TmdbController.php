@@ -128,24 +128,40 @@ class TmdbController extends AuthenticatedController {
     #[NoAdminRequired]
     #[NoCSRFRequired]
     public function image(string $path, string $size = 'w200'): DataDownloadResponse {
+        if ($error = $this->requireAuth()) {
+            return new DataDownloadResponse('', 'image', 'image/jpeg');
+        }
+
         $allowedSizes = ['w92', 'w154', 'w185', 'w200', 'w342', 'w500', 'w780', 'original'];
         if (!in_array($size, $allowedSizes)) {
             $size = 'w200';
         }
 
-        // Decode the path in case it was URL-encoded
+        // Validate path: must be a valid TMDB image filename (alphanumeric + extension)
         $decodedPath = urldecode($path);
+        if (!preg_match('/^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp|svg)$/', ltrim($decodedPath, '/'))) {
+            $this->logger->warning('Invalid TMDB image path requested', ['path' => $decodedPath]);
+            return new DataDownloadResponse('', 'image', 'image/jpeg');
+        }
+
         $url = 'https://image.tmdb.org/t/p/' . $size . '/' . ltrim($decodedPath, '/');
 
         $ch = curl_init($url);
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, false);
         curl_setopt($ch, CURLOPT_TIMEOUT, 10);
         $imageData = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
         $contentType = curl_getinfo($ch, CURLINFO_CONTENT_TYPE);
         curl_close($ch);
 
-        if ($imageData === false) {
+        if ($imageData === false || $httpCode !== 200) {
+            $imageData = '';
+            $contentType = 'image/jpeg';
+        }
+
+        // Ensure response is actually an image
+        if ($contentType && !str_starts_with($contentType, 'image/')) {
             $imageData = '';
             $contentType = 'image/jpeg';
         }

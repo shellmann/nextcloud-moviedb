@@ -91,12 +91,43 @@
 				</NcButton>
 			</div>
 		</div>
+
+		<!-- Delete Platform Confirmation Dialog -->
+		<NcDialog :open="showDeletePlatformDialog"
+			:name="t('moviedb', 'Delete Platform')"
+			@update:open="showDeletePlatformDialog = $event">
+			<p>{{ t('moviedb', 'Delete this platform?') }}</p>
+			<template #actions>
+				<NcButton @click="showDeletePlatformDialog = false">
+					{{ t('moviedb', 'Cancel') }}
+				</NcButton>
+				<NcButton type="error" @click="confirmDeletePlatform">
+					{{ t('moviedb', 'Delete') }}
+				</NcButton>
+			</template>
+		</NcDialog>
+
+		<!-- Remove API Key Confirmation Dialog -->
+		<NcDialog :open="showRemoveApiKeyDialog"
+			:name="t('moviedb', 'Remove API Key')"
+			@update:open="showRemoveApiKeyDialog = $event">
+			<p>{{ t('moviedb', 'Remove API key?') }}</p>
+			<template #actions>
+				<NcButton @click="showRemoveApiKeyDialog = false">
+					{{ t('moviedb', 'Cancel') }}
+				</NcButton>
+				<NcButton type="error" @click="confirmRemoveApiKey">
+					{{ t('moviedb', 'Remove') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
 <script>
-import { NcTextField, NcSelect, NcButton } from '@nextcloud/vue'
+import { NcTextField, NcSelect, NcButton, NcDialog } from '@nextcloud/vue'
 import { showSuccess, showError } from '@nextcloud/dialogs'
+import { translate as t } from '@nextcloud/l10n'
 import Eye from 'vue-material-design-icons/Eye.vue'
 import EyeOff from 'vue-material-design-icons/EyeOff.vue'
 import ContentSave from 'vue-material-design-icons/ContentSave.vue'
@@ -112,6 +143,7 @@ export default {
 		NcTextField,
 		NcSelect,
 		NcButton,
+		NcDialog,
 		Eye,
 		EyeOff,
 		ContentSave,
@@ -131,6 +163,9 @@ export default {
 			languageOptions: getTmdbLanguageOptions(),
 			newPlatformName: '',
 			saving: false,
+			showDeletePlatformDialog: false,
+			showRemoveApiKeyDialog: false,
+			pendingDeletePlatformId: null,
 		}
 	},
 	computed: {
@@ -154,10 +189,10 @@ export default {
 					tmdbApiKey: this.tmdbApiKey || undefined,
 					defaultLanguage: this.selectedLanguage?.id,
 				})
-				showSuccess(this.t('moviedb', 'Settings saved successfully.'))
+				showSuccess(t('moviedb', 'Settings saved successfully.'))
 				this.tmdbApiKey = '' // Clear the field after save
 			} catch (error) {
-				showError(this.t('moviedb', 'Failed to save settings. Please try again.'))
+				showError(t('moviedb', 'Failed to save settings. Please try again.'))
 			} finally {
 				this.saving = false
 			}
@@ -169,30 +204,38 @@ export default {
 				await this.platformsStore.create({
 					name: this.newPlatformName,
 				})
-				showSuccess(this.t('moviedb', 'Platform created successfully.'))
+				showSuccess(t('moviedb', 'Platform created successfully.'))
 				this.newPlatformName = ''
 			} catch (error) {
-				showError(this.t('moviedb', 'Failed to create platform. Please try again.'))
+				showError(t('moviedb', 'Failed to create platform. Please try again.'))
 			}
 		},
 		async deletePlatform(id) {
-			if (confirm(this.t('moviedb', 'Delete this platform?'))) {
-				try {
-					await this.platformsStore.delete(id)
-					showSuccess(this.t('moviedb', 'Platform deleted successfully.'))
-				} catch (error) {
-					showError(this.t('moviedb', 'Failed to delete platform. Please try again.'))
-				}
+			this.pendingDeletePlatformId = id
+			this.showDeletePlatformDialog = true
+		},
+		async confirmDeletePlatform() {
+			try {
+				await this.platformsStore.delete(this.pendingDeletePlatformId)
+				showSuccess(t('moviedb', 'Platform deleted successfully.'))
+			} catch (error) {
+				showError(t('moviedb', 'Failed to delete platform. Please try again.'))
+			} finally {
+				this.showDeletePlatformDialog = false
+				this.pendingDeletePlatformId = null
 			}
 		},
 		async removeApiKey() {
-			if (confirm(this.t('moviedb', 'Remove API key?'))) {
-				try {
-					await this.settingsStore.update({ tmdbApiKey: '' })
-					showSuccess(this.t('moviedb', 'API key removed successfully.'))
-				} catch (error) {
-					showError(this.t('moviedb', 'Failed to remove API key. Please try again.'))
-				}
+			this.showRemoveApiKeyDialog = true
+		},
+		async confirmRemoveApiKey() {
+			try {
+				await this.settingsStore.update({ tmdbApiKey: '' })
+				showSuccess(t('moviedb', 'API key removed successfully.'))
+			} catch (error) {
+				showError(t('moviedb', 'Failed to remove API key. Please try again.'))
+			} finally {
+				this.showRemoveApiKeyDialog = false
 			}
 		},
 	},
@@ -305,11 +348,13 @@ export default {
 
 .status-saved {
     background: var(--color-success);
-    color: white;
+    color: #000;
+    font-weight: bold;
 }
 
 .status-missing {
     background: var(--color-warning);
-    color: white;
+    color: #000;
+    font-weight: bold;
 }
 </style>

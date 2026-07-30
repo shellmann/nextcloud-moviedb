@@ -1,10 +1,16 @@
 <template>
-	<div class="rating-stars">
+	<div class="rating-stars" :role="!readonly ? 'radiogroup' : undefined" :aria-label="!readonly ? t('moviedb', 'Rating') : undefined">
 		<span v-for="star in max"
 			:key="star"
 			class="star"
 			:class="{ filled: star <= rating, interactive: !readonly }"
-			@click="!readonly && $emit('update', star)">
+			:role="!readonly ? 'radio' : undefined"
+			:tabindex="!readonly ? 0 : undefined"
+			:aria-checked="!readonly ? String(star === rating) : undefined"
+			:aria-label="!readonly ? star + '/' + max : undefined"
+			@click="!readonly && $emit('update', star)"
+			@keydown.enter="!readonly && $emit('update', star)"
+			@keydown.space.prevent="!readonly && $emit('update', star)">
 			<Star v-if="star <= rating" :size="size" />
 			<StarOutline v-else :size="size" />
 		</span>
@@ -39,6 +45,7 @@ export default {
 			default: false,
 		},
 	},
+	emits: ['update'],
 }
 </script>
 

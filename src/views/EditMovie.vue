@@ -21,7 +21,6 @@
 
 <script>
 import { NcLoadingIcon } from '@nextcloud/vue'
-import { showSuccess, showError } from '@nextcloud/dialogs'
 import MovieForm from '../components/MovieForm.vue'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
@@ -79,15 +78,11 @@ export default {
 		},
 		async saveMovie(movieData) {
 			this.saving = true
-			try {
-				await this.moviesStore.update(this.id, movieData)
-				showSuccess(t('moviedb', 'Movie updated successfully.'))
+			const movie = await this.moviesStore.update(this.id, movieData)
+			if (movie) {
 				this.$router.push({ name: 'movie-detail', params: { id: this.id } })
-			} catch (error) {
-				showError(t('moviedb', 'Failed to update movie. Please try again.'))
-			} finally {
-				this.saving = false
 			}
+			this.saving = false
 		},
 	},
 }

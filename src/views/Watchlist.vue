@@ -133,12 +133,26 @@
 				</div>
 			</div>
 		</NcModal>
+
+		<!-- Remove from Watchlist Confirmation Dialog -->
+		<NcDialog :open="showRemoveDialog"
+			:name="t('moviedb', 'Remove from Watchlist')"
+			@update:open="showRemoveDialog = $event">
+			<p>{{ t('moviedb', 'Remove from watchlist?') }}</p>
+			<template #actions>
+				<NcButton @click="showRemoveDialog = false">
+					{{ t('moviedb', 'Cancel') }}
+				</NcButton>
+				<NcButton type="error" @click="confirmRemove">
+					{{ t('moviedb', 'Remove') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
 <script>
-import { NcButton, NcLoadingIcon, NcEmptyContent, NcModal, NcSelect, NcTextField } from '@nextcloud/vue'
-import { showSuccess, showError } from '@nextcloud/dialogs'
+import { NcButton, NcLoadingIcon, NcEmptyContent, NcModal, NcSelect, NcTextField, NcDialog } from '@nextcloud/vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
@@ -158,6 +172,7 @@ export default {
 		NcModal,
 		NcSelect,
 		NcTextField,
+		NcDialog,
 		Check,
 		Delete,
 		Pencil,
@@ -173,7 +188,9 @@ export default {
 		return {
 			showWatchedModal: false,
 			showEditModal: false,
+			showRemoveDialog: false,
 			selectedItem: null,
+			pendingRemoveId: null,
 			watchedData: {
 				platform: null,
 				language: null,
@@ -223,30 +240,25 @@ export default {
 		},
 		async confirmWatched() {
 			this.saving = true
-			try {
-				await this.watchlistStore.moveToWatched(this.selectedItem.id, {
-					platformId: this.watchedData.platform?.id,
-					languageWatched: this.watchedData.language?.id,
-					dateWatched: this.watchedData.dateWatched,
-					rating: this.watchedData.rating?.id,
-				})
-				showSuccess(t('moviedb', 'Moved to watched movies.'))
+			const movie = await this.watchlistStore.moveToWatched(this.selectedItem.id, {
+				platformId: this.watchedData.platform?.id,
+				languageWatched: this.watchedData.language?.id,
+				dateWatched: this.watchedData.dateWatched,
+				rating: this.watchedData.rating?.id,
+			})
+			if (movie) {
 				this.showWatchedModal = false
-			} catch (error) {
-				showError(t('moviedb', 'Failed to move to watched. Please try again.'))
-			} finally {
-				this.saving = false
 			}
+			this.saving = false
 		},
 		async removeFromWatchlist(id) {
-			if (confirm(t('moviedb', 'Remove from watchlist?'))) {
-				try {
-					await this.watchlistStore.delete(id)
-					showSuccess(t('moviedb', 'Removed from watchlist.'))
-				} catch (error) {
-					showError(t('moviedb', 'Failed to remove from watchlist. Please try again.'))
-				}
-			}
+			this.pendingRemoveId = id
+			this.showRemoveDialog = true
+		},
+		async confirmRemove() {
+			await this.watchlistStore.delete(this.pendingRemoveId)
+			this.showRemoveDialog = false
+			this.pendingRemoveId = null
 		},
 		openEditModal(item) {
 			this.selectedItem = item
@@ -260,19 +272,14 @@ export default {
 			if (this.saving) return
 
 			this.saving = true
-			try {
-				await this.watchlistStore.update(this.selectedItem.id, {
-					priority: this.editData.priority?.id ?? 0,
-					notes: this.editData.notes,
-				})
-				showSuccess(t('moviedb', 'Watchlist item updated.'))
+			const item = await this.watchlistStore.update(this.selectedItem.id, {
+				priority: this.editData.priority?.id ?? 0,
+				notes: this.editData.notes,
+			})
+			if (item) {
 				this.showEditModal = false
-			} catch (error) {
-				console.error('Failed to update watchlist item:', error)
-				showError(t('moviedb', 'Failed to update watchlist item. Please try again.'))
-			} finally {
-				this.saving = false
 			}
+			this.saving = false
 		},
 	},
 }

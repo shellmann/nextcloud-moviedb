@@ -121,15 +121,11 @@ export default {
 			if (this.saving) return
 
 			this.saving = true
-			try {
-				await this.moviesStore.create(movieData)
+			const movie = await this.moviesStore.create(movieData)
+			if (movie) {
 				this.$router.push({ name: 'movies' })
-			} catch (error) {
-				console.error('Failed to save movie:', error)
-				showError(t('moviedb', 'Failed to add movie. Please try again.'))
-			} finally {
-				this.saving = false
 			}
+			this.saving = false
 		},
 	},
 }

@@ -1,5 +1,11 @@
 <template>
-	<div class="movie-card" @click="$emit('click')">
+	<div class="movie-card"
+		role="button"
+		tabindex="0"
+		:aria-label="movie.title"
+		@click="$emit('click')"
+		@keydown.enter="$emit('click')"
+		@keydown.space.prevent="$emit('click')">
 		<div class="poster">
 			<img v-if="movie.posterPath"
 				:src="posterUrl"
