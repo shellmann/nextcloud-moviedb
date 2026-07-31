@@ -2,7 +2,7 @@
 	<div class="movie-card"
 		role="button"
 		tabindex="0"
-		:aria-label="movie.title"
+		:aria-labelledby="'movie-title-' + movie.id"
 		@click="$emit('click')"
 		@keydown.enter="$emit('click')"
 		@keydown.space.prevent="$emit('click')">
@@ -22,9 +22,9 @@
 			</div>
 		</div>
 		<div class="info">
-			<h4 class="title">
+			<h3 :id="'movie-title-' + movie.id" class="title">
 				{{ movie.title }}
-			</h4>
+			</h3>
 			<span v-if="movie.releaseYear" class="year">{{ movie.releaseYear }}</span>
 			<div v-if="genreLabels.length" class="genre-pills">
 				<span v-for="genre in genreLabels" :key="genre" class="genre-pill">{{ genre }}</span>

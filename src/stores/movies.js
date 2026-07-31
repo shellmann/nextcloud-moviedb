@@ -31,6 +31,7 @@ export const useMoviesStore = defineStore('movies', {
 			search: '',
 			sort: 'date_watched',
 			dir: 'DESC',
+			favorite: false,
 		},
 	}),
 
@@ -57,6 +58,7 @@ export const useMoviesStore = defineStore('movies', {
 				if (this.filters.search) params.search = this.filters.search
 				if (this.filters.sort) params.sort = this.filters.sort
 				if (this.filters.dir) params.dir = this.filters.dir
+				if (this.filters.favorite) params.favorite = 1
 
 				const response = await api.getMovies(params)
 				this.movies = response.data.movies
@@ -153,6 +155,22 @@ export const useMoviesStore = defineStore('movies', {
 				showError(t('moviedb', 'Failed to delete movie. Please try again.'))
 				return false
 			}
+		},
+
+		/**
+		 * Resets all filter criteria to their defaults.
+		 */
+		resetFilters() {
+			this.filters = {
+				genre: null,
+				year: null,
+				platform: null,
+				search: '',
+				sort: 'date_watched',
+				dir: 'DESC',
+				favorite: false,
+			}
+			this.page = 1
 		},
 
 		/**

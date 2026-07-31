@@ -92,6 +92,10 @@
 			</div>
 		</div>
 
+		<div class="app-version">
+			<p>MovieDB v{{ appVersion }}</p>
+		</div>
+
 		<!-- Delete Platform Confirmation Dialog -->
 		<NcDialog :open="showDeletePlatformDialog"
 			:name="t('moviedb', 'Delete Platform')"
@@ -169,6 +173,10 @@ export default {
 		}
 	},
 	computed: {
+		appVersion() {
+			// eslint-disable-next-line no-undef
+			return typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'unknown'
+		},
 		customPlatforms() {
 			return this.platformsStore.customPlatforms
 		},
@@ -327,6 +335,10 @@ export default {
 .add-platform {
     display: flex;
     gap: 8px;
+
+    .button-vue {
+        flex-shrink: 0;
+    }
 }
 
 .api-key-field {
@@ -356,5 +368,13 @@ export default {
     background: var(--color-warning);
     color: #000;
     font-weight: bold;
+}
+
+.app-version {
+    margin-top: 32px;
+    padding-top: 16px;
+    border-top: 1px solid var(--color-border);
+    color: var(--color-text-maxcontrast);
+    font-size: 13px;
 }
 </style>

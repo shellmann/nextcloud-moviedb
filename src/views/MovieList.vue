@@ -1,7 +1,10 @@
 <template>
 	<div class="movie-list">
 		<div class="list-header">
-			<h2>{{ t('moviedb', 'My Movies') }}</h2>
+			<h2>
+				{{ t('moviedb', 'My Movies') }}
+				<span v-if="!loading" class="movie-count">({{ total }})</span>
+			</h2>
 			<div class="header-actions">
 				<NcTextField v-model="searchQuery"
 					:label="t('moviedb', 'Search')"
@@ -31,6 +34,7 @@
 			<NcSelect v-model="sortBy"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
+				:aria-label="t('moviedb', 'Sort by')"
 				@update:modelValue="applyFilters" />
 			<NcButton :aria-label="t('moviedb', 'Toggle sort direction')"
 				:title="sortDirection === 'DESC' ? t('moviedb', 'Descending') : t('moviedb', 'Ascending')"
@@ -60,12 +64,18 @@
 				@click="goToMovie(movie.id)" />
 		</div>
 
-		<NcEmptyContent v-else :name="t('moviedb', 'No movies found')">
+		<NcEmptyContent v-else :name="emptyStateMessage">
 			<template #icon>
-				<Movie :size="64" />
+				<Heart v-if="showFavoritesOnly" :size="64" />
+				<Movie v-else :size="64" />
+			</template>
+			<template #description>
+				<p v-if="showFavoritesOnly">
+					{{ t('moviedb', 'Mark movies as favorite from the movie detail page.') }}
+				</p>
 			</template>
 			<template #action>
-				<NcButton @click="$router.push({ name: 'add-movie' })">
+				<NcButton v-if="!showFavoritesOnly" @click="$router.push({ name: 'add-movie' })">
 					{{ t('moviedb', 'Add your first movie') }}
 				</NcButton>
 			</template>
@@ -135,6 +145,9 @@ export default {
 		loading() {
 			return this.moviesStore.loading
 		},
+		total() {
+			return this.moviesStore.total
+		},
 		page() {
 			return this.moviesStore.page
 		},
@@ -158,10 +171,17 @@ export default {
 				{ id: 'release_year', label: t('moviedb', 'Release Year') },
 			]
 		},
+		emptyStateMessage() {
+			if (this.showFavoritesOnly) {
+				return t('moviedb', 'No favorite movies yet')
+			}
+			return t('moviedb', 'No movies found')
+		},
 	},
 	created() {
 		this.sortBy = this.sortOptions[0]
 		this.debouncedSearch = debounce(this.applyFilters, 300)
+		this.moviesStore.resetFilters()
 		this.moviesStore.fetchAll()
 	},
 	methods: {
@@ -211,6 +231,12 @@ export default {
     h2 {
         margin: 0;
         font-size: 24px;
+
+        .movie-count {
+            font-size: 16px;
+            font-weight: normal;
+            color: var(--color-text-maxcontrast);
+        }
     }
 
     .header-actions {
@@ -248,6 +274,28 @@ export default {
 
     .page-info {
         color: var(--color-text-lighter);
+    }
+}
+
+@media (max-width: 600px) {
+    .list-header {
+        h2 {
+            font-size: 20px;
+        }
+    }
+
+    .filters {
+        gap: 8px;
+
+        :deep(.select) {
+            min-width: 0;
+            flex: 1 1 calc(50% - 4px);
+        }
+    }
+
+    .movie-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
     }
 }
 </style>

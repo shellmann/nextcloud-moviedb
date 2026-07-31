@@ -76,12 +76,12 @@
 					</p>
 
 					<div v-if="movie.review" class="movie-review">
-						<h4>{{ t('moviedb', 'My Review') }}</h4>
+						<h3>{{ t('moviedb', 'My Review') }}</h3>
 						<p>{{ movie.review }}</p>
 					</div>
 
 					<div v-if="movie.castData && movie.castData.length" class="movie-cast">
-						<h4>{{ t('moviedb', 'Cast') }}</h4>
+						<h3>{{ t('moviedb', 'Cast') }}</h3>
 						<div class="cast-list">
 							<div v-for="actor in movie.castData.slice(0, 6)" :key="actor.name" class="cast-item">
 								<strong>{{ actor.name }}</strong>
@@ -308,6 +308,15 @@ export default {
     .movie-actions {
         display: flex;
         gap: 8px;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 600px) {
+        flex-direction: column;
+
+        .movie-titles h2 {
+            font-size: 22px;
+        }
     }
 }
 
@@ -356,8 +365,9 @@ export default {
     padding: 16px;
     margin-bottom: 16px;
 
-    h4 {
+    h3 {
         margin: 0 0 8px;
+        font-size: 1.1em;
     }
 
     p {
@@ -367,8 +377,9 @@ export default {
 }
 
 .movie-cast {
-    h4 {
+    h3 {
         margin: 0 0 12px;
+        font-size: 1.1em;
     }
 }
 

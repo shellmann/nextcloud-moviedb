@@ -23,6 +23,7 @@
 			<NcSelect v-model="selectedSort"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
+				:aria-label="t('moviedb', 'Sort by')"
 				@update:modelValue="onSortChange" />
 		</div>
 
@@ -46,7 +47,7 @@
 				</div>
 				<div class="item-info">
 					<div class="item-header">
-						<h4>{{ item.title }}</h4>
+						<h3>{{ item.title }}</h3>
 						<span v-if="item.priority > 0" class="priority-badge" :class="getPriorityColor(item.priority)">
 							{{ getPriorityLabel(item.priority) }}
 						</span>
@@ -67,12 +68,15 @@
 							</template>
 							{{ t('moviedb', 'Mark as Watched') }}
 						</NcButton>
-						<NcButton @click="openEditModal(item)">
+						<NcButton :aria-label="t('moviedb', 'Edit')"
+							@click="openEditModal(item)">
 							<template #icon>
 								<Pencil :size="20" />
 							</template>
 						</NcButton>
-						<NcButton type="error" @click="removeFromWatchlist(item.id)">
+						<NcButton :aria-label="t('moviedb', 'Delete')"
+							type="error"
+							@click="removeFromWatchlist(item.id)">
 							<template #icon>
 								<Delete :size="20" />
 							</template>
@@ -233,7 +237,7 @@ export default {
 			priorityOptions: getPriorityOptions(),
 			sortOptions: [
 				{ id: 'priority', label: t('moviedb', 'Priority') },
-				{ id: 'created_at', label: t('moviedb', 'Date Added') },
+				{ id: 'added_at', label: t('moviedb', 'Date Added') },
 				{ id: 'title', label: t('moviedb', 'Title') },
 			],
 			saving: false,
@@ -255,6 +259,7 @@ export default {
 	},
 	created() {
 		this.selectedSort = this.sortOptions[0]
+		this.watchlistStore.resetSort()
 		this.watchlistStore.fetchAll()
 	},
 	methods: {
@@ -279,7 +284,7 @@ export default {
 			})
 			setTimeout(() => {
 				this.highlightedId = null
-			}, 2000)
+			}, 4000)
 		},
 		getGenreNames(genreIds) {
 			if (!genreIds) return []
@@ -399,7 +404,7 @@ export default {
     transition: box-shadow 0.3s, background-color 0.3s;
 
     &.highlighted {
-        animation: highlight-pulse 2s ease-out;
+        animation: highlight-pulse 4s ease-out;
     }
 
     @media (max-width: 600px) {
@@ -450,8 +455,9 @@ export default {
         margin-bottom: 4px;
     }
 
-    h4 {
+    h3 {
         margin: 0;
+        font-size: 1.1em;
     }
 
     .priority-badge {
@@ -465,12 +471,12 @@ export default {
 
         &.warning {
             background: var(--color-warning);
-            color: white;
+            color: var(--color-warning-text);
         }
 
         &.error {
             background: var(--color-error);
-            color: white;
+            color: var(--color-error-text);
         }
     }
 

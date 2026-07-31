@@ -57,6 +57,14 @@ export const useWatchlistStore = defineStore('watchlist', {
 		},
 
 		/**
+		 * Resets sort to defaults (priority DESC).
+		 */
+		resetSort() {
+			this.sort = 'priority'
+			this.dir = 'DESC'
+		},
+
+		/**
 		 * Adds a new item to the watchlist.
 		 * @param {object} itemData - Watchlist item data
 		 * @return {Promise<object | null>} The created item or null on error

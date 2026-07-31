@@ -42,6 +42,10 @@ describe('Movies Store', () => {
 		it('should have default filter values', () => {
 			expect(store.filters.sort).toBe('date_watched')
 			expect(store.filters.dir).toBe('DESC')
+			expect(store.filters.favorite).toBe(false)
+			expect(store.filters.genre).toBeNull()
+			expect(store.filters.platform).toBeNull()
+			expect(store.filters.search).toBe('')
 		})
 	})
 
@@ -100,6 +104,33 @@ describe('Movies Store', () => {
 					year: 2024,
 				}),
 			)
+		})
+
+		it('should include favorite filter when set to true', async () => {
+			api.getMovies.mockResolvedValue({
+				data: { movies: [], total: 0, page: 1, totalPages: 0 },
+			})
+
+			store.filters.favorite = true
+			await store.fetchAll()
+
+			expect(api.getMovies).toHaveBeenCalledWith(
+				expect.objectContaining({
+					favorite: 1,
+				}),
+			)
+		})
+
+		it('should not include favorite param when set to false', async () => {
+			api.getMovies.mockResolvedValue({
+				data: { movies: [], total: 0, page: 1, totalPages: 0 },
+			})
+
+			store.filters.favorite = false
+			await store.fetchAll()
+
+			const calledParams = api.getMovies.mock.calls[0][0]
+			expect(calledParams.favorite).toBeUndefined()
 		})
 
 		it('should handle API errors gracefully', async () => {
@@ -217,6 +248,38 @@ describe('Movies Store', () => {
 			store.setFilters({ genre: 28 })
 
 			expect(store.page).toBe(1)
+		})
+	})
+
+	describe('resetFilters action', () => {
+		it('should reset all filters to defaults', () => {
+			store.filters.genre = 28
+			store.filters.platform = 5
+			store.filters.search = 'test'
+			store.filters.sort = 'title'
+			store.filters.dir = 'ASC'
+			store.filters.favorite = true
+			store.page = 3
+
+			store.resetFilters()
+
+			expect(store.filters.genre).toBeNull()
+			expect(store.filters.platform).toBeNull()
+			expect(store.filters.search).toBe('')
+			expect(store.filters.sort).toBe('date_watched')
+			expect(store.filters.dir).toBe('DESC')
+			expect(store.filters.favorite).toBe(false)
+			expect(store.page).toBe(1)
+		})
+
+		it('should not trigger a fetch', () => {
+			api.getMovies.mockResolvedValue({
+				data: { movies: [], total: 0, page: 1, totalPages: 0 },
+			})
+
+			store.resetFilters()
+
+			expect(api.getMovies).not.toHaveBeenCalled()
 		})
 	})
 })
