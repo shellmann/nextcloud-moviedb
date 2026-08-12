@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-12
+
+### Added
+- TV series (TV show) search on TMDB with a Movies/TV Shows toggle
+- TMDB series details (creators, cast, genres, episode runtime) when adding a series
+- Series genres endpoint (`/api/tmdb/series/genres`)
+- `type` parameter on `/api/tmdb/search` to search movies or series
+- Dedicated series API routes (`/api/tmdb/series/search`, `/api/tmdb/series/{tmdbId}`)
+
 ## [1.1.0] - 2026-07-30
 
 ### Added
