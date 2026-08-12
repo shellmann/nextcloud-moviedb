@@ -42,8 +42,8 @@ export default {
 	},
 
 	// TMDB
-	searchTmdb(query, year = null, page = 1, language = null) {
-		const params = { query, page }
+	searchTmdb(query, year = null, page = 1, language = null, type = 'movie') {
+		const params = { query, page, type }
 		if (year) {
 			params.year = year
 		}

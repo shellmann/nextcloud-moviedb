@@ -229,7 +229,7 @@ The app exposes the following REST API endpoints:
 | `/api/watchlist` | GET | Get watchlist |
 | `/api/watchlist` | POST | Add to watchlist |
 | `/api/watchlist/{id}/watched` | POST | Move to watched |
-| `/api/tmdb/search` | GET | Search TMDB |
+| `/api/tmdb/search` | GET | Search TMDB (`type=movie` or `type=series`) |
 | `/api/tmdb/movie/{tmdbId}` | GET | Get TMDB movie details |
 | `/api/tmdb/genres` | GET | Get TMDB movie genres |
 | `/api/tmdb/series/search` | GET | Search TMDB TV series |

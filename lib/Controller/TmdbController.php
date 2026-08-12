@@ -44,24 +44,35 @@ class TmdbController extends AuthenticatedController {
         $year = $this->request->getParam('year');
         $page = (int)$this->request->getParam('page', 1);
         $language = $this->request->getParam('language', 'en-US');
+        $type = $this->request->getParam('type', 'movie');
 
         try {
-            $results = $this->service->searchMovies(
-                $query,
-                $year ? (int)$year : null,
-                $page,
-                $this->userId,
-                $language
-            );
+            if ($type === 'series') {
+                $results = $this->service->searchSeries(
+                    $query,
+                    $year ? (int)$year : null,
+                    $page,
+                    $this->userId,
+                    $language
+                );
+            } else {
+                $results = $this->service->searchMovies(
+                    $query,
+                    $year ? (int)$year : null,
+                    $page,
+                    $this->userId,
+                    $language
+                );
+            }
             return new JSONResponse($results);
         } catch (\Exception $e) {
-            $this->logger->error('Failed to search TMDB movies', [
+            $this->logger->error('Failed to search TMDB ' . ($type === 'series' ? 'series' : 'movies'), [
                 'exception' => $e,
                 'userId' => $this->userId,
                 'query' => $query,
             ]);
             return new JSONResponse(
-                ['error' => 'Failed to search movies. Please check your API key and try again.'],
+                ['error' => 'Failed to search. Please check your API key and try again.'],
                 Http::STATUS_BAD_REQUEST
             );
         }

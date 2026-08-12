@@ -151,10 +151,13 @@ export default {
 			this.searchResults = []
 
 			try {
-				const args = [this.searchQuery, this.searchYear || null, 1, this.tmdbLanguage]
-				const response = this.mediaType === 'series'
-					? await api.searchSeries(...args)
-					: await api.searchTmdb(...args)
+				const response = await api.searchTmdb(
+					this.searchQuery,
+					this.searchYear || null,
+					1,
+					this.tmdbLanguage,
+					this.mediaType,
+				)
 				this.searchResults = response.data.results || []
 				this.searched = true
 			} catch (error) {
