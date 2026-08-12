@@ -66,6 +66,30 @@ export default {
 		}
 		return axios.get(`${baseUrl}/tmdb/genres`, { params })
 	},
+	searchSeries(query, year = null, page = 1, language = null) {
+		const params = { query, page }
+		if (year) {
+			params.year = year
+		}
+		if (language) {
+			params.language = language
+		}
+		return axios.get(`${baseUrl}/tmdb/series/search`, { params })
+	},
+	getTmdbSeriesDetails(tmdbId, language = null) {
+		const params = {}
+		if (language) {
+			params.language = language
+		}
+		return axios.get(`${baseUrl}/tmdb/series/${tmdbId}`, { params })
+	},
+	getTmdbSeriesGenres(language = null) {
+		const params = {}
+		if (language) {
+			params.language = language
+		}
+		return axios.get(`${baseUrl}/tmdb/series/genres`, { params })
+	},
 	checkTmdbApiKey() {
 		return axios.get(`${baseUrl}/tmdb/check`)
 	},

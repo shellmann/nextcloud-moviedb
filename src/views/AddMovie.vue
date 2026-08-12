@@ -83,24 +83,28 @@ export default {
 		},
 	},
 	methods: {
-		async selectMovie(movie) {
+		async selectMovie(item, mediaType = 'movie') {
 			// Fetch full details from TMDB
 			try {
-				const response = await api.getTmdbMovieDetails(movie.id, this.tmdbLanguage)
-				const details = response.data.movie
+				const isSeries = mediaType === 'series'
+				const response = isSeries
+					? await api.getTmdbSeriesDetails(item.id, this.tmdbLanguage)
+					: await api.getTmdbMovieDetails(item.id, this.tmdbLanguage)
+				const details = isSeries ? response.data.series : response.data.movie
 
 				this.selectedMovie = {
 					tmdbId: details.id,
-					title: details.title,
-					originalTitle: details.original_title,
+					mediaType,
+					title: isSeries ? details.name : details.title,
+					originalTitle: isSeries ? details.original_name : details.original_title,
 					posterPath: details.poster_path,
 					backdropPath: details.backdrop_path,
 					overview: details.overview,
 					genreIds: details.genres?.map(g => g.id) || [],
-					releaseDate: details.release_date,
-					runtime: details.runtime,
+					releaseDate: isSeries ? details.first_air_date : details.release_date,
+					runtime: isSeries ? details.episode_run_time?.[0] ?? null : details.runtime ?? null,
 					castData: details.cast,
-					director: details.director,
+					director: details.director || '',
 					// User input fields
 					platformId: null,
 					languageWatched: '',
@@ -112,8 +116,8 @@ export default {
 				// Scroll to top to show the form
 				window.scrollTo({ top: 0, behavior: 'smooth' })
 			} catch (error) {
-				console.error('Failed to fetch movie details:', error)
-				showError(t('moviedb', 'Failed to load movie details.'))
+				console.error('Failed to fetch details:', error)
+				showError(t('moviedb', 'Failed to load details.'))
 			}
 		},
 		async saveMovie(movieData) {

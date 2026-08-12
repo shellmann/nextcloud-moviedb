@@ -79,6 +79,101 @@ class TmdbService {
     /**
      * @throws \Exception
      */
+    public function searchSeries(string $query, ?int $year = null, int $page = 1, ?string $userId = null, string $language = 'en-US'): array {
+        $apiKey = $this->getApiKey($userId);
+        if (empty($apiKey)) {
+            throw new \Exception('TMDB API key not configured. Please set your API key in settings.');
+        }
+
+        $client = $this->clientService->newClient();
+
+        $params = [
+            'query' => $query,
+            'page' => $page,
+            'language' => $language,
+            'include_adult' => 'false',
+        ];
+
+        if ($year !== null) {
+            $params['first_air_date_year'] = $year;
+        }
+
+        $response = $client->get(self::BASE_URL . '/search/tv', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Accept' => 'application/json',
+            ],
+            'query' => $params,
+        ]);
+
+        return json_decode($response->getBody(), true);
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function getSeriesDetails(int $tmdbId, ?string $userId = null, string $language = 'en-US'): array {
+        $apiKey = $this->getApiKey($userId);
+        if (empty($apiKey)) {
+            throw new \Exception('TMDB API key not configured. Please set your API key in settings.');
+        }
+
+        $client = $this->clientService->newClient();
+
+        $response = $client->get(self::BASE_URL . '/tv/' . $tmdbId, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Accept' => 'application/json',
+            ],
+            'query' => [
+                'append_to_response' => 'credits',
+                'language' => $language,
+            ],
+        ]);
+
+        $data = json_decode($response->getBody(), true);
+
+        // Extract creators and main cast
+        $creators = array_map(function ($creator) {
+            return $creator['name'];
+        }, $data['created_by'] ?? []);
+        $data['creators'] = array_values(array_filter($creators));
+        $data['cast'] = $this->extractMainCast($data['credits']['cast'] ?? [], 10);
+        $data['director'] = implode(', ', $data['creators']);
+
+        // Clean up credits to reduce response size
+        unset($data['credits']);
+
+        return $data;
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function getSeriesGenres(?string $userId = null, string $language = 'en-US'): array {
+        $apiKey = $this->getApiKey($userId);
+        if (empty($apiKey)) {
+            throw new \Exception('TMDB API key not configured. Please set your API key in settings.');
+        }
+
+        $client = $this->clientService->newClient();
+
+        $response = $client->get(self::BASE_URL . '/genre/tv/list', [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Accept' => 'application/json',
+            ],
+            'query' => [
+                'language' => $language,
+            ],
+        ]);
+
+        return json_decode($response->getBody(), true);
+    }
+
+    /**
+     * @throws \Exception
+     */
     public function getMovieDetails(int $tmdbId, ?string $userId = null, string $language = 'en-US'): array {
         $apiKey = $this->getApiKey($userId);
         if (empty($apiKey)) {

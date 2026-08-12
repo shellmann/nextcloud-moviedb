@@ -187,12 +187,16 @@ export default {
 			if (this.isInitializing) return
 			if (!language || !this.formData.tmdbId) return
 
-			// Fetch movie title in the selected language
+			// Fetch title in the selected language
 			try {
-				const response = await api.getTmdbMovieDetails(this.formData.tmdbId, language.tmdbCode)
-				const details = response.data.movie
-				if (details.title) {
-					this.formData.title = details.title
+				const isSeries = this.formData.mediaType === 'series'
+				const response = isSeries
+					? await api.getTmdbSeriesDetails(this.formData.tmdbId, language.tmdbCode)
+					: await api.getTmdbMovieDetails(this.formData.tmdbId, language.tmdbCode)
+				const details = isSeries ? response.data.series : response.data.movie
+				const title = isSeries ? details.name : details.title
+				if (title) {
+					this.formData.title = title
 				}
 			} catch (error) {
 				console.error('Failed to fetch localized title:', error)

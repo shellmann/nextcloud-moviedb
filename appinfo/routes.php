@@ -35,6 +35,11 @@ return [
         ['name' => 'tmdb#checkApiKey', 'url' => '/api/tmdb/check', 'verb' => 'GET'],
         ['name' => 'tmdb#image', 'url' => '/api/tmdb/image/{path}', 'verb' => 'GET', 'requirements' => ['path' => '.+']],
 
+        // TMDB series API proxy
+        ['name' => 'tmdb#searchSeries', 'url' => '/api/tmdb/series/search', 'verb' => 'GET'],
+        ['name' => 'tmdb#seriesGenres', 'url' => '/api/tmdb/series/genres', 'verb' => 'GET'],
+        ['name' => 'tmdb#seriesDetails', 'url' => '/api/tmdb/series/{tmdbId}', 'verb' => 'GET', 'requirements' => ['tmdbId' => '\d+']],
+
         // Statistics
         ['name' => 'stats#overview', 'url' => '/api/stats', 'verb' => 'GET'],
         ['name' => 'stats#byYear', 'url' => '/api/stats/years', 'verb' => 'GET'],

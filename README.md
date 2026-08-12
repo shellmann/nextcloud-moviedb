@@ -4,8 +4,9 @@ Track all the movies you've watched with rich metadata from TMDB.
 
 ## Features
 
-- **Movie Tracking**: Log movies with platform (Netflix, Disney+, etc.), language, and date watched
-- **TMDB Integration**: Automatically fetch movie posters, cast, and plot information
+-   **Movie Tracking**: Log movies with platform (Netflix, Disney+, etc.), language, and date watched
+-   **TMDB Integration**: Automatically fetch movie posters, cast, and plot information
+-   **Series Support**: Search TV series on TMDB and fetch series details
 - **Personal Ratings**: Rate movies 1-10 and write your own reviews
 - **Watchlist**: Maintain a list of movies you want to watch
 - **Statistics**: See your viewing stats by genre, platform, and more
@@ -229,6 +230,11 @@ The app exposes the following REST API endpoints:
 | `/api/watchlist` | POST | Add to watchlist |
 | `/api/watchlist/{id}/watched` | POST | Move to watched |
 | `/api/tmdb/search` | GET | Search TMDB |
+| `/api/tmdb/movie/{tmdbId}` | GET | Get TMDB movie details |
+| `/api/tmdb/genres` | GET | Get TMDB movie genres |
+| `/api/tmdb/series/search` | GET | Search TMDB TV series |
+| `/api/tmdb/series/{tmdbId}` | GET | Get TMDB series details |
+| `/api/tmdb/series/genres` | GET | Get TMDB series genres |
 | `/api/stats` | GET | Get statistics |
 
 ## License
