@@ -155,7 +155,20 @@
         "This movie is already in your watchlist.": "Ce film est déjà dans votre liste de souhaits.",
         "Movie already in your list": "Le film est déjà dans votre liste",
         "You have already added this movie to your list. Would you like to view the existing entry?": "Vous avez déjà ajouté ce film à votre liste. Voulez-vous voir l'entrée existante ?",
-        "View existing entry": "Voir l'entrée existante"
+        "View existing entry": "Voir l'entrée existante",
+        "Watch history": "Historique de visionnage",
+        "Log again": "Enregistrer à nouveau",
+        "No watch history yet.": "Pas encore d'historique de visionnage.",
+        "Unknown date": "Date inconnue",
+        "Watch logged successfully.": "Visionnage enregistré avec succès.",
+        "Failed to load watch history.": "Impossible de charger l'historique de visionnage.",
+        "Failed to log watch. Please try again.": "Échec de l'enregistrement. Veuillez réessayer.",
+        "Watch updated successfully.": "Entrée mise à jour avec succès.",
+        "Failed to update watch. Please try again.": "Échec de la mise à jour. Veuillez réessayer.",
+        "Watch entry deleted.": "Entrée de visionnage supprimée.",
+        "Failed to delete watch entry. Please try again.": "Échec de la suppression. Veuillez réessayer.",
+        "Log watch": "Enregistrer un visionnage",
+        "Date watched": "Date de visionnage"
     },
     "pluralForm": "nplurals=2; plural=(n > 1);"
 }

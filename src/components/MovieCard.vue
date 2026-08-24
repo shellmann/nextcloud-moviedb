@@ -17,8 +17,8 @@
 			<div v-if="movie.isFavorite" class="favorite-badge">
 				<Heart :size="16" />
 			</div>
-			<div v-if="movie.rating" class="rating-badge">
-				{{ movie.rating }}
+			<div v-if="movie.lastRating" class="rating-badge">
+				{{ movie.lastRating }}
 			</div>
 		</div>
 		<div class="info">
@@ -30,12 +30,9 @@
 				<span v-for="genre in genreLabels" :key="genre" class="genre-pill">{{ genre }}</span>
 			</div>
 			<div class="meta-row">
-				<span v-if="movie.dateWatched" class="watched-date">
+				<span v-if="movie.lastWatchedAt" class="watched-date">
 					<Calendar :size="12" />
-					{{ formatDate(movie.dateWatched) }}
-				</span>
-				<span v-if="movie.languageWatched" class="language">
-					{{ getLanguageFlag(movie.languageWatched) }}
+					{{ formatDate(movie.lastWatchedAt) }}
 				</span>
 			</div>
 		</div>
@@ -47,7 +44,7 @@ import Movie from 'vue-material-design-icons/Movie.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
 import Calendar from 'vue-material-design-icons/Calendar.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { getLanguageFlag, GENRE_OPTIONS } from '../constants.js'
+import { GENRE_OPTIONS } from '../constants.js'
 import { formatDate } from '../utils/formatters.js'
 
 /**
@@ -92,7 +89,6 @@ export default {
 	},
 	methods: {
 		formatDate,
-		getLanguageFlag,
 	},
 }
 </script>

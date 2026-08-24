@@ -38,20 +38,41 @@ class MovieMapper extends QBMapper {
     public function findAll(string $userId, array $filters = [], int $limit = 50, int $offset = 0): array {
         $qb = $this->db->getQueryBuilder();
 
-        $qb->select('*')
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+        // JOIN the latest watch per movie so we can sort by watched_at / watch rating
+        $prefix = $this->db->getDatabasePlatform()->getTableQuoteCharacter();
+        $watchTable = $this->db->getTablePrefix() . 'moviedb_movie_watches';
+
+        $qb->select('m.*')
+            ->addSelect('lw.watched_at AS last_watched_at')
+            ->addSelect('lw.rating AS last_rating')
+            ->from($this->getTableName(), 'm')
+            ->leftJoin(
+                'm',
+                $qb->createFunction(
+                    "(SELECT movie_id, MAX(watched_at) AS watched_at, MAX(rating) AS rating
+                      FROM `{$watchTable}`
+                      WHERE user_id = " . $qb->createNamedParameter($userId) . "
+                      GROUP BY movie_id)"
+                ),
+                'lw',
+                $qb->expr()->eq('m.id', 'lw.movie_id')
+            )
+            ->where($qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)));
 
         $this->applyFilters($qb, $filters);
 
-        // Sorting
         $sortField = $filters['sort'] ?? 'date_watched';
         $sortDir = strtoupper($filters['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
         $allowedSortFields = ['date_watched', 'title', 'rating', 'release_year', 'created_at'];
-        if (in_array($sortField, $allowedSortFields)) {
-            $qb->orderBy($sortField, $sortDir);
+
+        if ($sortField === 'date_watched') {
+            $qb->orderBy('lw.watched_at', $sortDir);
+        } elseif ($sortField === 'rating') {
+            $qb->orderBy('lw.rating', $sortDir);
+        } elseif (in_array($sortField, $allowedSortFields)) {
+            $qb->orderBy('m.' . $sortField, $sortDir);
         } else {
-            $qb->orderBy('date_watched', 'DESC');
+            $qb->orderBy('lw.watched_at', 'DESC');
         }
 
         $qb->setMaxResults($limit)
@@ -81,31 +102,40 @@ class MovieMapper extends QBMapper {
      */
     private function applyFilters(IQueryBuilder $qb, array $filters): void {
         if (!empty($filters['genre'])) {
-            // Use delimiters to avoid false positives (e.g., genre 2 matching 12, 20, etc.)
             $genreId = (int)$filters['genre'];
             $qb->andWhere(
                 $qb->expr()->orX(
-                    $qb->expr()->like('genre_ids', $qb->createNamedParameter('[' . $genreId . ']')),
-                    $qb->expr()->like('genre_ids', $qb->createNamedParameter('[' . $genreId . ',%')),
-                    $qb->expr()->like('genre_ids', $qb->createNamedParameter('%,' . $genreId . ',%')),
-                    $qb->expr()->like('genre_ids', $qb->createNamedParameter('%,' . $genreId . ']'))
+                    $qb->expr()->like('m.genre_ids', $qb->createNamedParameter('[' . $genreId . ']')),
+                    $qb->expr()->like('m.genre_ids', $qb->createNamedParameter('[' . $genreId . ',%')),
+                    $qb->expr()->like('m.genre_ids', $qb->createNamedParameter('%,' . $genreId . ',%')),
+                    $qb->expr()->like('m.genre_ids', $qb->createNamedParameter('%,' . $genreId . ']'))
                 )
             );
         }
         if (!empty($filters['year'])) {
-            $qb->andWhere($qb->expr()->eq('release_year',
+            $qb->andWhere($qb->expr()->eq('m.release_year',
                 $qb->createNamedParameter((int)$filters['year'], IQueryBuilder::PARAM_INT)));
         }
         if (!empty($filters['platform'])) {
-            $qb->andWhere($qb->expr()->eq('platform_id',
-                $qb->createNamedParameter((int)$filters['platform'], IQueryBuilder::PARAM_INT)));
+            // Filter by platform across any watch of this movie
+            $watchTable = $this->db->getTablePrefix() . 'moviedb_movie_watches';
+            $userId = null; // already filtered by m.user_id
+            $qb->andWhere(
+                $qb->expr()->in(
+                    'm.id',
+                    $qb->createFunction(
+                        "SELECT DISTINCT movie_id FROM `{$watchTable}` WHERE platform_id = " .
+                        $qb->createNamedParameter((int)$filters['platform'], IQueryBuilder::PARAM_INT)
+                    )
+                )
+            );
         }
         if (!empty($filters['search'])) {
-            $qb->andWhere($qb->expr()->iLike('title',
+            $qb->andWhere($qb->expr()->iLike('m.title',
                 $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search']) . '%')));
         }
         if (isset($filters['favorite']) && $filters['favorite']) {
-            $qb->andWhere($qb->expr()->eq('is_favorite', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));
+            $qb->andWhere($qb->expr()->eq('m.is_favorite', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));
         }
     }
 
@@ -123,80 +153,5 @@ class MovieMapper extends QBMapper {
             return null;
         }
     }
-
-    public function getTotalRuntime(string $userId): int {
-        $qb = $this->db->getQueryBuilder();
-
-        $qb->selectAlias($qb->createFunction('SUM(`runtime`)'), 'total')
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
-
-        $result = $qb->executeQuery();
-        $row = $result->fetch();
-        $result->closeCursor();
-
-        return (int)($row['total'] ?? 0);
-    }
-
-    public function getAverageRating(string $userId): float {
-        $qb = $this->db->getQueryBuilder();
-
-        $qb->selectAlias($qb->createFunction('AVG(`rating`)'), 'average')
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->isNotNull('rating'));
-
-        $result = $qb->executeQuery();
-        $row = $result->fetch();
-        $result->closeCursor();
-
-        return round((float)($row['average'] ?? 0), 1);
-    }
-
-    /**
-     * @return array<string, int>
-     */
-    public function getCountByYear(string $userId): array {
-        $qb = $this->db->getQueryBuilder();
-
-        $qb->select('release_year')
-            ->selectAlias($qb->func()->count('*'), 'count')
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->isNotNull('release_year'))
-            ->groupBy('release_year')
-            ->orderBy('release_year', 'DESC');
-
-        $result = $qb->executeQuery();
-        $data = [];
-        while ($row = $result->fetch()) {
-            $data[(string)$row['release_year']] = (int)$row['count'];
-        }
-        $result->closeCursor();
-
-        return $data;
-    }
-
-    /**
-     * @return array<int, int>
-     */
-    public function getCountByPlatform(string $userId): array {
-        $qb = $this->db->getQueryBuilder();
-
-        $qb->select('platform_id')
-            ->selectAlias($qb->func()->count('*'), 'count')
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->isNotNull('platform_id'))
-            ->groupBy('platform_id');
-
-        $result = $qb->executeQuery();
-        $data = [];
-        while ($row = $result->fetch()) {
-            $data[(int)$row['platform_id']] = (int)$row['count'];
-        }
-        $result->closeCursor();
-
-        return $data;
-    }
 }
+

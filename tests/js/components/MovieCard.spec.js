@@ -11,9 +11,8 @@ describe('MovieCard', () => {
 		title: 'Test Movie',
 		posterPath: '/test-poster.jpg',
 		releaseYear: 2024,
-		dateWatched: '2024-03-15',
-		languageWatched: 'en',
-		rating: 8,
+		lastWatchedAt: '2024-03-15',
+		lastRating: 8,
 		isFavorite: false,
 	}
 
@@ -49,7 +48,7 @@ describe('MovieCard', () => {
 	})
 
 	it('should not show rating badge when no rating', () => {
-		const wrapper = mountComponent({ ...defaultMovie, rating: null })
+		const wrapper = mountComponent({ ...defaultMovie, lastRating: null })
 		expect(wrapper.find('.rating-badge').exists()).toBe(false)
 	})
 

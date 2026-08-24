@@ -156,6 +156,19 @@ OC.L10N.register(
         "This movie is already in your watchlist.": "Deze film staat al in je kijklijst.",
         "Movie already in your list": "Film staat al in je lijst",
         "You have already added this movie to your list. Would you like to view the existing entry?": "Je hebt deze film al aan je lijst toegevoegd. Wil je het bestaande item bekijken?",
-        "View existing entry": "Bestaand item bekijken"
+        "View existing entry": "Bestaand item bekijken",
+        "Watch history": "Kijkgeschiedenis",
+        "Log again": "Opnieuw registreren",
+        "No watch history yet.": "Nog geen kijkgeschiedenis.",
+        "Unknown date": "Onbekende datum",
+        "Watch logged successfully.": "Kijkbeurt succesvol geregistreerd.",
+        "Failed to load watch history.": "Kijkgeschiedenis kon niet worden geladen.",
+        "Failed to log watch. Please try again.": "Registratie mislukt. Probeer het opnieuw.",
+        "Watch updated successfully.": "Registratie succesvol bijgewerkt.",
+        "Failed to update watch. Please try again.": "Bijwerken mislukt. Probeer het opnieuw.",
+        "Watch entry deleted.": "Kijkregistratie verwijderd.",
+        "Failed to delete watch entry. Please try again.": "Verwijderen mislukt. Probeer het opnieuw.",
+        "Log watch": "Kijkbeurt registreren",
+        "Date watched": "Datum bekeken"
     },
 "nplurals=2; plural=(n != 1);");

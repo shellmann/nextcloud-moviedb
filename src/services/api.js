@@ -84,6 +84,20 @@ export default {
 		return axios.delete(`${baseUrl}/platforms/${id}`)
 	},
 
+	// Watch history
+	getWatches(movieId) {
+		return axios.get(`${baseUrl}/movies/${movieId}/watches`)
+	},
+	createWatch(movieId, data) {
+		return axios.post(`${baseUrl}/movies/${movieId}/watches`, data)
+	},
+	updateWatch(movieId, watchId, data) {
+		return axios.put(`${baseUrl}/movies/${movieId}/watches/${watchId}`, data)
+	},
+	deleteWatch(movieId, watchId) {
+		return axios.delete(`${baseUrl}/movies/${movieId}/watches/${watchId}`)
+	},
+
 	// Statistics
 	getStats() {
 		return axios.get(`${baseUrl}/stats`)

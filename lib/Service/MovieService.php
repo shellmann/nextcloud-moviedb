@@ -7,13 +7,17 @@ namespace OCA\MovieDB\Service;
 use DateTime;
 use OCA\MovieDB\Db\Movie;
 use OCA\MovieDB\Db\MovieMapper;
+use OCA\MovieDB\Db\MovieWatch;
+use OCA\MovieDB\Db\MovieWatchMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 
 class MovieService {
     private MovieMapper $mapper;
+    private MovieWatchMapper $watchMapper;
 
-    public function __construct(MovieMapper $mapper) {
+    public function __construct(MovieMapper $mapper, MovieWatchMapper $watchMapper) {
         $this->mapper = $mapper;
+        $this->watchMapper = $watchMapper;
     }
 
     /**
@@ -35,7 +39,6 @@ class MovieService {
     }
 
     public function create(string $userId, array $data): Movie {
-        // Validate rating range
         if (isset($data['rating']) && $data['rating'] !== null) {
             $rating = (int)$data['rating'];
             if ($rating < 1 || $rating > 10) {
@@ -58,15 +61,30 @@ class MovieService {
         $movie->setRuntime($data['runtime'] ?? null);
         $movie->setCastData($data['castData'] ?? null);
         $movie->setDirector($data['director'] ?? null);
-        $movie->setPlatformId($data['platformId'] ?? null);
-        $movie->setLanguageWatched($data['languageWatched'] ?? null);
-        $movie->setDateWatched($data['dateWatched'] ?? null);
-        $movie->setRating($data['rating'] ?? null);
-        $movie->setReview($data['review'] ?? null);
         $movie->setIsFavorite($data['isFavorite'] ?? false);
         $movie->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
 
-        return $this->mapper->insert($movie);
+        $movie = $this->mapper->insert($movie);
+
+        // Create an initial watch row if any watch-specific data was provided
+        $hasWatchData = isset($data['dateWatched']) || isset($data['rating']) ||
+                        isset($data['review']) || isset($data['platformId']) ||
+                        isset($data['languageWatched']);
+
+        if ($hasWatchData) {
+            $watch = new MovieWatch();
+            $watch->setMovieId($movie->getId());
+            $watch->setUserId($userId);
+            $watch->setWatchedAt($data['dateWatched'] ?? null);
+            $watch->setRating($data['rating'] ?? null);
+            $watch->setReview($data['review'] ?? null);
+            $watch->setPlatformId($data['platformId'] ?? null);
+            $watch->setLanguageWatched($data['languageWatched'] ?? null);
+            $watch->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
+            $this->watchMapper->insert($watch);
+        }
+
+        return $movie;
     }
 
     /**
@@ -75,7 +93,6 @@ class MovieService {
     public function update(int $id, string $userId, array $data): Movie {
         $movie = $this->mapper->find($id, $userId);
 
-        // Validate rating range
         if (array_key_exists('rating', $data) && $data['rating'] !== null) {
             $rating = (int)$data['rating'];
             if ($rating < 1 || $rating > 10) {
@@ -118,21 +135,6 @@ class MovieService {
         if (array_key_exists('director', $data)) {
             $movie->setDirector($data['director']);
         }
-        if (array_key_exists('platformId', $data)) {
-            $movie->setPlatformId($data['platformId']);
-        }
-        if (array_key_exists('languageWatched', $data)) {
-            $movie->setLanguageWatched($data['languageWatched']);
-        }
-        if (array_key_exists('dateWatched', $data)) {
-            $movie->setDateWatched($data['dateWatched']);
-        }
-        if (array_key_exists('rating', $data)) {
-            $movie->setRating($data['rating']);
-        }
-        if (array_key_exists('review', $data)) {
-            $movie->setReview($data['review']);
-        }
         if (array_key_exists('isFavorite', $data)) {
             $movie->setIsFavorite($data['isFavorite']);
         }
@@ -166,3 +168,4 @@ class MovieService {
         return isset($parts[0]) ? (int)$parts[0] : null;
     }
 }
+

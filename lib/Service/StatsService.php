@@ -5,31 +5,34 @@ declare(strict_types=1);
 namespace OCA\MovieDB\Service;
 
 use OCA\MovieDB\Db\MovieMapper;
+use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Db\WatchlistMapper;
 
 class StatsService {
     private MovieMapper $movieMapper;
+    private MovieWatchMapper $watchMapper;
     private WatchlistMapper $watchlistMapper;
     private PlatformMapper $platformMapper;
 
     public function __construct(
         MovieMapper $movieMapper,
+        MovieWatchMapper $watchMapper,
         WatchlistMapper $watchlistMapper,
         PlatformMapper $platformMapper
     ) {
         $this->movieMapper = $movieMapper;
+        $this->watchMapper = $watchMapper;
         $this->watchlistMapper = $watchlistMapper;
         $this->platformMapper = $platformMapper;
     }
 
     public function getOverview(string $userId): array {
         $totalMovies = $this->movieMapper->countAll($userId);
-        $totalRuntime = $this->movieMapper->getTotalRuntime($userId);
-        $avgRating = $this->movieMapper->getAverageRating($userId);
+        $totalRuntime = $this->watchMapper->getTotalRuntime($userId);
+        $avgRating = $this->watchMapper->getAverageRating($userId);
         $watchlistCount = $this->watchlistMapper->countAll($userId);
 
-        // Get this year's count
         $currentYear = (int)date('Y');
         $thisYearMovies = $this->movieMapper->countAll($userId, [
             'year' => $currentYear
@@ -46,11 +49,11 @@ class StatsService {
     }
 
     public function getStatsByYear(string $userId): array {
-        return $this->movieMapper->getCountByYear($userId);
+        return $this->watchMapper->getCountByYear($userId);
     }
 
     public function getStatsByPlatform(string $userId): array {
-        $countByPlatform = $this->movieMapper->getCountByPlatform($userId);
+        $countByPlatform = $this->watchMapper->getCountByPlatform($userId);
         $platforms = $this->platformMapper->findAllForUser($userId);
 
         $result = [];
@@ -66,15 +69,12 @@ class StatsService {
             }
         }
 
-        // Sort by count descending
         usort($result, fn($a, $b) => $b['count'] - $a['count']);
 
         return $result;
     }
 
     public function getStatsByGenre(string $userId): array {
-        // This would require a more complex query to aggregate JSON genre_ids
-        // For now, return an empty array - can be implemented later
         return [];
     }
 
@@ -92,3 +92,4 @@ class StatsService {
         ], $limit, 0);
     }
 }
+

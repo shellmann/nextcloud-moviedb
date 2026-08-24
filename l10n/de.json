@@ -155,7 +155,20 @@
         "This movie is already in your watchlist.": "Dieser Film ist bereits in deiner Merkliste.",
         "Movie already in your list": "Film ist bereits in deiner Liste",
         "You have already added this movie to your list. Would you like to view the existing entry?": "Du hast diesen Film bereits zu deiner Liste hinzugefügt. Möchtest du den vorhandenen Eintrag anzeigen?",
-        "View existing entry": "Vorhandenen Eintrag anzeigen"
+        "View existing entry": "Vorhandenen Eintrag anzeigen",
+        "Watch history": "Wiedersehen-Verlauf",
+        "Log again": "Erneut eintragen",
+        "No watch history yet.": "Noch kein Verlauf vorhanden.",
+        "Unknown date": "Unbekanntes Datum",
+        "Watch logged successfully.": "Wiedersehen erfolgreich eingetragen.",
+        "Failed to load watch history.": "Verlauf konnte nicht geladen werden.",
+        "Failed to log watch. Please try again.": "Eintragen fehlgeschlagen. Bitte versuche es erneut.",
+        "Watch updated successfully.": "Eintrag erfolgreich aktualisiert.",
+        "Failed to update watch. Please try again.": "Aktualisierung fehlgeschlagen. Bitte versuche es erneut.",
+        "Watch entry deleted.": "Eintrag gelöscht.",
+        "Failed to delete watch entry. Please try again.": "Löschen fehlgeschlagen. Bitte versuche es erneut.",
+        "Log watch": "Schauen eintragen",
+        "Date watched": "Gesehen am"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -36,16 +36,10 @@ use OCP\AppFramework\Db\Entity;
  * @method void setCastData(?array $castData)
  * @method string|null getDirector()
  * @method void setDirector(?string $director)
- * @method int|null getPlatformId()
- * @method void setPlatformId(?int $platformId)
- * @method string|null getLanguageWatched()
- * @method void setLanguageWatched(?string $languageWatched)
- * @method string|null getDateWatched()
- * @method void setDateWatched(?string $dateWatched)
- * @method int|null getRating()
- * @method void setRating(?int $rating)
- * @method string|null getReview()
- * @method void setReview(?string $review)
+ * @method int|null getLastRating()
+ * @method void setLastRating(?int $lastRating)
+ * @method string|null getLastWatchedAt()
+ * @method void setLastWatchedAt(?string $lastWatchedAt)
  * @method bool getIsFavorite()
  * @method void setIsFavorite(bool $isFavorite)
  * @method string getCreatedAt()
@@ -67,11 +61,8 @@ class Movie extends Entity implements JsonSerializable {
     protected ?int $runtime = null;
     protected ?array $castData = null;
     protected ?string $director = null;
-    protected ?int $platformId = null;
-    protected ?string $languageWatched = null;
-    protected ?string $dateWatched = null;
-    protected ?int $rating = null;
-    protected ?string $review = null;
+    protected ?int $lastRating = null;
+    protected ?string $lastWatchedAt = null;
     protected bool $isFavorite = false;
     protected string $createdAt = '';
     protected ?string $updatedAt = null;
@@ -83,8 +74,7 @@ class Movie extends Entity implements JsonSerializable {
         $this->addType('releaseYear', 'integer');
         $this->addType('runtime', 'integer');
         $this->addType('castData', 'json');
-        $this->addType('platformId', 'integer');
-        $this->addType('rating', 'integer');
+        $this->addType('lastRating', 'integer');
         $this->addType('isFavorite', 'boolean');
     }
 
@@ -104,11 +94,8 @@ class Movie extends Entity implements JsonSerializable {
             'runtime' => $this->runtime,
             'castData' => $this->castData,
             'director' => $this->director,
-            'platformId' => $this->platformId,
-            'languageWatched' => $this->languageWatched,
-            'dateWatched' => $this->dateWatched,
-            'rating' => $this->rating,
-            'review' => $this->review,
+            'lastRating' => $this->lastRating,
+            'lastWatchedAt' => $this->lastWatchedAt,
             'isFavorite' => $this->isFavorite,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
