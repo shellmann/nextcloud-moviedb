@@ -151,7 +151,11 @@
         "Remove": "Entfernen",
         "Remove from Watchlist": "Von Merkliste entfernen",
         "Delete Platform": "Plattform löschen",
-        "Page {page} of {total}": "Seite {page} von {total}"
+        "Page {page} of {total}": "Seite {page} von {total}",
+        "This movie is already in your watchlist.": "Dieser Film ist bereits in deiner Merkliste.",
+        "Movie already in your list": "Film ist bereits in deiner Liste",
+        "You have already added this movie to your list. Would you like to view the existing entry?": "Du hast diesen Film bereits zu deiner Liste hinzugefügt. Möchtest du den vorhandenen Eintrag anzeigen?",
+        "View existing entry": "Vorhandenen Eintrag anzeigen"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

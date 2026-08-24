@@ -151,7 +151,11 @@
         "Remove": "Verwijderen",
         "Remove from Watchlist": "Verwijderen uit kijklijst",
         "Delete Platform": "Platform verwijderen",
-        "Page {page} of {total}": "Pagina {page} van {total}"
+        "Page {page} of {total}": "Pagina {page} van {total}",
+        "This movie is already in your watchlist.": "Deze film staat al in je kijklijst.",
+        "Movie already in your list": "Film staat al in je lijst",
+        "You have already added this movie to your list. Would you like to view the existing entry?": "Je hebt deze film al aan je lijst toegevoegd. Wil je het bestaande item bekijken?",
+        "View existing entry": "Bestaand item bekijken"
     },
     "pluralForm": "nplurals=2; plural=(n != 1);"
 }

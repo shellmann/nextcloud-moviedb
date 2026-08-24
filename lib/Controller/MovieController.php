@@ -128,6 +128,17 @@ class MovieController extends AuthenticatedController {
             return new JSONResponse(['error' => 'Title is required'], Http::STATUS_BAD_REQUEST);
         }
 
+        // Check if movie is already tracked
+        if (!empty($data['tmdbId'])) {
+            $existing = $this->service->findByTmdbId($this->userId, (int)$data['tmdbId']);
+            if ($existing !== null) {
+                return new JSONResponse([
+                    'error' => 'Movie already in your list',
+                    'existingId' => $existing->getId(),
+                ], Http::STATUS_CONFLICT);
+            }
+        }
+
         try {
             $movie = $this->service->create($this->userId, $data);
             return new JSONResponse(['movie' => $movie], Http::STATUS_CREATED);
