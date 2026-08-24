@@ -5,6 +5,46 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.2] - 2026-08-24
+
+### Fixed
+- Prevent adding the same movie twice: `POST /api/movies` now returns
+  `409 Conflict` with the existing movie's id when a duplicate `tmdbId`
+  is submitted, matching the existing watchlist behavior (#17)
+- Watchlist store now shows a specific "already in your watchlist"
+  message on 409 instead of the generic "failed to add" toast
+
+### Added
+- Friendly duplicate-movie dialog in the Add Movie view offering
+  "View existing entry" (routes to the existing movie's detail page)
+  or "Cancel", instead of a plain error toast
+- New i18n strings for the duplicate-movie dialog in all 5 locales
+  (de, es, fr, it, nl)
+
+## [1.1.1] - 2026-07-31
+
+### Fixed
+- Favorites filter not sending param to API
+- Watchlist "Date Added" sort sending wrong column
+  (`created_at` → `added_at`)
+- Stale filter/sort state persisting across navigation
+- `PlatformMapper::find()` authorization bypass (fixed in earlier
+  1.1.0-era work, hardened here)
+
+### Added
+- Accessibility: proper heading hierarchy, aria-labels on icon-only
+  Edit/Delete/sort buttons, `aria-labelledby` on MovieCard
+- Mobile: 2-column movie grid on small screens, compact filters
+  (platform + genre side-by-side), responsive movie-detail layout
+- UX: movie count in "My Movies" heading, contextual empty state for
+  the favorites filter, longer "Pick Random" highlight (2s → 4s),
+  theme-aware priority badge colors
+- App version shown in Settings (injected at build time via webpack
+  DefinePlugin)
+- Watchlist store test suite (23 new tests) and favorites filter
+  tests (4 new)
+- Translations for the new strings across all 5 locales
+
 ## [1.1.0] - 2026-07-30
 
 ### Added
