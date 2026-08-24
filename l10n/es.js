@@ -152,6 +152,10 @@ OC.L10N.register(
         "Remove": "Eliminar",
         "Remove from Watchlist": "Quitar de la lista",
         "Delete Platform": "Eliminar plataforma",
-        "Page {page} of {total}": "Página {page} de {total}"
+        "Page {page} of {total}": "Página {page} de {total}",
+        "This movie is already in your watchlist.": "Esta película ya está en tu lista de deseos.",
+        "Movie already in your list": "La película ya está en tu lista",
+        "You have already added this movie to your list. Would you like to view the existing entry?": "Ya has añadido esta película a tu lista. ¿Quieres ver la entrada existente?",
+        "View existing entry": "Ver entrada existente"
     },
 "nplurals=2; plural=(n != 1);");

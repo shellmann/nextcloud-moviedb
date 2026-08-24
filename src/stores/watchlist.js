@@ -78,7 +78,11 @@ export const useWatchlistStore = defineStore('watchlist', {
 				return response.data.item
 			} catch (error) {
 				console.error('Failed to add to watchlist:', error)
-				showError(t('moviedb', 'Failed to add to watchlist. Please try again.'))
+				if (error.response?.status === 409) {
+					showError(t('moviedb', 'This movie is already in your watchlist.'))
+				} else {
+					showError(t('moviedb', 'Failed to add to watchlist. Please try again.'))
+				}
 				return null
 			}
 		},

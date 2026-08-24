@@ -36,11 +36,28 @@
 
 		<!-- Search Section (shown when no movie is selected) -->
 		<TmdbSearchSection v-else @select="selectMovie" />
+
+		<!-- Duplicate Movie Dialog -->
+		<NcDialog :open="showDuplicateDialog"
+			:name="t('moviedb', 'Movie already in your list')"
+			@update:open="showDuplicateDialog = $event">
+			<p>{{ t('moviedb', 'You have already added this movie to your list. Would you like to view the existing entry?') }}</p>
+			<template #actions>
+				<NcButton @click="showDuplicateDialog = false">
+					{{ t('moviedb', 'Cancel') }}
+				</NcButton>
+				<NcButton type="primary"
+					:disabled="!duplicateExistingId"
+					@click="viewExistingMovie">
+					{{ t('moviedb', 'View existing entry') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
 <script>
-import { NcNoteCard, NcButton } from '@nextcloud/vue'
+import { NcNoteCard, NcButton, NcDialog } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import MovieForm from '../components/MovieForm.vue'
@@ -55,6 +72,7 @@ export default {
 	components: {
 		NcNoteCard,
 		NcButton,
+		NcDialog,
 		ArrowLeft,
 		MovieForm,
 		TmdbSearchSection,
@@ -69,6 +87,8 @@ export default {
 		return {
 			selectedMovie: null,
 			saving: false,
+			showDuplicateDialog: false,
+			duplicateExistingId: null,
 		}
 	},
 	computed: {
@@ -121,11 +141,23 @@ export default {
 			if (this.saving) return
 
 			this.saving = true
-			const movie = await this.moviesStore.create(movieData)
-			if (movie) {
+			const result = await this.moviesStore.create(movieData)
+			this.saving = false
+
+			if (result?.duplicate) {
+				this.duplicateExistingId = result.existingId
+				this.showDuplicateDialog = true
+				return
+			}
+			if (result) {
 				this.$router.push({ name: 'movies' })
 			}
-			this.saving = false
+		},
+		viewExistingMovie() {
+			if (!this.duplicateExistingId) return
+			const id = this.duplicateExistingId
+			this.showDuplicateDialog = false
+			this.$router.push({ name: 'movie-detail', params: { id: String(id) } })
 		},
 	},
 }

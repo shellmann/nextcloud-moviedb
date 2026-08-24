@@ -106,6 +106,14 @@ export const useMoviesStore = defineStore('movies', {
 				showSuccess(t('moviedb', 'Movie added successfully.'))
 				return response.data.movie
 			} catch (error) {
+				if (error.response?.status === 409) {
+					// Duplicate movie — let the caller show a contextual dialog
+					// instead of a generic toast.
+					return {
+						duplicate: true,
+						existingId: error.response.data?.existingId ?? null,
+					}
+				}
 				console.error('Failed to create movie:', error)
 				showError(t('moviedb', 'Failed to add movie. Please try again.'))
 				return null

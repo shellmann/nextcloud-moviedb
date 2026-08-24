@@ -154,6 +154,10 @@ class MovieService {
         return $this->mapper->findByTmdbId($userId, $tmdbId) !== null;
     }
 
+    public function findByTmdbId(string $userId, int $tmdbId): ?Movie {
+        return $this->mapper->findByTmdbId($userId, $tmdbId);
+    }
+
     private function extractYear(?string $releaseDate): ?int {
         if ($releaseDate === null) {
             return null;
