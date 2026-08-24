@@ -13,7 +13,7 @@ Track all the movies you've watched with rich metadata from TMDB.
 
 ## Requirements
 
-- Nextcloud 25-32
+- Nextcloud 32-34
 - PHP 8.0 or higher
 - A free TMDB API key ([Get one here](https://www.themoviedb.org/settings/api))
 
