@@ -11,7 +11,10 @@ declare(strict_types=1);
  */
 
 namespace OCP {
-    interface IRequest {}
+    interface IRequest {
+        public function getParam(string $key, $default = null);
+        public function getParams(): array;
+    }
     interface IUser {
         public function getUID(): ?string;
     }
@@ -22,6 +25,10 @@ namespace OCP {
 }
 
 namespace OCP\AppFramework {
+    class App {
+        public function __construct(string $appName, array $urlParams = []) {}
+    }
+
     class Controller {
         protected $request;
         protected $appName;
@@ -237,4 +244,13 @@ namespace OCP {
         public static function addScript(string $app, string $script): void {}
         public static function addStyle(string $app, string $style): void {}
     }
+}
+
+namespace OCP\AppFramework\Bootstrap {
+    interface IBootstrap {
+        public function register(IRegistrationContext $context): void;
+        public function boot(IBootContext $context): void;
+    }
+    interface IRegistrationContext {}
+    interface IBootContext {}
 }
