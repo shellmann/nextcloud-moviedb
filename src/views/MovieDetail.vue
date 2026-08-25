@@ -59,18 +59,6 @@
 						<span>{{ latestWatch.rating }}/10</span>
 					</div>
 
-					<div class="watch-info">
-						<div v-if="latestPlatformName" class="info-item">
-							<strong>{{ t('moviedb', 'Watched on') }}:</strong> {{ latestPlatformName }}
-						</div>
-						<div v-if="latestWatch && latestWatch.watchedAt" class="info-item">
-							<strong>{{ t('moviedb', 'Date') }}:</strong> {{ formatDate(latestWatch.watchedAt) }}
-						</div>
-						<div v-if="latestWatch && latestWatch.languageWatched" class="info-item">
-							<strong>{{ t('moviedb', 'Language') }}:</strong> {{ getLanguageName(latestWatch.languageWatched) }}
-						</div>
-					</div>
-
 					<p v-if="movie.overview" class="movie-overview">
 						{{ movie.overview }}
 					</p>
@@ -254,10 +242,6 @@ export default {
 			// Store returns watches sorted by watched_at DESC, so the first is latest.
 			return this.watchesStore.watches[0] ?? null
 		},
-		latestPlatformName() {
-			if (!this.latestWatch?.platformId) return null
-			return this.platforms.find(p => p.id === this.latestWatch.platformId)?.name ?? null
-		},
 		posterUrl() {
 			return getPosterUrl(this.movie?.posterPath, 'w500')
 		},
@@ -439,21 +423,6 @@ export default {
     span {
         font-size: 18px;
         font-weight: bold;
-    }
-}
-
-.watch-info {
-    background: var(--color-background-dark);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
-
-    .info-item {
-        margin-bottom: 8px;
-
-        &:last-child {
-            margin-bottom: 0;
-        }
     }
 }
 
