@@ -348,6 +348,123 @@ colima stop   # optional, frees the VM
 
 ---
 
+## Upgrade Migration Testing (destructive/backfill migrations)
+
+**Mandatory** whenever a release migrates existing data — especially when a
+migration **drops columns** (there is no rollback window for App Store users;
+`occ upgrade` runs unattended in maintenance mode). The unit suite cannot cover
+migration backfill (migrations are pure DB I/O, excluded from PHPUnit), so this
+container test is the only proof the upgrade is safe.
+
+The goal: install the **previously released** build, seed realistic data that
+exercises every backfill branch, upgrade to the **new** build, then assert the
+data landed correctly **and** the destructive step only ran after the guard.
+
+### 1. Install the OLD released version
+
+Build the old tag in a throwaway git worktree so the branch stays untouched:
+
+```bash
+git worktree add /tmp/moviedb-old v1.1.2   # the last released tag
+(cd /tmp/moviedb-old && npm ci && npm run build)
+```
+
+Spin up NC and deploy the old build (same steps as the compatibility section —
+here we used port `8899`, container `nc-upgrade-test`, `nextcloud:34`):
+
+```bash
+docker run -d --name nc-upgrade-test -p 8899:80 nextcloud:34
+sleep 25
+docker exec -u www-data nc-upgrade-test php occ maintenance:install \
+  --admin-user=admin --admin-pass=admin_test_pw
+tar -czf /tmp/moviedb-old.tar.gz --exclude='node_modules' --exclude='.git' \
+  --exclude='package-lock.json' --exclude='tests' --exclude='*.map' \
+  -C /tmp/moviedb-old .
+docker cp /tmp/moviedb-old.tar.gz nc-upgrade-test:/tmp/old.tar.gz
+docker exec nc-upgrade-test bash -c 'cd /var/www/html/custom_apps/ && \
+  rm -rf moviedb && mkdir moviedb && tar -xzf /tmp/old.tar.gz -C moviedb && \
+  chown -R www-data:www-data moviedb'
+docker exec -u www-data nc-upgrade-test php occ app:enable moviedb
+```
+
+### 2. Seed data covering every backfill branch
+
+Confirm the OLD schema first (`PRAGMA table_info(oc_moviedb_movies)`), then
+insert rows that hit each path. For the v1.2.0 rewatch migration the branches
+were: **full** watch data, **partial** (some fields null), and **none** (no
+watch data → must produce no watch row). The table prefix is `oc_`, the SQLite
+DB is `owncloud.db`, and **`sqlite3` CLI is not installed in the container** —
+use PHP PDO via `docker exec`:
+
+```bash
+docker exec nc-upgrade-test php -r '
+$db = new PDO("sqlite:/var/www/html/data/owncloud.db");
+$db->exec("INSERT INTO oc_moviedb_movies
+  (user_id,tmdb_id,title,date_watched,rating,review,platform_id,language_watched)
+  VALUES (\"admin\",1,\"Full\",\"2024-01-15\",9,\"Mind-blowing\",1,\"en\")");
+$db->exec("INSERT INTO oc_moviedb_movies
+  (user_id,tmdb_id,title,rating,review) VALUES (\"admin\",2,\"Partial\",8,\"Layered\")");
+$db->exec("INSERT INTO oc_moviedb_movies
+  (user_id,tmdb_id,title) VALUES (\"admin\",3,\"None\")");
+echo "seeded\n";
+'
+```
+
+Note the **expected backfill count** (here: 2 movies have watch data → 2 watch
+rows; the third must produce none).
+
+### 3. Deploy the NEW build and upgrade
+
+```bash
+npm run build   # on the release branch
+tar -czf /tmp/moviedb-new.tar.gz --exclude='node_modules' --exclude='.git' \
+  --exclude='package-lock.json' --exclude='tests' --exclude='*.map' -C . .
+docker cp /tmp/moviedb-new.tar.gz nc-upgrade-test:/tmp/new.tar.gz
+docker exec nc-upgrade-test bash -c 'cd /var/www/html/custom_apps/moviedb && \
+  rm -rf * && tar -xzf /tmp/new.tar.gz && chown -R www-data:www-data .'
+docker exec -u www-data nc-upgrade-test php occ upgrade
+docker exec -u www-data nc-upgrade-test php occ app:list | grep moviedb  # confirm new version
+```
+
+`occ upgrade` runs the migrations in order (backfill+guard, then the guarded
+drop). A guard failure throws and aborts the whole app update, leaving source
+columns intact — so a successful upgrade already means the guard passed.
+
+### 4. Assert the result (PDO, not sqlite3)
+
+Verify, in one script: the new table exists; new columns added; dropped columns
+gone; backfill row count matches the expected number; each seeded value is
+preserved (including nulls staying null); the "no data" row produced no watch
+row; and no source rows were lost. Example for v1.2.0:
+
+```bash
+docker exec nc-upgrade-test php -r '
+$db = new PDO("sqlite:/var/www/html/data/owncloud.db");
+$cols = $db->query("PRAGMA table_info(oc_moviedb_movies)")->fetchAll(PDO::FETCH_COLUMN,1);
+$dropped = array_intersect(["date_watched","rating","review","platform_id","language_watched"],$cols);
+echo (empty($dropped)?"PASS":"FAIL")." columns dropped\n";
+$wc = $db->query("SELECT COUNT(*) FROM oc_moviedb_movie_watches")->fetchColumn();
+echo ($wc==2?"PASS":"FAIL")." watch rows == 2 (got $wc)\n";
+foreach($db->query("SELECT * FROM oc_moviedb_movie_watches ORDER BY movie_id") as $r){
+  echo "  ".json_encode(array_intersect_key($r,array_flip([\"movie_id\",\"rating\",\"review\",\"platform_id\",\"watched_at\",\"language_watched\"])))."\n";
+}
+'
+```
+
+All assertions must print `PASS`. Repeat on MySQL/Postgres if feasible — Postgres
+runs DDL inside a transaction while MySQL auto-commits it, so the migration
+verifies **before** the drop rather than relying on rollback.
+
+### Cleanup
+
+```bash
+docker stop nc-upgrade-test && docker rm nc-upgrade-test
+git worktree remove /tmp/moviedb-old
+rm -f /tmp/moviedb-old.tar.gz /tmp/moviedb-new.tar.gz
+```
+
+---
+
 ## Test Commands Reference
 
 ### JavaScript Tests
