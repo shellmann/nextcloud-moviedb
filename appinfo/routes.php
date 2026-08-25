@@ -35,6 +35,12 @@ return [
         ['name' => 'tmdb#checkApiKey', 'url' => '/api/tmdb/check', 'verb' => 'GET'],
         ['name' => 'tmdb#image', 'url' => '/api/tmdb/image/{path}', 'verb' => 'GET', 'requirements' => ['path' => '.+']],
 
+        // Movie watch history
+        ['name' => 'movie_watch#index',   'url' => '/api/movies/{movieId}/watches',           'verb' => 'GET'],
+        ['name' => 'movie_watch#create',  'url' => '/api/movies/{movieId}/watches',           'verb' => 'POST'],
+        ['name' => 'movie_watch#update',  'url' => '/api/movies/{movieId}/watches/{watchId}', 'verb' => 'PUT'],
+        ['name' => 'movie_watch#destroy', 'url' => '/api/movies/{movieId}/watches/{watchId}', 'verb' => 'DELETE'],
+
         // Statistics
         ['name' => 'stats#overview', 'url' => '/api/stats', 'verb' => 'GET'],
         ['name' => 'stats#byYear', 'url' => '/api/stats/years', 'verb' => 'GET'],

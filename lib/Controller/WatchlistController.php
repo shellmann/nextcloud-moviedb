@@ -7,6 +7,7 @@ namespace OCA\MovieDB\Controller;
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\WatchlistService;
 use OCA\MovieDB\Service\MovieService;
+use OCA\MovieDB\Service\MovieWatchService;
 use OCA\MovieDB\Service\TmdbService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -20,6 +21,7 @@ use Psr\Log\LoggerInterface;
 class WatchlistController extends AuthenticatedController {
     private WatchlistService $service;
     private MovieService $movieService;
+    private MovieWatchService $watchService;
     private TmdbService $tmdbService;
     private IDBConnection $db;
     private LoggerInterface $logger;
@@ -28,6 +30,7 @@ class WatchlistController extends AuthenticatedController {
         IRequest $request,
         WatchlistService $service,
         MovieService $movieService,
+        MovieWatchService $watchService,
         TmdbService $tmdbService,
         IDBConnection $db,
         IUserSession $userSession,
@@ -36,6 +39,7 @@ class WatchlistController extends AuthenticatedController {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
         $this->movieService = $movieService;
+        $this->watchService = $watchService;
         $this->tmdbService = $tmdbService;
         $this->db = $db;
         $this->logger = $logger;
@@ -93,9 +97,13 @@ class WatchlistController extends AuthenticatedController {
             return new JSONResponse(['error' => 'Movie already in watchlist'], Http::STATUS_CONFLICT);
         }
 
+        // Check if already watched — allow adding but flag it so the UI can warn the user
+        $alreadyWatched = !empty($data['tmdbId'])
+            && $this->movieService->findByTmdbId($this->userId, (int)$data['tmdbId']) !== null;
+
         try {
             $item = $this->service->create($this->userId, $data);
-            return new JSONResponse(['item' => $item], Http::STATUS_CREATED);
+            return new JSONResponse(['item' => $item, 'alreadyWatched' => $alreadyWatched], Http::STATUS_CREATED);
         } catch (\Exception $e) {
             $this->logger->error('Failed to create watchlist item', [
                 'exception' => $e,
@@ -200,7 +208,24 @@ class WatchlistController extends AuthenticatedController {
             // Use a transaction to ensure atomicity
             $this->db->beginTransaction();
             try {
-                $movie = $this->movieService->create($this->userId, $movieData);
+                $existingMovie = $item->getTmdbId()
+                    ? $this->movieService->findByTmdbId($this->userId, $item->getTmdbId())
+                    : null;
+
+                if ($existingMovie !== null) {
+                    // Movie already tracked — add a new watch entry (rewatch)
+                    $newWatch = [
+                        'watchedAt' => $watchData['dateWatched'] ?? date('Y-m-d'),
+                        'rating' => $watchData['rating'] ?? null,
+                        'review' => $watchData['review'] ?? null,
+                        'platformId' => $watchData['platformId'] ?? null,
+                        'languageWatched' => $watchData['languageWatched'] ?? null,
+                    ];
+                    $this->watchService->create($existingMovie->getId(), $this->userId, $newWatch);
+                    $movie = $existingMovie;
+                } else {
+                    $movie = $this->movieService->create($this->userId, $movieData);
+                }
                 $this->service->delete($id, $this->userId);
                 $this->db->commit();
             } catch (\Exception $e) {

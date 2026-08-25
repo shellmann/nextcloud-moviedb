@@ -54,30 +54,18 @@
 						<span v-if="movie.director">{{ t('moviedb', 'Director') }}: {{ movie.director }}</span>
 					</div>
 
-					<div v-if="movie.rating" class="movie-rating">
-						<RatingStars :rating="movie.rating" :max="10" readonly />
-						<span>{{ movie.rating }}/10</span>
-					</div>
-
-					<div class="watch-info">
-						<div v-if="platformName" class="info-item">
-							<strong>{{ t('moviedb', 'Watched on') }}:</strong> {{ platformName }}
-						</div>
-						<div v-if="movie.dateWatched" class="info-item">
-							<strong>{{ t('moviedb', 'Date') }}:</strong> {{ formatDate(movie.dateWatched) }}
-						</div>
-						<div v-if="movie.languageWatched" class="info-item">
-							<strong>{{ t('moviedb', 'Language') }}:</strong> {{ getLanguageName(movie.languageWatched) }}
-						</div>
+					<div v-if="latestWatch && latestWatch.rating" class="movie-rating">
+						<RatingStars :rating="latestWatch.rating" :max="10" readonly />
+						<span>{{ latestWatch.rating }}/10</span>
 					</div>
 
 					<p v-if="movie.overview" class="movie-overview">
 						{{ movie.overview }}
 					</p>
 
-					<div v-if="movie.review" class="movie-review">
+					<div v-if="latestWatch && latestWatch.review" class="movie-review">
 						<h3>{{ t('moviedb', 'My Review') }}</h3>
-						<p>{{ movie.review }}</p>
+						<p>{{ latestWatch.review }}</p>
 					</div>
 
 					<div v-if="movie.castData && movie.castData.length" class="movie-cast">
@@ -88,6 +76,44 @@
 								<span>{{ actor.character }}</span>
 							</div>
 						</div>
+					</div>
+
+					<!-- Watch history -->
+					<div class="watch-history">
+						<div class="watch-history-header">
+							<h3>{{ t('moviedb', 'Watch history') }}</h3>
+							<NcButton @click="showLogDialog = true">
+								<template #icon>
+									<Plus :size="20" />
+								</template>
+								{{ t('moviedb', 'Log again') }}
+							</NcButton>
+						</div>
+
+						<div v-if="watchesStore.loading" class="watches-loading">
+							<NcLoadingIcon :size="24" />
+						</div>
+
+						<div v-else-if="watchesStore.watches.length === 0" class="watches-empty">
+							{{ t('moviedb', 'No watch history yet.') }}
+						</div>
+
+						<ul v-else class="watches-list">
+							<li v-for="watch in watchesStore.watches" :key="watch.id" class="watch-entry">
+								<span class="watch-date">{{ watch.watchedAt ? formatDate(watch.watchedAt) : t('moviedb', 'Unknown date') }}</span>
+								<span v-if="watch.rating" class="watch-rating">★ {{ watch.rating }}/10</span>
+								<span v-if="getPlatformName(watch.platformId)" class="watch-platform">{{ getPlatformName(watch.platformId) }}</span>
+								<span v-if="watch.review" class="watch-review-indicator" :title="watch.review">💬</span>
+								<NcActions v-if="watchesStore.watches.length > 1">
+									<NcActionButton @click="deleteWatch(watch.id)">
+										<template #icon>
+											<Delete :size="20" />
+										</template>
+										{{ t('moviedb', 'Delete') }}
+									</NcActionButton>
+								</NcActions>
+							</li>
+						</ul>
 					</div>
 				</div>
 			</div>
@@ -113,21 +139,55 @@
 				</NcButton>
 			</template>
 		</NcDialog>
+
+		<!-- Log watch dialog -->
+		<NcDialog :open="showLogDialog"
+			:name="t('moviedb', 'Log watch')"
+			@update:open="showLogDialog = $event">
+			<div class="log-watch-form">
+				<label>{{ t('moviedb', 'Date watched') }}
+					<input v-model="logForm.watchedAt" type="date" class="log-input">
+				</label>
+				<div class="log-rating-row">
+					<label>{{ t('moviedb', 'Rating') }}</label>
+					<div class="log-rating-control">
+						<RatingStars :rating="logForm.rating || 0" :max="10" @update="logForm.rating = $event" />
+						<span v-if="logForm.rating" class="log-rating-value">{{ logForm.rating }}/10</span>
+						<button v-if="logForm.rating" class="log-rating-clear" @click="logForm.rating = null">
+							×
+						</button>
+					</div>
+				</div>
+				<label>{{ t('moviedb', 'Review') }}
+					<textarea v-model="logForm.review" class="log-input" rows="3" />
+				</label>
+			</div>
+			<template #actions>
+				<NcButton @click="showLogDialog = false">
+					{{ t('moviedb', 'Cancel') }}
+				</NcButton>
+				<NcButton type="primary" @click="submitLog">
+					{{ t('moviedb', 'Save') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
 <script>
-import { NcButton, NcLoadingIcon, NcEmptyContent, NcDialog } from '@nextcloud/vue'
+import { NcButton, NcLoadingIcon, NcEmptyContent, NcDialog, NcActions, NcActionButton } from '@nextcloud/vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
+import Plus from 'vue-material-design-icons/Plus.vue'
 import RatingStars from '../components/RatingStars.vue'
 import { getLanguageName } from '../constants.js'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { formatDate, formatRuntime } from '../utils/formatters.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
+import { useWatchesStore } from '../stores/watches.js'
 
 export default {
 	name: 'MovieDetail',
@@ -136,10 +196,13 @@ export default {
 		NcLoadingIcon,
 		NcEmptyContent,
 		NcDialog,
+		NcActions,
+		NcActionButton,
 		Pencil,
 		Delete,
 		ArrowLeft,
 		Movie,
+		Plus,
 		RatingStars,
 	},
 	props: {
@@ -151,11 +214,18 @@ export default {
 	setup() {
 		const moviesStore = useMoviesStore()
 		const platformsStore = usePlatformsStore()
-		return { moviesStore, platformsStore }
+		const watchesStore = useWatchesStore()
+		return { moviesStore, platformsStore, watchesStore }
 	},
 	data() {
 		return {
 			showDeleteDialog: false,
+			showLogDialog: false,
+			logForm: {
+				watchedAt: new Date().toISOString().slice(0, 10),
+				rating: null,
+				review: '',
+			},
 		}
 	},
 	computed: {
@@ -168,10 +238,9 @@ export default {
 		platforms() {
 			return this.platformsStore.platforms
 		},
-		platformName() {
-			if (!this.movie?.platformId) return null
-			const platform = this.platforms.find(p => p.id === this.movie.platformId)
-			return platform?.name
+		latestWatch() {
+			// Store returns watches sorted by watched_at DESC, so the first is latest.
+			return this.watchesStore.watches[0] ?? null
 		},
 		posterUrl() {
 			return getPosterUrl(this.movie?.posterPath, 'w500')
@@ -190,10 +259,15 @@ export default {
 	methods: {
 		async loadMovie() {
 			await this.moviesStore.fetchOne(this.id)
+			await this.watchesStore.fetchForMovie(this.id)
 		},
 		formatRuntime,
 		formatDate,
 		getLanguageName,
+		getPlatformName(platformId) {
+			if (!platformId) return null
+			return this.platforms.find(p => p.id === platformId)?.name ?? null
+		},
 		editMovie() {
 			this.$router.push({ name: 'edit-movie', params: { id: this.id } })
 		},
@@ -206,6 +280,19 @@ export default {
 				this.$router.push({ name: 'movies' })
 			}
 			this.showDeleteDialog = false
+		},
+		async submitLog() {
+			const data = {
+				watchedAt: this.logForm.watchedAt || null,
+				rating: this.logForm.rating || null,
+				review: this.logForm.review || null,
+			}
+			await this.watchesStore.create(this.id, data)
+			this.showLogDialog = false
+			this.logForm = { watchedAt: new Date().toISOString().slice(0, 10), rating: null, review: '' }
+		},
+		async deleteWatch(watchId) {
+			await this.watchesStore.delete(this.id, watchId)
 		},
 	},
 }
@@ -339,21 +426,6 @@ export default {
     }
 }
 
-.watch-info {
-    background: var(--color-background-dark);
-    border-radius: 8px;
-    padding: 16px;
-    margin-bottom: 16px;
-
-    .info-item {
-        margin-bottom: 8px;
-
-        &:last-child {
-            margin-bottom: 0;
-        }
-    }
-}
-
 .movie-overview {
     line-height: 1.6;
     margin-bottom: 16px;
@@ -398,6 +470,119 @@ export default {
     span {
         font-size: 12px;
         color: var(--color-text-lighter);
+    }
+}
+
+.watch-history {
+    margin-top: 24px;
+
+    &-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 12px;
+
+        h3 {
+            margin: 0;
+            font-size: 1.1em;
+        }
+    }
+}
+
+.watches-loading,
+.watches-empty {
+    padding: 12px 0;
+    color: var(--color-text-lighter);
+}
+
+.watches-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.watch-entry {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 12px;
+    background: var(--color-background-dark);
+    border-radius: 6px;
+    font-size: 14px;
+
+    .watch-date {
+        font-weight: 500;
+        flex-shrink: 0;
+    }
+
+    .watch-rating {
+        color: var(--color-text-maxcontrast);
+    }
+
+    .watch-platform,
+    .watch-review-indicator {
+        color: var(--color-text-maxcontrast);
+    }
+
+    > :last-child {
+        margin-left: auto;
+    }
+}
+
+.log-watch-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+
+    label {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 14px;
+    }
+
+    .log-rating-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 14px;
+    }
+
+    .log-rating-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .log-rating-value {
+        font-size: 13px;
+        color: var(--color-text-maxcontrast);
+    }
+
+    .log-rating-clear {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--color-text-lighter);
+        font-size: 16px;
+        padding: 0 4px;
+        line-height: 1;
+
+        &:hover {
+            color: var(--color-main-text);
+        }
+    }
+
+    .log-input {
+        border: 1px solid var(--color-border);
+        border-radius: 4px;
+        padding: 6px 8px;
+        background: var(--color-main-background);
+        color: var(--color-main-text);
+        font-size: 14px;
     }
 }
 </style>

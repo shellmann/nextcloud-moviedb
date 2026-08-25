@@ -40,6 +40,9 @@ CLAUDE.md
 .env.*
 !.env.example
 
+# Local Docker dev environment (plaintext passwords, machine-local)
+docker-compose.yml
+
 # Lock files
 # package-lock.json is committed for reproducible CI builds (npm ci).
 # It is excluded from the deploy tarball, so deploys are unaffected.

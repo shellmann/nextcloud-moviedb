@@ -155,11 +155,11 @@ describe('Watchlist Store', () => {
 	describe('create action', () => {
 		it('should add new item to the beginning of the list', async () => {
 			const newItem = { id: 1, title: 'New Movie' }
-			api.addToWatchlist.mockResolvedValue({ data: { item: newItem } })
+			api.addToWatchlist.mockResolvedValue({ data: { item: newItem, alreadyWatched: false } })
 
 			const result = await store.create({ title: 'New Movie' })
 
-			expect(result).toEqual(newItem)
+			expect(result).toEqual({ item: newItem, alreadyWatched: false })
 			expect(store.items[0]).toEqual(newItem)
 			expect(store.total).toBe(1)
 		})
