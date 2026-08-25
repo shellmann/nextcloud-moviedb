@@ -411,6 +411,46 @@ tests missed: `SELECT *` hydration on retained columns, a non-existent
 call in the latest-watch join, and MySQL-only backtick identifiers in the stats
 aggregates.
 
+### Test on Postgres too — not just SQLite
+
+SQLite is permissive; Postgres is strict and catches a whole class of bugs the
+SQLite container silently passes:
+
+- **Identifier quoting**: Postgres quotes with `"`, MySQL with `` ` ``. Any
+  hand-written backtick in `createFunction` runs on SQLite/MySQL but errors on
+  Postgres. Use `$qb->func()->*` / `expr()` / `castColumn()` instead of raw SQL.
+- **Typed columns**: a `Types::JSON` column (e.g. `genre_ids`) maps to Postgres
+  `json`, which has **no `LIKE` operator** (`operator does not exist: json ~~`).
+  Cast with `$qb->expr()->castColumn('m.genre_ids', IQueryBuilder::PARAM_STR)`
+  before `like()`. SQLite/MySQL store JSON as text and mask this.
+- **DDL-in-transaction**: Postgres wraps DDL in a transaction, so a migration
+  that throws rolls back cleanly (nothing half-applied); MySQL auto-commits DDL.
+  Testing the upgrade on Postgres is the real proof the backfill+verify ordering
+  is safe.
+
+Bring up a Postgres-backed stack on a shared Docker network:
+
+```bash
+docker network create moviedb-pg-net
+docker run -d --name nc-pg-db --network moviedb-pg-net \
+  -e POSTGRES_DB=nextcloud -e POSTGRES_USER=nextcloud -e POSTGRES_PASSWORD=nc_test_pw postgres:16
+sleep 8
+docker run -d --name nc-pg --network moviedb-pg-net -p 8890:80 nextcloud:34
+sleep 30
+docker exec -u www-data nc-pg php occ maintenance:install \
+  --database=pgsql --database-name=nextcloud --database-user=nextcloud \
+  --database-pass=nc_test_pw --database-host=nc-pg-db \
+  --admin-user=admin --admin-pass=admin_test_pw
+```
+
+> **Gotcha (harness only):** Nextcloud creates its own DB role (e.g. `oc_admin`)
+> and runs migrations as that role. If you hand-seed the old-version tables via
+> `psql -U nextcloud` (the superuser), those tables are owned by `nextcloud` and
+> the migration's `ALTER TABLE` fails with `must be owner of table`. Reassign
+> before upgrading: `ALTER TABLE oc_moviedb_movies OWNER TO oc_admin;`. This is a
+> test-seeding artifact, not an app bug — a real 1.1.2 install already owns its
+> tables as `oc_admin`.
+
 ---
 
 ## Upgrade Migration Testing (backfill migrations)

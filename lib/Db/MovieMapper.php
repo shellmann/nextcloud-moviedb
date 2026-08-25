@@ -129,12 +129,16 @@ class MovieMapper extends QBMapper {
     private function applyFilters(IQueryBuilder $qb, array $filters): void {
         if (!empty($filters['genre'])) {
             $genreId = (int)$filters['genre'];
+            // genre_ids is a JSON column; Postgres' json type has no LIKE operator,
+            // so cast to text before matching. (SQLite/MySQL store JSON as text and
+            // would tolerate a bare LIKE, but the cast is portable across all three.)
+            $genreCol = $qb->expr()->castColumn('m.genre_ids', IQueryBuilder::PARAM_STR);
             $qb->andWhere(
                 $qb->expr()->orX(
-                    $qb->expr()->like('m.genre_ids', $qb->createNamedParameter('[' . $genreId . ']')),
-                    $qb->expr()->like('m.genre_ids', $qb->createNamedParameter('[' . $genreId . ',%')),
-                    $qb->expr()->like('m.genre_ids', $qb->createNamedParameter('%,' . $genreId . ',%')),
-                    $qb->expr()->like('m.genre_ids', $qb->createNamedParameter('%,' . $genreId . ']'))
+                    $qb->expr()->like($genreCol, $qb->createNamedParameter('[' . $genreId . ']')),
+                    $qb->expr()->like($genreCol, $qb->createNamedParameter('[' . $genreId . ',%')),
+                    $qb->expr()->like($genreCol, $qb->createNamedParameter('%,' . $genreId . ',%')),
+                    $qb->expr()->like($genreCol, $qb->createNamedParameter('%,' . $genreId . ']'))
                 )
             );
         }
