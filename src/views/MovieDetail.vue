@@ -547,12 +547,12 @@ export default {
     }
 
     .watch-rating {
-        color: var(--color-warning);
+        color: var(--color-text-maxcontrast);
     }
 
     .watch-platform,
     .watch-review-indicator {
-        color: var(--color-text-lighter);
+        color: var(--color-text-maxcontrast);
     }
 
     > :last-child {
