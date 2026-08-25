@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2026-08-25
+
+### Added
+- **Rewatch support**: new `moviedb_movie_watches` table stores one row
+  per viewing (date, rating, review, platform, language). Each movie
+  can now have a full watch history (#19)
+- **Log again** button on the movie detail page with a star-rating
+  selector for quick rewatch logging
+- **Watch history** section on movie detail listing all watches with
+  per-entry delete (hidden when only one entry exists)
+- Watchlist "mark as watched" on an already-watched movie now appends
+  a new watch entry instead of creating a duplicate movie record
+
+### Changed
+- Migration `Version000002Date20260824` backfills all existing
+  per-movie watch data into the new watches table with a
+  verify-before-drop guard; legacy columns are retained in 1.2.0 for
+  safe downgrade and will be dropped in a future release
+- Star-rating selector replaces free-text number input in the log-watch
+  dialog
+- Removed redundant date/language summary box from the movie detail
+  header
+
+### Fixed
+- Edit form: rating/review/date changes now persist correctly even for
+  movies without a prior watch row (previously silently dropped)
+
+### Tests
+- 73 JS tests, 69 PHP tests, 0 lint errors
+
 ## [1.1.2] - 2026-08-24
 
 ### Fixed
