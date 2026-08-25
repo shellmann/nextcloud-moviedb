@@ -35,7 +35,12 @@ class Version000002Date20260824 extends SimpleMigrationStep {
             }
         }
 
-        // Create watch history table — one row per viewing of a title
+        // Create watch history table — one row per viewing of a title.
+        // v1.3.0 (TV shows) extends this additively: add a nullable episode_id FK
+        // so a watch points at the smallest unit — movie_id for films, episode_id
+        // for series episodes — with the media_type column on moviedb_movies as
+        // the discriminator. No column here is renamed or dropped for that; the
+        // movie_id NOT NULL constraint is relaxed to nullable in that migration.
         if (!$schema->hasTable('moviedb_movie_watches')) {
             $table = $schema->createTable('moviedb_movie_watches');
 
