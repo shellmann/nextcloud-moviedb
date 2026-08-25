@@ -117,8 +117,32 @@ class Version000002Date20260824 extends SimpleMigrationStep {
         $row = $result->fetch();
         $result->closeCursor();
 
-        if (((int)($row['count'] ?? 0)) > 0) {
-            $output->info('Watch rows already exist, skipping backfill...');
+        $existingCount = (int)($row['count'] ?? 0);
+        if ($existingCount > 0) {
+            // Watches exist — verify count matches source movies to catch partial backfills
+            $srcQb = $this->db->getQueryBuilder();
+            $srcQb->select($srcQb->func()->count('*', 'count'))
+                ->from('moviedb_movies')
+                ->where(
+                    $srcQb->expr()->orX(
+                        $srcQb->expr()->isNotNull('date_watched'),
+                        $srcQb->expr()->isNotNull('rating'),
+                        $srcQb->expr()->isNotNull('review'),
+                        $srcQb->expr()->isNotNull('platform_id'),
+                        $srcQb->expr()->isNotNull('language_watched')
+                    )
+                );
+            $srcResult = $srcQb->executeQuery();
+            $srcRow = $srcResult->fetch();
+            $srcResult->closeCursor();
+            $expected = (int)($srcRow['count'] ?? 0);
+            if ($existingCount < $expected) {
+                throw new \RuntimeException(
+                    "Backfill incomplete: {$existingCount} watch rows but {$expected} source movies with watch data. " .
+                    "Re-run occ upgrade to retry."
+                );
+            }
+            $output->info('Watch rows already exist and count matches — skipping backfill.');
             return;
         }
 

@@ -181,23 +181,19 @@ class MovieController extends AuthenticatedController {
             $watchData = array_intersect_key($data, array_flip($watchFields));
             if (!empty($watchData)) {
                 $watches = $this->watchService->findByMovie($id, $this->userId);
+                // Only pass keys that were actually present in the request
+                $mappedWatch = [];
+                if (array_key_exists('rating', $watchData)) $mappedWatch['rating'] = $watchData['rating'];
+                if (array_key_exists('review', $watchData)) $mappedWatch['review'] = $watchData['review'];
+                if (array_key_exists('dateWatched', $watchData)) $mappedWatch['watchedAt'] = $watchData['dateWatched'];
+                if (array_key_exists('platformId', $watchData)) $mappedWatch['platformId'] = $watchData['platformId'];
+                if (array_key_exists('languageWatched', $watchData)) $mappedWatch['languageWatched'] = $watchData['languageWatched'];
                 if (!empty($watches)) {
                     // watches are ordered DESC by watched_at — first is the latest
-                    $mapped = [
-                        'rating' => $watchData['rating'] ?? null,
-                        'review' => $watchData['review'] ?? null,
-                        'watchedAt' => $watchData['dateWatched'] ?? null,
-                        'platformId' => $watchData['platformId'] ?? null,
-                        'languageWatched' => $watchData['languageWatched'] ?? null,
-                    ];
-                    // Only pass keys that were actually present in the request
-                    $updateWatch = [];
-                    if (array_key_exists('rating', $watchData)) $updateWatch['rating'] = $mapped['rating'];
-                    if (array_key_exists('review', $watchData)) $updateWatch['review'] = $mapped['review'];
-                    if (array_key_exists('dateWatched', $watchData)) $updateWatch['watchedAt'] = $mapped['watchedAt'];
-                    if (array_key_exists('platformId', $watchData)) $updateWatch['platformId'] = $mapped['platformId'];
-                    if (array_key_exists('languageWatched', $watchData)) $updateWatch['languageWatched'] = $mapped['languageWatched'];
-                    $this->watchService->update($watches[0]->getId(), $this->userId, $updateWatch);
+                    $this->watchService->update($watches[0]->getId(), $this->userId, $mappedWatch);
+                } else {
+                    // No watch row yet (movie created without watch fields, or pre-migration NULL row)
+                    $this->watchService->create($id, $this->userId, $mappedWatch);
                 }
             }
 

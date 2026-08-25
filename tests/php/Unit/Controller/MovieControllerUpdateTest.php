@@ -135,7 +135,7 @@ class MovieControllerUpdateTest extends TestCase {
         $this->assertEquals(Http::STATUS_OK, $response->getStatus());
     }
 
-    public function testUpdateSkipsWatchUpdateWhenNoWatchesExist(): void {
+    public function testUpdateCreatesWatchWhenNoWatchesExist(): void {
         $this->request->method('getParams')->willReturn([
             'title' => 'Inception',
             'rating' => 9,
@@ -145,6 +145,9 @@ class MovieControllerUpdateTest extends TestCase {
         $this->watchService->method('findByMovie')->willReturn([]);
 
         $this->watchService->expects($this->never())->method('update');
+        $this->watchService->expects($this->once())
+            ->method('create')
+            ->with(1, 'testuser', $this->callback(fn($d) => ($d['rating'] ?? null) === 9));
 
         $response = $this->controller->update(1);
         $this->assertEquals(Http::STATUS_OK, $response->getStatus());

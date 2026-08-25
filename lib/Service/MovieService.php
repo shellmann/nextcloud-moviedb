@@ -129,14 +129,6 @@ class MovieService {
     public function update(int $id, string $userId, array $data): Movie {
         $movie = $this->mapper->find($id, $userId);
 
-        if (array_key_exists('rating', $data) && $data['rating'] !== null) {
-            $rating = (int)$data['rating'];
-            if ($rating < 1 || $rating > 10) {
-                throw new \InvalidArgumentException('Rating must be between 1 and 10');
-            }
-            $data['rating'] = $rating;
-        }
-
         if (isset($data['title'])) {
             $movie->setTitle($data['title']);
         }
