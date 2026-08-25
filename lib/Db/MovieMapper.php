@@ -111,8 +111,8 @@ class MovieMapper extends QBMapper {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select($qb->func()->count('*', 'count'))
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->from($this->getTableName(), 'm')
+            ->where($qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)));
 
         $this->applyFilters($qb, $filters);
 
