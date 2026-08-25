@@ -160,13 +160,16 @@
 				<label>{{ t('moviedb', 'Date watched') }}
 					<input v-model="logForm.watchedAt" type="date" class="log-input">
 				</label>
-				<label>{{ t('moviedb', 'Rating') }} (1–10)
-					<input v-model.number="logForm.rating"
-						type="number"
-						min="1"
-						max="10"
-						class="log-input">
-				</label>
+				<div class="log-rating-row">
+					<label>{{ t('moviedb', 'Rating') }}</label>
+					<div class="log-rating-control">
+						<RatingStars :rating="logForm.rating || 0" :max="10" @update="logForm.rating = $event" />
+						<span v-if="logForm.rating" class="log-rating-value">{{ logForm.rating }}/10</span>
+						<button v-if="logForm.rating" class="log-rating-clear" @click="logForm.rating = null">
+							×
+						</button>
+					</div>
+				</div>
 				<label>{{ t('moviedb', 'Review') }}
 					<textarea v-model="logForm.review" class="log-input" rows="3" />
 				</label>
@@ -570,6 +573,38 @@ export default {
         flex-direction: column;
         gap: 4px;
         font-size: 14px;
+    }
+
+    .log-rating-row {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        font-size: 14px;
+    }
+
+    .log-rating-control {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    .log-rating-value {
+        font-size: 13px;
+        color: var(--color-text-maxcontrast);
+    }
+
+    .log-rating-clear {
+        background: none;
+        border: none;
+        cursor: pointer;
+        color: var(--color-text-lighter);
+        font-size: 16px;
+        padding: 0 4px;
+        line-height: 1;
+
+        &:hover {
+            color: var(--color-main-text);
+        }
     }
 
     .log-input {
