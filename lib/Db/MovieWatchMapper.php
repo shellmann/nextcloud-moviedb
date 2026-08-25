@@ -83,7 +83,7 @@ class MovieWatchMapper extends QBMapper {
     public function getTotalRuntime(string $userId): int {
         $qb = $this->db->getQueryBuilder();
 
-        $qb->selectAlias($qb->createFunction('SUM(`m`.`runtime`)'), 'total')
+        $qb->selectAlias($qb->func()->sum('m.runtime'), 'total')
             ->from($this->getTableName(), 'w')
             ->innerJoin('w', 'moviedb_movies', 'm', $qb->expr()->eq('w.movie_id', 'm.id'))
             ->where($qb->expr()->eq('w.user_id', $qb->createNamedParameter($userId)))
@@ -99,7 +99,9 @@ class MovieWatchMapper extends QBMapper {
     public function getAverageRating(string $userId): float {
         $qb = $this->db->getQueryBuilder();
 
-        $qb->selectAlias($qb->createFunction('AVG(`rating`)'), 'average')
+        // NC's IFunctionBuilder has no avg(); a plain unquoted AVG() is portable
+        // across SQLite/MySQL/Postgres (same approach as the MAX() calls above).
+        $qb->selectAlias($qb->createFunction('AVG(rating)'), 'average')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
             ->andWhere($qb->expr()->isNotNull('rating'));

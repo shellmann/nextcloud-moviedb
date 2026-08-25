@@ -83,8 +83,28 @@ class Version000002Date20260824 extends SimpleMigrationStep {
     }
 
     public function postSchemaChange(IOutput $output, Closure $schemaClosure, array $options): void {
-        // Backfill: create one watch row per movie that has any watch data.
-        // Mirrors the platform-seed idempotency pattern from Version000001.
+        // Backfill copies existing per-movie watch data into the new watches table.
+        // The legacy columns (date_watched/rating/review/platform_id/language_watched)
+        // are intentionally NOT dropped in v1.2.0: on a fresh install Nextcloud batches
+        // every pending migration's changeSchema (Installer::migrate schemaOnly=true →
+        // MigrationService::migrateSchemaOnly) with no postSchemaChange between them,
+        // and SQLite's column-drop table rebuild then generates copy SQL referencing a
+        // column dropped in the same batch → "no such column: date_watched", aborting
+        // the install. Keeping the columns keeps fresh installs working; they are read
+        // nowhere anymore and will be dropped in a later release as a genuine upgrade
+        // step (per-step path, columns created by a previously released version).
+        //
+        // Guard: if the source columns are somehow already gone, there is nothing to
+        // backfill — skip cleanly rather than error.
+        /** @var ISchemaWrapper $schema */
+        $schema = $schemaClosure();
+        if (!$schema->hasTable('moviedb_movies')
+            || !$schema->getTable('moviedb_movies')->hasColumn('date_watched')) {
+            $output->info('Source watch columns absent — nothing to backfill.');
+            return;
+        }
+
+        // Skip if watch rows already exist (idempotent re-run).
         $qb = $this->db->getQueryBuilder();
         $qb->select($qb->func()->count('*', 'count'))
             ->from('moviedb_movie_watches');
@@ -144,15 +164,15 @@ class Version000002Date20260824 extends SimpleMigrationStep {
 
         $output->info("Backfilled {$inserted} watch rows from {$sourceCount} movies.");
 
-        // ── Verify-before-drop guard (backstop, independent of the model checkpoint) ──
-        // Recount the source (movies still carrying watch data) and the watch rows
-        // we just inserted. If they diverge, the backfill is incomplete: throw to
-        // ABORT the whole migration. Nextcloud runs migrations in maintenance mode
-        // and marks the app-update failed on an exception, so nothing downstream
-        // runs — the source columns are still present and no data is lost. The
-        // column DROP lives in the NEXT migration (Version000003) which re-runs
-        // this same verification before it removes anything, so the destructive
-        // step only proceeds on a database whose backfill provably matched.
+        // ── Backfill verification ──
+        // Recount the source (movies carrying watch data) against the watch rows we
+        // just inserted. If they diverge the backfill is incomplete: throw to ABORT
+        // the migration. Nextcloud runs migrations in maintenance mode and marks the
+        // app update failed on an exception, so the app is not left half-migrated.
+        // The legacy columns are retained (not dropped this release), so no data is
+        // lost — the admin can investigate and re-run. This gate is what makes the
+        // eventual column drop, in a later release, safe: it only ever runs against a
+        // database whose backfill provably matched.
         $check = $this->db->getQueryBuilder();
         $check->select($check->func()->count('*', 'count'))
             ->from('moviedb_movies')
@@ -170,10 +190,10 @@ class Version000002Date20260824 extends SimpleMigrationStep {
         $r->closeCursor();
 
         if ($expected !== $inserted) {
-            $output->warning("Backfill mismatch: {$expected} movies with watch data but {$inserted} watch rows inserted. Aborting before any columns are dropped.");
+            $output->warning("Backfill mismatch: {$expected} movies with watch data but {$inserted} watch rows inserted. Aborting the migration.");
             throw new \RuntimeException(
                 "MovieDB migration aborted: watch backfill incomplete ({$expected} expected, {$inserted} inserted). "
-                . 'Source columns left intact for recovery.'
+                . 'Legacy columns are retained — investigate and re-run.'
             );
         }
 

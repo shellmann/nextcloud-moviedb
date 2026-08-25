@@ -348,17 +348,87 @@ colima stop   # optional, frees the VM
 
 ---
 
-## Upgrade Migration Testing (destructive/backfill migrations)
+## Fresh-Install Migration Testing (MANDATORY, separate from upgrade)
 
-**Mandatory** whenever a release migrates existing data — especially when a
-migration **drops columns** (there is no rollback window for App Store users;
-`occ upgrade` runs unattended in maintenance mode). The unit suite cannot cover
-migration backfill (migrations are pure DB I/O, excluded from PHPUnit), so this
-container test is the only proof the upgrade is safe.
+**A migration can pass on upgrade and still break a fresh install — test both.**
+Nextcloud runs migrations by two different code paths:
+
+- **Fresh install** (`Installer::installApp`, `previousVersion === ''`) →
+  `MigrationService::migrate('latest', schemaOnly=true)` →
+  `migrateSchemaOnly()`, which **accumulates every pending migration's
+  `changeSchema` into one schema and applies it in a single batch, with NO
+  `preSchemaChange`/`postSchemaChange` hooks between steps.**
+- **Upgrade** (`occ upgrade`, non-empty previous version) → per-step
+  `executeStep()` running pre → changeSchema → post for each migration in
+  isolation.
+
+The batched fresh-install path is why v1.2.0 could **not** drop the legacy watch
+columns in the same release that created the watches table: on SQLite, a column
+drop is implemented by rebuilding the table and copying data by explicit column
+list; when a CREATE and a DROP of the same column land in one accumulated schema,
+the generated copy SQL references the dropped column → `no such column`, aborting
+the install. (Reproduces identically on NC 34 and NC 35 — it is version
+independent.) The fix was to make v1.2.0 **additive-only** (retain the columns,
+defer the drop to a later release's per-step upgrade). A drop must therefore only
+ever be shipped in a release **separate from** the release that created the data,
+and its fresh-install path must be tested explicitly.
+
+Fresh install also exercises `SELECT` hydration against the *final* schema. Any
+column left in a table that has no matching entity property will make
+`QBMapper` → `Entity::fromRow` throw `BadFunctionCallException` (it calls a
+setter for every selected column). Mappers must therefore `SELECT` an explicit
+entity-backed column list, never `SELECT *`, once dead/legacy columns are
+retained. **This class of bug does not surface in unit tests or in the upgrade
+test — only a real fresh enable + a movie-list read triggers it.**
+
+### Fresh-install test procedure
+
+```bash
+# On a clean NC container (see the compatibility section), drop all app tables +
+# clear its appconfig/migrations so app:enable takes the fresh (batched) path:
+docker exec nc-test php -r '
+$db=new PDO("sqlite:/var/www/html/data/owncloud.db");
+foreach(["oc_moviedb_movie_watches","oc_moviedb_movies","oc_moviedb_watchlist","oc_moviedb_platforms"] as $t){ $db->exec("DROP TABLE IF EXISTS $t"); }
+$db->exec("DELETE FROM oc_appconfig WHERE appid=\"moviedb\"");
+$db->exec("DELETE FROM oc_migrations WHERE app=\"moviedb\"");
+'
+# Deploy the NEW build, then a fresh enable — MUST NOT error ("no such column"):
+docker exec -u www-data nc-test php occ app:enable moviedb
+
+# Seed one movie WITH the retained legacy columns populated (worst case for
+# hydration) + a watch row, then exercise every mapper read path in NC context:
+#   MovieMapper::findAll (default + each sort + platform/genre filters), find,
+#   findByTmdbId, and every MovieWatchMapper aggregate (getTotalRuntime,
+#   getAverageRating, getCountByPlatform, getCountByYear, findLatestPerMovie).
+# All must return without throwing BadFunctionCallException / undefined-method.
+```
+
+Run the reads inside a bootstrapped script (`require '/var/www/html/lib/base.php'`,
+`\OCP\Server::get(MovieMapper::class)`), not just via the UI — it pinpoints the
+failing method. This is what caught three live-only bugs in v1.2.0 that unit
+tests missed: `SELECT *` hydration on retained columns, a non-existent
+`getDatabasePlatform()->getTableQuoteCharacter()` / `IDBConnection::getTablePrefix()`
+call in the latest-watch join, and MySQL-only backtick identifiers in the stats
+aggregates.
+
+---
+
+## Upgrade Migration Testing (backfill migrations)
+
+**Mandatory** whenever a release migrates existing data into a new shape. The
+unit suite cannot cover migration backfill (migrations are pure DB I/O, excluded
+from PHPUnit), so this container test is the only proof the upgrade is safe.
+`occ upgrade` runs unattended in maintenance mode — there is no rollback window
+for App Store users.
 
 The goal: install the **previously released** build, seed realistic data that
 exercises every backfill branch, upgrade to the **new** build, then assert the
-data landed correctly **and** the destructive step only ran after the guard.
+data landed correctly. For v1.2.0 the migration is **additive** — it backfills
+the new `moviedb_movie_watches` table from the legacy per-movie watch columns
+and **retains** those columns (the drop is deferred to a later release; see the
+fresh-install section for why). A backfill count mismatch throws and aborts the
+whole app update, leaving the source columns intact — so a successful upgrade
+already means the verification passed.
 
 ### 1. Install the OLD released version
 
@@ -426,23 +496,25 @@ docker exec -u www-data nc-upgrade-test php occ upgrade
 docker exec -u www-data nc-upgrade-test php occ app:list | grep moviedb  # confirm new version
 ```
 
-`occ upgrade` runs the migrations in order (backfill+guard, then the guarded
-drop). A guard failure throws and aborts the whole app update, leaving source
-columns intact — so a successful upgrade already means the guard passed.
+`occ upgrade` runs the migration (backfill + verification). A verification
+failure throws and aborts the whole app update, leaving source columns intact —
+so a successful upgrade already means the backfill count matched.
 
 ### 4. Assert the result (PDO, not sqlite3)
 
-Verify, in one script: the new table exists; new columns added; dropped columns
-gone; backfill row count matches the expected number; each seeded value is
-preserved (including nulls staying null); the "no data" row produced no watch
-row; and no source rows were lost. Example for v1.2.0:
+Verify, in one script: the new table exists; new columns added (`media_type`);
+the legacy columns are **retained** (v1.2.0 does not drop them); backfill row
+count matches the expected number; each seeded value is preserved (including
+nulls staying null); the "no data" row produced no watch row; and no source rows
+were lost. Example for v1.2.0:
 
 ```bash
 docker exec nc-upgrade-test php -r '
 $db = new PDO("sqlite:/var/www/html/data/owncloud.db");
 $cols = $db->query("PRAGMA table_info(oc_moviedb_movies)")->fetchAll(PDO::FETCH_COLUMN,1);
-$dropped = array_intersect(["date_watched","rating","review","platform_id","language_watched"],$cols);
-echo (empty($dropped)?"PASS":"FAIL")." columns dropped\n";
+echo (in_array("media_type",$cols)?"PASS":"FAIL")." media_type added\n";
+$legacy = array_intersect(["date_watched","rating","review","platform_id","language_watched"],$cols);
+echo (count($legacy)===5?"PASS":"FAIL")." legacy columns retained (".count($legacy)."/5)\n";
 $wc = $db->query("SELECT COUNT(*) FROM oc_moviedb_movie_watches")->fetchColumn();
 echo ($wc==2?"PASS":"FAIL")." watch rows == 2 (got $wc)\n";
 foreach($db->query("SELECT * FROM oc_moviedb_movie_watches ORDER BY movie_id") as $r){
@@ -451,9 +523,9 @@ foreach($db->query("SELECT * FROM oc_moviedb_movie_watches ORDER BY movie_id") a
 '
 ```
 
-All assertions must print `PASS`. Repeat on MySQL/Postgres if feasible — Postgres
-runs DDL inside a transaction while MySQL auto-commits it, so the migration
-verifies **before** the drop rather than relying on rollback.
+All assertions must print `PASS`. Then run the **fresh-install read-path test**
+above against this same upgraded DB to confirm hydration works with the retained
+columns present. Repeat on MySQL/Postgres if feasible.
 
 ### Cleanup
 

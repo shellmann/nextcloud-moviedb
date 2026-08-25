@@ -14,6 +14,23 @@ use OCP\IDBConnection;
  */
 class MovieMapper extends QBMapper {
 
+    /**
+     * Explicit list of columns that back a Movie entity property.
+     *
+     * We deliberately do NOT `SELECT *` here: v1.2.0 retains the legacy watch
+     * columns (date_watched/rating/review/platform_id/language_watched) in the
+     * table — they could not be dropped without breaking SQLite fresh installs
+     * (see Version000002 comment) — and also adds `media_type`, which has no
+     * entity property yet. QBMapper hydration (Entity::fromRow) calls a setter
+     * for every selected column and throws BadFunctionCallException on any
+     * column lacking a property, so we select only the entity-backed columns.
+     */
+    private const COLUMNS = [
+        'id', 'user_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
+        'backdrop_path', 'overview', 'genre_ids', 'release_date', 'release_year',
+        'runtime', 'cast_data', 'director', 'is_favorite', 'created_at', 'updated_at',
+    ];
+
     public function __construct(IDBConnection $db) {
         parent::__construct($db, 'moviedb_movies', Movie::class);
     }
@@ -24,7 +41,7 @@ class MovieMapper extends QBMapper {
     public function find(int $id, ?string $userId = null): Movie {
         $qb = $this->db->getQueryBuilder();
 
-        $qb->select('*')
+        $qb->select(...self::COLUMNS)
             ->from($this->getTableName())
             ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
@@ -38,26 +55,35 @@ class MovieMapper extends QBMapper {
     public function findAll(string $userId, array $filters = [], int $limit = 50, int $offset = 0): array {
         $qb = $this->db->getQueryBuilder();
 
-        // JOIN the latest watch per movie so we can sort by watched_at / watch rating
-        $prefix = $this->db->getDatabasePlatform()->getTableQuoteCharacter();
-        $watchTable = $this->db->getTablePrefix() . 'moviedb_movie_watches';
+        // Bind user_id once on the OUTER builder; the placeholder is reused both
+        // in the aggregate subquery text and in the outer WHERE. Parameters live
+        // on the executing builder, and createFunction() carries none of its own,
+        // so a subquery built on a throwaway builder must reference an outer param.
+        $userParam = $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR, ':lw_user_id');
 
-        $qb->select('m.*')
+        // Latest-watch-per-movie aggregate. Built on a nested builder only to emit
+        // correctly *PREFIX*-ed, per-platform-quoted SQL (no getTablePrefix(), no
+        // hand-written backticks — both break on non-MySQL). It references the
+        // outer :lw_user_id placeholder literally.
+        $sub = $this->db->getQueryBuilder();
+        $sub->select('w.movie_id')
+            ->selectAlias($sub->func()->max('w.watched_at'), 'watched_at')
+            ->selectAlias($sub->func()->max('w.rating'), 'rating')
+            ->from('moviedb_movie_watches', 'w')
+            ->where('w.user_id = :lw_user_id')
+            ->groupBy('w.movie_id');
+
+        $qb->select(array_map(static fn (string $c): string => 'm.' . $c, self::COLUMNS))
             ->addSelect('lw.watched_at AS last_watched_at')
             ->addSelect('lw.rating AS last_rating')
             ->from($this->getTableName(), 'm')
             ->leftJoin(
                 'm',
-                $qb->createFunction(
-                    "(SELECT movie_id, MAX(watched_at) AS watched_at, MAX(rating) AS rating
-                      FROM `{$watchTable}`
-                      WHERE user_id = " . $qb->createNamedParameter($userId) . "
-                      GROUP BY movie_id)"
-                ),
+                $qb->createFunction('(' . $sub->getSQL() . ')'),
                 'lw',
                 $qb->expr()->eq('m.id', 'lw.movie_id')
             )
-            ->where($qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)));
+            ->where($qb->expr()->eq('m.user_id', $userParam));
 
         $this->applyFilters($qb, $filters);
 
@@ -117,17 +143,18 @@ class MovieMapper extends QBMapper {
                 $qb->createNamedParameter((int)$filters['year'], IQueryBuilder::PARAM_INT)));
         }
         if (!empty($filters['platform'])) {
-            // Filter by platform across any watch of this movie
-            $watchTable = $this->db->getTablePrefix() . 'moviedb_movie_watches';
-            $userId = null; // already filtered by m.user_id
+            // Filter to movies that have at least one watch on this platform.
+            // Nested builder emits *PREFIX*-ed, correctly-quoted SQL; the platform
+            // id is bound on the outer builder and referenced by placeholder name.
+            // (createNamedParameter is called for its binding side effect — the
+            // returned ':flt_platform' placeholder is what the subquery text uses.)
+            $qb->createNamedParameter((int)$filters['platform'], IQueryBuilder::PARAM_INT, ':flt_platform');
+            $sub = $this->db->getQueryBuilder();
+            $sub->selectDistinct('pw.movie_id')
+                ->from('moviedb_movie_watches', 'pw')
+                ->where('pw.platform_id = :flt_platform');
             $qb->andWhere(
-                $qb->expr()->in(
-                    'm.id',
-                    $qb->createFunction(
-                        "SELECT DISTINCT movie_id FROM `{$watchTable}` WHERE platform_id = " .
-                        $qb->createNamedParameter((int)$filters['platform'], IQueryBuilder::PARAM_INT)
-                    )
-                )
+                $qb->expr()->in('m.id', $qb->createFunction('(' . $sub->getSQL() . ')'))
             );
         }
         if (!empty($filters['search'])) {
@@ -142,7 +169,7 @@ class MovieMapper extends QBMapper {
     public function findByTmdbId(string $userId, int $tmdbId): ?Movie {
         $qb = $this->db->getQueryBuilder();
 
-        $qb->select('*')
+        $qb->select(...self::COLUMNS)
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
             ->andWhere($qb->expr()->eq('tmdb_id', $qb->createNamedParameter($tmdbId, IQueryBuilder::PARAM_INT)));
