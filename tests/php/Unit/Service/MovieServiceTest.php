@@ -6,6 +6,8 @@ namespace OCA\MovieDB\Tests\Unit\Service;
 
 use OCA\MovieDB\Db\Movie;
 use OCA\MovieDB\Db\MovieMapper;
+use OCA\MovieDB\Db\MovieWatch;
+use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -17,13 +19,15 @@ use OCP\AppFramework\Db\DoesNotExistException;
  */
 class MovieServiceTest extends TestCase {
     private MovieMapper $mapper;
+    private MovieWatchMapper $watchMapper;
     private MovieService $service;
 
     protected function setUp(): void {
         parent::setUp();
 
         $this->mapper = $this->createMock(MovieMapper::class);
-        $this->service = new MovieService($this->mapper);
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->service = new MovieService($this->mapper, $this->watchMapper);
     }
 
     public function testFind(): void {
@@ -116,6 +120,10 @@ class MovieServiceTest extends TestCase {
                 return $movie;
             });
 
+        // No watch data provided → no watch row created
+        $this->watchMapper->expects($this->never())
+            ->method('insert');
+
         $result = $this->service->create($userId, $data);
 
         $this->assertInstanceOf(Movie::class, $result);
@@ -153,12 +161,24 @@ class MovieServiceTest extends TestCase {
                 return $movie;
             });
 
+        // Watch-specific fields must be written to a MovieWatch row, not the movie
+        $this->watchMapper->expects($this->once())
+            ->method('insert')
+            ->with($this->callback(function (MovieWatch $watch) {
+                return $watch->getMovieId() === 1
+                    && $watch->getRating() === 5
+                    && $watch->getReview() === 'Mind-blowing!'
+                    && $watch->getPlatformId() === 1
+                    && $watch->getWatchedAt() === '2024-01-15'
+                    && $watch->getLanguageWatched() === 'en';
+            }))
+            ->willReturnArgument(0);
+
         $result = $this->service->create($userId, $data);
 
         $this->assertEquals(603, $result->getTmdbId());
         $this->assertEquals('The Matrix', $result->getTitle());
         $this->assertEquals(1999, $result->getReleaseYear());
-        $this->assertEquals(5, $result->getRating());
         $this->assertTrue($result->getIsFavorite());
     }
 
@@ -192,8 +212,6 @@ class MovieServiceTest extends TestCase {
 
         $updateData = [
             'title' => 'New Title',
-            'rating' => 4,
-            'review' => 'Updated review',
             'isFavorite' => true,
         ];
 
@@ -206,8 +224,6 @@ class MovieServiceTest extends TestCase {
             ->method('update')
             ->with($this->callback(function (Movie $movie) use ($updateData) {
                 return $movie->getTitle() === $updateData['title']
-                    && $movie->getRating() === $updateData['rating']
-                    && $movie->getReview() === $updateData['review']
                     && $movie->getIsFavorite() === $updateData['isFavorite']
                     && $movie->getUpdatedAt() !== null;
             }))
@@ -216,40 +232,35 @@ class MovieServiceTest extends TestCase {
         $result = $this->service->update($movieId, $userId, $updateData);
 
         $this->assertEquals('New Title', $result->getTitle());
-        $this->assertEquals(4, $result->getRating());
         $this->assertTrue($result->getIsFavorite());
     }
 
-    public function testUpdateWithNullValues(): void {
+    public function testUpdateIgnoresWatchFields(): void {
+        // Watch data (rating/review/etc.) is owned by MovieWatch now; update must
+        // not touch the movie row with it and must not create a watch row.
         $userId = 'testuser';
         $movieId = 1;
         $existingMovie = $this->createMovieEntity($movieId, 'Title');
         $existingMovie->setUserId($userId);
-        $existingMovie->setRating(5);
-        $existingMovie->setReview('Old review');
 
-        // Test that null values can be set (using array_key_exists pattern)
         $updateData = [
-            'rating' => null,
-            'review' => null,
+            'title' => 'Renamed',
+            'rating' => 4,
+            'review' => 'ignored here',
         ];
 
         $this->mapper->expects($this->once())
             ->method('find')
             ->willReturn($existingMovie);
-
         $this->mapper->expects($this->once())
             ->method('update')
-            ->with($this->callback(function (Movie $movie) {
-                return $movie->getRating() === null
-                    && $movie->getReview() === null;
-            }))
             ->willReturnArgument(0);
+        $this->watchMapper->expects($this->never())
+            ->method('insert');
 
         $result = $this->service->update($movieId, $userId, $updateData);
 
-        $this->assertNull($result->getRating());
-        $this->assertNull($result->getReview());
+        $this->assertEquals('Renamed', $result->getTitle());
     }
 
     public function testUpdateThrowsDoesNotExistException(): void {
