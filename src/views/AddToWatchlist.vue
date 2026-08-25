@@ -29,6 +29,10 @@
 				</NcButton>
 			</div>
 
+			<NcNoteCard v-if="alreadyWatched" type="warning" class="already-watched-note">
+				<p>{{ t('moviedb', 'You\'ve already watched this movie. If you add it to your watchlist and mark it as watched later, it will be logged as a rewatch.') }}</p>
+			</NcNoteCard>
+
 			<div class="selected-movie">
 				<div v-if="selectedMovie.posterPath" class="movie-poster">
 					<img :src="getPosterUrl(selectedMovie.posterPath, 'w200')" :alt="selectedMovie.title">
@@ -85,6 +89,7 @@ import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getPriorityOptions } from '../constants.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { useMoviesStore } from '../stores/movies.js'
 
 export default {
 	name: 'AddToWatchlist',
@@ -99,11 +104,13 @@ export default {
 	setup() {
 		const watchlistStore = useWatchlistStore()
 		const settingsStore = useSettingsStore()
-		return { watchlistStore, settingsStore }
+		const moviesStore = useMoviesStore()
+		return { watchlistStore, settingsStore, moviesStore }
 	},
 	data() {
 		return {
 			selectedMovie: null,
+			alreadyWatched: false,
 			notes: '',
 			selectedPriority: null,
 			priorityOptions: getPriorityOptions(),
@@ -128,13 +135,14 @@ export default {
 			}
 			this.notes = ''
 			this.selectedPriority = this.priorityOptions[0]
+			this.alreadyWatched = this.moviesStore.movies.some(m => m.tmdbId === movie.id)
 
 			// Scroll to top to show the form
 			window.scrollTo({ top: 0, behavior: 'smooth' })
 		},
 		async addToWatchlist() {
 			this.saving = true
-			const item = await this.watchlistStore.create({
+			const result = await this.watchlistStore.create({
 				tmdbId: this.selectedMovie.tmdbId,
 				title: this.selectedMovie.title,
 				posterPath: this.selectedMovie.posterPath,
@@ -144,7 +152,7 @@ export default {
 				notes: this.notes,
 				priority: this.selectedPriority?.id || 0,
 			})
-			if (item) {
+			if (result) {
 				this.$router.push({ name: 'watchlist' })
 			}
 			this.saving = false
@@ -171,6 +179,10 @@ export default {
 
 .api-key-warning {
 	margin-bottom: 20px;
+}
+
+.already-watched-note {
+	margin-bottom: 16px;
 }
 
 .movie-form-section {

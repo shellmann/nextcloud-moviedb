@@ -169,6 +169,8 @@ OC.L10N.register(
         "Year": "Anno",
         "Year (optional)": "Anno (opzionale)",
         "You have already added this movie to your list. Would you like to view the existing entry?": "Hai già aggiunto questo film alla tua lista. Vuoi visualizzare la voce esistente?",
+        "Added to watchlist. You've seen this one before — this will be logged as a rewatch when you mark it watched.": "Aggiunto alla lista. Hai già visto questo film — verrà registrato come revisione quando lo contrassegnerai come visto.",
+        "You've already watched this movie. If you add it to your watchlist and mark it as watched later, it will be logged as a rewatch.": "Hai già visto questo film. Se lo aggiungi alla lista e lo contrassegni come visto in seguito, verrà registrato come revisione.",
         "Your watchlist is empty": "La tua lista è vuota",
         "to search for movies.": "per cercare film."
     },

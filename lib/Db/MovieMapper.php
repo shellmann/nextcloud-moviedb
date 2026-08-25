@@ -176,7 +176,8 @@ class MovieMapper extends QBMapper {
         $qb->select(...self::COLUMNS)
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->eq('tmdb_id', $qb->createNamedParameter($tmdbId, IQueryBuilder::PARAM_INT)));
+            ->andWhere($qb->expr()->eq('tmdb_id', $qb->createNamedParameter($tmdbId, IQueryBuilder::PARAM_INT)))
+            ->setMaxResults(1);
 
         try {
             return $this->findEntity($qb);

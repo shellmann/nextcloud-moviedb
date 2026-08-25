@@ -74,8 +74,12 @@ export const useWatchlistStore = defineStore('watchlist', {
 				const response = await api.addToWatchlist(itemData)
 				this.items.unshift(response.data.item)
 				this.total++
-				showSuccess(t('moviedb', 'Added to watchlist.'))
-				return response.data.item
+				if (response.data.alreadyWatched) {
+					showSuccess(t('moviedb', 'Added to watchlist. You\'ve seen this one before — this will be logged as a rewatch when you mark it watched.'))
+				} else {
+					showSuccess(t('moviedb', 'Added to watchlist.'))
+				}
+				return response.data
 			} catch (error) {
 				console.error('Failed to add to watchlist:', error)
 				if (error.response?.status === 409) {

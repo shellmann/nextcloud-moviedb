@@ -169,6 +169,8 @@ OC.L10N.register(
         "Year": "Jaar",
         "Year (optional)": "Jaar (optioneel)",
         "You have already added this movie to your list. Would you like to view the existing entry?": "Je hebt deze film al aan je lijst toegevoegd. Wil je het bestaande item bekijken?",
+        "Added to watchlist. You've seen this one before — this will be logged as a rewatch when you mark it watched.": "Toegevoegd aan de kijklijst. Je hebt deze film al eerder gezien — het wordt geregistreerd als herbekijking wanneer je het als bekeken markeert.",
+        "You've already watched this movie. If you add it to your watchlist and mark it as watched later, it will be logged as a rewatch.": "Je hebt deze film al gezien. Als je hem toevoegt aan je kijklijst en later als bekeken markeert, wordt het geregistreerd als herbekijking.",
         "Your watchlist is empty": "Je kijklijst is leeg",
         "to search for movies.": "om films te zoeken."
     },

@@ -168,6 +168,8 @@
         "Year": "Año",
         "Year (optional)": "Año (opcional)",
         "You have already added this movie to your list. Would you like to view the existing entry?": "Ya has añadido esta película a tu lista. ¿Quieres ver la entrada existente?",
+        "Added to watchlist. You've seen this one before — this will be logged as a rewatch when you mark it watched.": "Añadido a la lista. Ya has visto esta película — se registrará como revisión cuando la marques como vista.",
+        "You've already watched this movie. If you add it to your watchlist and mark it as watched later, it will be logged as a rewatch.": "Ya has visto esta película. Si la añades a tu lista y la marcas como vista más tarde, se registrará como revisión.",
         "Your watchlist is empty": "Tu lista está vacía",
         "to search for movies.": "para buscar películas."
     },
