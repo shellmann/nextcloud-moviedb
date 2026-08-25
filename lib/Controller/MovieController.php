@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\MovieService;
+use OCA\MovieDB\Service\MovieWatchService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -22,16 +23,19 @@ use Psr\Log\LoggerInterface;
  */
 class MovieController extends AuthenticatedController {
     private MovieService $service;
+    private MovieWatchService $watchService;
     private LoggerInterface $logger;
 
     public function __construct(
         IRequest $request,
         MovieService $service,
+        MovieWatchService $watchService,
         IUserSession $userSession,
         LoggerInterface $logger
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
+        $this->watchService = $watchService;
         $this->logger = $logger;
     }
 
@@ -171,6 +175,32 @@ class MovieController extends AuthenticatedController {
 
         try {
             $movie = $this->service->update($id, $this->userId, $data);
+
+            // If any watch-specific fields were submitted, update the latest watch entry
+            $watchFields = ['rating', 'review', 'dateWatched', 'platformId', 'languageWatched'];
+            $watchData = array_intersect_key($data, array_flip($watchFields));
+            if (!empty($watchData)) {
+                $watches = $this->watchService->findByMovie($id, $this->userId);
+                if (!empty($watches)) {
+                    // watches are ordered DESC by watched_at — first is the latest
+                    $mapped = [
+                        'rating' => $watchData['rating'] ?? null,
+                        'review' => $watchData['review'] ?? null,
+                        'watchedAt' => $watchData['dateWatched'] ?? null,
+                        'platformId' => $watchData['platformId'] ?? null,
+                        'languageWatched' => $watchData['languageWatched'] ?? null,
+                    ];
+                    // Only pass keys that were actually present in the request
+                    $updateWatch = [];
+                    if (array_key_exists('rating', $watchData)) $updateWatch['rating'] = $mapped['rating'];
+                    if (array_key_exists('review', $watchData)) $updateWatch['review'] = $mapped['review'];
+                    if (array_key_exists('dateWatched', $watchData)) $updateWatch['watchedAt'] = $mapped['watchedAt'];
+                    if (array_key_exists('platformId', $watchData)) $updateWatch['platformId'] = $mapped['platformId'];
+                    if (array_key_exists('languageWatched', $watchData)) $updateWatch['languageWatched'] = $mapped['languageWatched'];
+                    $this->watchService->update($watches[0]->getId(), $this->userId, $updateWatch);
+                }
+            }
+
             return new JSONResponse(['movie' => $movie]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Movie not found'], Http::STATUS_NOT_FOUND);
