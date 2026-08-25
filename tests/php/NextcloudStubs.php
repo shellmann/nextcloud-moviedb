@@ -94,11 +94,48 @@ namespace OCP\AppFramework\Http\Attribute {
     class NoCSRFRequired {}
 }
 
+namespace OCP {
+    interface IDBConnection {
+        public function getQueryBuilder(): mixed;
+        public function escapeLikeParameter(string $param): string;
+    }
+}
+
+namespace OCP\DB\QueryBuilder {
+    interface IQueryBuilder {
+        public const PARAM_STR = 2;
+        public const PARAM_INT = 1;
+        public const PARAM_BOOL = 5;
+        public const PARAM_STR_ARRAY = 102;
+        public const PARAM_INT_ARRAY = 101;
+        public function select(...$selects): static;
+        public function addSelect(...$selects): static;
+        public function from(string $table, ?string $alias = null): static;
+        public function where(string $condition): static;
+        public function andWhere(string $condition): static;
+        public function orWhere(string $condition): static;
+        public function orderBy(string $sort, ?string $order = null): static;
+        public function setMaxResults(?int $maxResults): static;
+        public function setFirstResult(int $firstResult): static;
+        public function leftJoin(string $fromAlias, string $join, string $alias, ?string $condition = null): static;
+        public function innerJoin(string $fromAlias, string $join, string $alias, ?string $condition = null): static;
+        public function groupBy(...$groupBys): static;
+        public function selectAlias(mixed $select, string $alias): static;
+        public function selectDistinct(string $select): static;
+        public function createNamedParameter(mixed $value, int $type = 2, ?string $placeHolder = null): string;
+        public function createFunction(string $call): string;
+        public function executeQuery(): mixed;
+        public function getSQL(): string;
+        public function func(): mixed;
+        public function expr(): mixed;
+    }
+}
+
 namespace OCP\AppFramework\Db {
     class DoesNotExistException extends \Exception {}
 
     class Entity {
-        private $id;
+        protected $id;
         private $_fieldTypes = [];
 
         public function getId(): ?int {
@@ -145,10 +182,16 @@ namespace OCP\AppFramework\Db {
     abstract class QBMapper {
         protected $db;
         protected $tableName;
+        protected $entityClass;
 
         public function __construct($db, string $tableName, ?string $entityClass = null) {
             $this->db = $db;
             $this->tableName = $tableName;
+            $this->entityClass = $entityClass;
+        }
+
+        public function getTableName(): string {
+            return $this->tableName;
         }
 
         public function insert(Entity $entity): Entity {
@@ -161,6 +204,14 @@ namespace OCP\AppFramework\Db {
 
         public function delete(Entity $entity): Entity {
             return $entity;
+        }
+
+        protected function findEntity($qb): Entity {
+            throw new DoesNotExistException('stub: findEntity not implemented');
+        }
+
+        protected function findEntities($qb): array {
+            return [];
         }
 
         abstract public function find(int $id, ?string $userId = null);

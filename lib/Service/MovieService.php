@@ -52,6 +52,8 @@ class MovieService {
         } else {
             $data['lastWatchedAt'] = null;
             $data['lastRating'] = null;
+            $data['rating'] = null;
+            $data['dateWatched'] = null;
             $data['review'] = null;
             $data['platformId'] = null;
             $data['languageWatched'] = null;

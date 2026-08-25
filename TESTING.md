@@ -744,3 +744,28 @@ Study their `tests/bootstrap.php` files to see how they load Nextcloud core.
 | **All Tests** | `npm test && composer test` | See above | ~6s |
 
 **✨ Quick Tip:** Set up a symlink between your dev directory and Nextcloud's custom_apps for seamless testing!
+
+---
+
+## Post-Deploy Browser Smoke Check
+
+After every deploy to a real Nextcloud instance, verify these five things manually
+before calling a release good. They cover the two bugs that slipped into v1.2.0.
+
+| # | Check | What to look for |
+|---|-------|-----------------|
+| 1 | **Dashboard stats non-zero** | Open the Dashboard tab — all counters (movies, runtime, avg rating, by year/platform) must show real numbers, not zeroes/errors. A 500 here is the filter-alias bug (`m.` prefix missing from `countAll`). |
+| 2 | **Genre filter changes the list** | On the movie list, pick any genre from the filter bar — the grid must update and the count must drop below the unfiltered total. "No change" means `applyFilters` is still broken. |
+| 3 | **Search changes the list** | Type a movie title fragment in the search box — only matching movies should appear. An unchanged list (or 500) is the same alias bug. |
+| 4 | **Edit form shows pre-populated watch data** | Click Edit on a movie that has a review and rating — the review text, star rating, platform, and watch date must all pre-fill. An empty form means `MovieController::show` is returning the bare entity instead of calling `findWithLatestWatch`. |
+| 5 | **Stats API returns 200** | Open the browser DevTools Network tab, reload the Dashboard — check that the `/api/stats` request returns HTTP 200, not 500. |
+
+### How to run it
+
+1. Open the app in the browser (`https://<your-nc>/apps/moviedb`).
+2. Work through the table above top to bottom (takes ~2 minutes).
+3. Only mark the release green after all five pass.
+
+These checks complement, not replace, the automated test suite — the unit tests
+verify logic; this checklist verifies the deployed integration with a real DB and
+real Nextcloud middleware.
