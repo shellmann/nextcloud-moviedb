@@ -28,6 +28,40 @@ class MovieService {
     }
 
     /**
+     * Returns the movie as an array merged with its latest watch fields
+     * (rating, review, platformId, languageWatched, lastWatchedAt).
+     * Used by the show endpoint so the edit form can pre-populate watch data.
+     *
+     * @throws DoesNotExistException
+     */
+    public function findWithLatestWatch(int $id, string $userId): array {
+        $movie = $this->mapper->find($id, $userId);
+        $data = $movie->jsonSerialize();
+
+        $watches = $this->watchMapper->findByMovie($id, $userId);
+        if (!empty($watches)) {
+            $latest = $watches[0]; // already ordered DESC by watched_at
+            $data['lastWatchedAt'] = $latest->getWatchedAt();
+            $data['lastRating'] = $latest->getRating();
+            $data['rating'] = $latest->getRating();
+            $data['dateWatched'] = $latest->getWatchedAt();
+            $data['review'] = $latest->getReview();
+            $data['platformId'] = $latest->getPlatformId();
+            $data['languageWatched'] = $latest->getLanguageWatched();
+            $data['latestWatchId'] = $latest->getId();
+        } else {
+            $data['lastWatchedAt'] = null;
+            $data['lastRating'] = null;
+            $data['review'] = null;
+            $data['platformId'] = null;
+            $data['languageWatched'] = null;
+            $data['latestWatchId'] = null;
+        }
+
+        return $data;
+    }
+
+    /**
      * @return Movie[]
      */
     public function findAll(string $userId, array $filters = [], int $limit = 50, int $offset = 0): array {

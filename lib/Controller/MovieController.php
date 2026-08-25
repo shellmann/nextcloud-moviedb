@@ -96,7 +96,7 @@ class MovieController extends AuthenticatedController {
         }
 
         try {
-            $movie = $this->service->find($id, $this->userId);
+            $movie = $this->service->findWithLatestWatch($id, $this->userId);
             return new JSONResponse(['movie' => $movie]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Movie not found'], Http::STATUS_NOT_FOUND);
