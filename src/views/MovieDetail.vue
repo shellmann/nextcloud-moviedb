@@ -116,7 +116,7 @@
 								<span v-if="watch.rating" class="watch-rating">★ {{ watch.rating }}/10</span>
 								<span v-if="getPlatformName(watch.platformId)" class="watch-platform">{{ getPlatformName(watch.platformId) }}</span>
 								<span v-if="watch.review" class="watch-review-indicator" :title="watch.review">💬</span>
-								<NcActions>
+								<NcActions v-if="watchesStore.watches.length > 1">
 									<NcActionButton @click="deleteWatch(watch.id)">
 										<template #icon>
 											<Delete :size="20" />
