@@ -82,11 +82,15 @@
 		<div class="dashboard-sections">
 			<div class="section">
 				<h3>{{ t('moviedb', 'Recently Watched') }}</h3>
-				<div v-if="recentMovies.length" class="movie-row">
+				<div v-if="recentMovies.length || recentSeries.length" class="movie-row">
 					<MovieCard v-for="movie in recentMovies"
-						:key="movie.id"
+						:key="'movie-' + movie.id"
 						:movie="movie"
 						@click="goToMovie(movie.id)" />
+					<SeriesCard v-for="series in recentSeries"
+						:key="'series-' + series.id"
+						:series="series"
+						@click="goToSeries(series.id)" />
 				</div>
 				<p v-else class="empty-message">
 					{{ t('moviedb', 'No movies watched yet') }}
@@ -95,11 +99,15 @@
 
 			<div class="section">
 				<h3>{{ t('moviedb', 'Top Rated') }}</h3>
-				<div v-if="topRatedMovies.length" class="movie-row">
+				<div v-if="topRatedMovies.length || topRatedSeries.length" class="movie-row">
 					<MovieCard v-for="movie in topRatedMovies"
-						:key="movie.id"
+						:key="'movie-' + movie.id"
 						:movie="movie"
 						@click="goToMovie(movie.id)" />
+					<SeriesCard v-for="series in topRatedSeries"
+						:key="'series-' + series.id"
+						:series="series"
+						@click="goToSeries(series.id)" />
 				</div>
 				<p v-else class="empty-message">
 					{{ t('moviedb', 'Rate some movies to see them here') }}
@@ -112,6 +120,7 @@
 <script>
 import { NcNoteCard } from '@nextcloud/vue'
 import MovieCard from '../components/MovieCard.vue'
+import SeriesCard from '../components/SeriesCard.vue'
 import api from '../services/api.js'
 import { useSettingsStore } from '../stores/settings.js'
 
@@ -120,6 +129,7 @@ export default {
 	components: {
 		NcNoteCard,
 		MovieCard,
+		SeriesCard,
 	},
 	setup() {
 		const settingsStore = useSettingsStore()
@@ -136,7 +146,9 @@ export default {
 				watchlistCount: 0,
 			},
 			recentMovies: [],
+			recentSeries: [],
 			topRatedMovies: [],
+			topRatedSeries: [],
 			loading: true,
 		}
 	},
@@ -159,7 +171,9 @@ export default {
 				])
 				this.stats = statsRes.data
 				this.recentMovies = recentRes.data.movies
+				this.recentSeries = recentRes.data.series || []
 				this.topRatedMovies = topRatedRes.data.movies
+				this.topRatedSeries = topRatedRes.data.series || []
 			} catch (error) {
 				console.error('Failed to load dashboard data:', error)
 			} finally {
@@ -168,6 +182,9 @@ export default {
 		},
 		goToMovie(id) {
 			this.$router.push({ name: 'movie-detail', params: { id } })
+		},
+		goToSeries(id) {
+			this.$router.push({ name: 'series-detail', params: { id } })
 		},
 	},
 }

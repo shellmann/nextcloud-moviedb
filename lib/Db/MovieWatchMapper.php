@@ -102,11 +102,14 @@ class MovieWatchMapper extends QBMapper {
 
         // NC's IFunctionBuilder has no avg(); a plain unquoted AVG() is portable
         // across SQLite/MySQL/Postgres (same approach as the MAX() calls above).
+        // Averages every rated watch row: movie watches AND the single series-level
+        // watch row per TV show (series_id set, movie_id/episode_id NULL). Episodes
+        // carry no rating (their watched-state is a boolean on moviedb_episodes), so
+        // there are no per-episode rows to skew this.
         $qb->selectAlias($qb->createFunction('AVG(rating)'), 'average')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->isNotNull('rating'))
-            ->andWhere($qb->expr()->isNotNull('movie_id'));
+            ->andWhere($qb->expr()->isNotNull('rating'));
 
         $result = $qb->executeQuery();
         $row = $result->fetch();
@@ -166,109 +169,64 @@ class MovieWatchMapper extends QBMapper {
         return $data;
     }
 
-    // ─── Episode watches (v1.3.0) ───────────────────────────────────────────
+    // ─── Series-level watch metadata (v1.3.0) ───────────────────────────────
 
     /**
-     * @return MovieWatch[]
+     * Read the single series-level watch row (the TV show's own rating, platform,
+     * language, and watch date). By convention a series carries at most one such
+     * row: series_id set, episode_id NULL. Returns nulls when none exists.
+     *
+     * @return array{watchedAt: ?string, rating: ?int, platformId: ?int, languageWatched: ?string, review: ?string}
      */
-    public function findByEpisode(int $episodeId, string $userId): array {
+    public function getSeriesWatchSummary(int $seriesId, string $userId): array {
         $qb = $this->db->getQueryBuilder();
+        $qb->select('watched_at', 'rating', 'platform_id', 'language_watched', 'review')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('series_id', $qb->createNamedParameter($seriesId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNull('episode_id'))
+            ->setMaxResults(1);
 
+        $result = $qb->executeQuery();
+        $row = $result->fetch();
+        $result->closeCursor();
+
+        if ($row === false) {
+            return [
+                'watchedAt' => null,
+                'rating' => null,
+                'platformId' => null,
+                'languageWatched' => null,
+                'review' => null,
+            ];
+        }
+
+        return [
+            'watchedAt' => $row['watched_at'] ?? null,
+            'rating' => $row['rating'] !== null ? (int)$row['rating'] : null,
+            'platformId' => $row['platform_id'] !== null ? (int)$row['platform_id'] : null,
+            'languageWatched' => $row['language_watched'] ?? null,
+            'review' => $row['review'] ?? null,
+        ];
+    }
+
+    /**
+     * Find the single series-level watch row, or null if the series has none.
+     */
+    public function findSeriesWatch(int $seriesId, string $userId): ?MovieWatch {
+        $qb = $this->db->getQueryBuilder();
         $qb->select('*')
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('episode_id', $qb->createNamedParameter($episodeId, IQueryBuilder::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->orderBy('watched_at', 'DESC');
-
-        return $this->findEntities($qb);
-    }
-
-    /**
-     * Distinct episode IDs the user has watched for a series.
-     *
-     * @return int[]
-     */
-    public function findWatchedEpisodeIds(int $seriesId, string $userId): array {
-        $qb = $this->db->getQueryBuilder();
-
-        $qb->selectDistinct('episode_id')
-            ->from($this->getTableName())
             ->where($qb->expr()->eq('series_id', $qb->createNamedParameter($seriesId, IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->isNotNull('episode_id'));
+            ->andWhere($qb->expr()->isNull('episode_id'))
+            ->setMaxResults(1);
 
-        $result = $qb->executeQuery();
-        $ids = [];
-        while ($row = $result->fetch()) {
-            $ids[] = (int)$row['episode_id'];
+        try {
+            return $this->findEntity($qb);
+        } catch (DoesNotExistException $e) {
+            return null;
         }
-        $result->closeCursor();
-
-        return $ids;
-    }
-
-    /**
-     * Watch counts per episode for a series: episode_id => number of watches.
-     *
-     * @return array<int, int>
-     */
-    public function countWatchesPerEpisode(int $seriesId, string $userId): array {
-        $qb = $this->db->getQueryBuilder();
-
-        $qb->select('episode_id')
-            ->selectAlias($qb->func()->count('*'), 'count')
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('series_id', $qb->createNamedParameter($seriesId, IQueryBuilder::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->isNotNull('episode_id'))
-            ->groupBy('episode_id');
-
-        $result = $qb->executeQuery();
-        $data = [];
-        while ($row = $result->fetch()) {
-            $data[(int)$row['episode_id']] = (int)$row['count'];
-        }
-        $result->closeCursor();
-
-        return $data;
-    }
-
-    /**
-     * Total distinct watched episodes across all series for a user.
-     */
-    public function countWatchedEpisodes(string $userId): int {
-        $qb = $this->db->getQueryBuilder();
-
-        $qb->selectAlias($qb->createFunction('COUNT(DISTINCT episode_id)'), 'count')
-            ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->isNotNull('episode_id'));
-
-        $result = $qb->executeQuery();
-        $row = $result->fetch();
-        $result->closeCursor();
-
-        return (int)($row['count'] ?? 0);
-    }
-
-    /**
-     * Total episode runtime across all watches for a user (joins to episodes for
-     * runtime). Counts each rewatch separately, mirroring getTotalRuntime.
-     */
-    public function getTotalEpisodeRuntime(string $userId): int {
-        $qb = $this->db->getQueryBuilder();
-
-        $qb->selectAlias($qb->func()->sum('e.runtime'), 'total')
-            ->from($this->getTableName(), 'w')
-            ->innerJoin('w', 'moviedb_episodes', 'e', $qb->expr()->eq('w.episode_id', 'e.id'))
-            ->where($qb->expr()->eq('w.user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->isNotNull('e.runtime'));
-
-        $result = $qb->executeQuery();
-        $row = $result->fetch();
-        $result->closeCursor();
-
-        return (int)($row['total'] ?? 0);
     }
 
     /**

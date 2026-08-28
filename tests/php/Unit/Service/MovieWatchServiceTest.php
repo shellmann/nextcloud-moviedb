@@ -194,51 +194,6 @@ class MovieWatchServiceTest extends TestCase {
         $this->service->delete(999, 'testuser');
     }
 
-    public function testFindByEpisode(): void {
-        $episodeId = 55;
-        $userId = 'testuser';
-        $watches = [$this->createWatch(1, 7), $this->createWatch(2, 7)];
-
-        $this->mapper->expects($this->once())
-            ->method('findByEpisode')
-            ->with($episodeId, $userId)
-            ->willReturn($watches);
-
-        $result = $this->service->findByEpisode($episodeId, $userId);
-
-        $this->assertCount(2, $result);
-    }
-
-    public function testCreateForEpisodePopulatesEpisodeAndSeries(): void {
-        $episodeId = 55;
-        $seriesId = 9;
-        $userId = 'testuser';
-        $data = ['watchedAt' => '2026-08-24', 'rating' => 7];
-
-        $this->mapper->expects($this->once())
-            ->method('insert')
-            ->with($this->callback(function (MovieWatch $w) use ($episodeId, $seriesId, $userId) {
-                return $w->getEpisodeId() === $episodeId
-                    && $w->getSeriesId() === $seriesId
-                    && $w->getMovieId() === null
-                    && $w->getUserId() === $userId
-                    && $w->getRating() === 7
-                    && $w->getCreatedAt() !== '';
-            }))
-            ->willReturnArgument(0);
-
-        $result = $this->service->createForEpisode($episodeId, $seriesId, $userId, $data);
-
-        $this->assertInstanceOf(MovieWatch::class, $result);
-        $this->assertEquals($episodeId, $result->getEpisodeId());
-    }
-
-    public function testCreateForEpisodeRejectsInvalidRating(): void {
-        $this->mapper->expects($this->never())->method('insert');
-        $this->expectException(\InvalidArgumentException::class);
-        $this->service->createForEpisode(55, 9, 'testuser', ['rating' => 11]);
-    }
-
     private function createWatch(int $id, int $movieId): MovieWatch {
         $watch = new MovieWatch();
         $watch->setId($id);

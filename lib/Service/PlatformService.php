@@ -27,6 +27,15 @@ class PlatformService {
      * @return Platform[]
      */
     public function findAllForUser(string $userId): array {
+        // Fresh installs can end up without the default platforms: Nextcloud's
+        // migrator does not reliably fire the seeding postSchemaChange hook
+        // during `app:enable`, so relying on the migration alone leaves the
+        // platform picker empty. Seed lazily on first read instead — cheap
+        // (a single COUNT) once defaults exist, and self-healing otherwise.
+        if (!$this->mapper->hasDefaults()) {
+            $this->mapper->createDefaults();
+        }
+
         return $this->mapper->findAllForUser($userId);
     }
 

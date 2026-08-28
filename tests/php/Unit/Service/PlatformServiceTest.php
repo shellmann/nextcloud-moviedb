@@ -51,6 +51,12 @@ class PlatformServiceTest extends TestCase {
             $this->createPlatform(3, 'HBO Max', null, true), // Default platform
         ];
 
+        // Defaults already present → no lazy seeding.
+        $this->mapper->expects($this->once())
+            ->method('hasDefaults')
+            ->willReturn(true);
+        $this->mapper->expects($this->never())->method('createDefaults');
+
         $this->mapper->expects($this->once())
             ->method('findAllForUser')
             ->with($userId)
@@ -61,6 +67,26 @@ class PlatformServiceTest extends TestCase {
         $this->assertIsArray($result);
         $this->assertCount(3, $result);
         $this->assertInstanceOf(Platform::class, $result[0]);
+    }
+
+    public function testFindAllForUserSeedsDefaultsWhenMissing(): void {
+        // Fresh install: no defaults exist yet, so findAllForUser must seed them
+        // before returning (self-heals when the migration hook didn't fire).
+        $userId = 'testuser';
+
+        $this->mapper->expects($this->once())
+            ->method('hasDefaults')
+            ->willReturn(false);
+        $this->mapper->expects($this->once())
+            ->method('createDefaults');
+        $this->mapper->expects($this->once())
+            ->method('findAllForUser')
+            ->with($userId)
+            ->willReturn([$this->createPlatform(1, 'Netflix', null, true)]);
+
+        $result = $this->service->findAllForUser($userId);
+
+        $this->assertCount(1, $result);
     }
 
     public function testCreate(): void {

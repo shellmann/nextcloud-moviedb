@@ -46,6 +46,37 @@
 						<input v-model="isFavorite" type="checkbox">
 						{{ t('moviedb', 'Mark as Favorite') }}
 					</label>
+
+					<!-- Series-level watch metadata (the show owns these, like a movie). -->
+					<div class="watch-meta">
+						<div class="watch-meta-row">
+							<div class="watch-meta-field">
+								<label>{{ t('moviedb', 'Platform') }}</label>
+								<NcSelect v-model="selectedPlatform"
+									:options="platformOptions"
+									:placeholder="t('moviedb', 'Select platform')" />
+							</div>
+							<div class="watch-meta-field">
+								<label>{{ t('moviedb', 'Language Watched') }}</label>
+								<NcSelect v-model="selectedLanguage"
+									:options="languageOptions"
+									:placeholder="t('moviedb', 'Select language')" />
+							</div>
+						</div>
+						<div class="watch-meta-row">
+							<div class="watch-meta-field">
+								<label>{{ t('moviedb', 'Date Watched') }}</label>
+								<NcTextField v-model="dateWatched" type="date" />
+							</div>
+							<div class="watch-meta-field">
+								<label>{{ t('moviedb', 'Rating') }}</label>
+								<NcSelect v-model="selectedRating"
+									:options="ratingOptions"
+									:placeholder="t('moviedb', 'Select rating')" />
+							</div>
+						</div>
+					</div>
+
 					<NcNoteCard type="info">
 						{{ t('moviedb', 'All seasons and episodes will be imported. You can then mark episodes, seasons, or the whole show as watched.') }}
 					</NcNoteCard>
@@ -90,14 +121,16 @@
 </template>
 
 <script>
-import { NcNoteCard, NcButton, NcDialog, NcLoadingIcon } from '@nextcloud/vue'
+import { NcNoteCard, NcButton, NcDialog, NcLoadingIcon, NcSelect, NcTextField } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
 import api from '../services/api.js'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
+import { LANGUAGE_OPTIONS, getRatingOptions } from '../constants.js'
 import { useSeriesStore } from '../stores/series.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { usePlatformsStore } from '../stores/platforms.js'
 
 export default {
 	name: 'AddSeries',
@@ -106,13 +139,16 @@ export default {
 		NcButton,
 		NcDialog,
 		NcLoadingIcon,
+		NcSelect,
+		NcTextField,
 		ArrowLeft,
 		TmdbSearchSection,
 	},
 	setup() {
 		const seriesStore = useSeriesStore()
 		const settingsStore = useSettingsStore()
-		return { seriesStore, settingsStore }
+		const platformsStore = usePlatformsStore()
+		return { seriesStore, settingsStore, platformsStore }
 	},
 	data() {
 		return {
@@ -121,6 +157,12 @@ export default {
 			saving: false,
 			showDuplicateDialog: false,
 			duplicateExistingId: null,
+			selectedPlatform: null,
+			selectedLanguage: null,
+			selectedRating: null,
+			dateWatched: '',
+			languageOptions: LANGUAGE_OPTIONS,
+			ratingOptions: getRatingOptions(),
 		}
 	},
 	computed: {
@@ -133,6 +175,12 @@ export default {
 		posterUrl() {
 			return getPosterUrl(this.selectedSeries?.posterPath, 'w300')
 		},
+		platformOptions() {
+			return this.platformsStore.platforms.map(p => ({ id: p.id, label: p.name }))
+		},
+	},
+	created() {
+		this.platformsStore.fetchAll()
 	},
 	methods: {
 		async selectSeries(item) {
@@ -158,6 +206,10 @@ export default {
 					seasons: details.seasons || [],
 				}
 				this.isFavorite = false
+				this.selectedPlatform = null
+				this.selectedLanguage = this.languageOptions.find(l => l.id === this.tmdbLanguage) || null
+				this.selectedRating = null
+				this.dateWatched = new Date().toISOString().slice(0, 10)
 				window.scrollTo({ top: 0, behavior: 'smooth' })
 			} catch (error) {
 				console.error('Failed to fetch series details:', error)
@@ -172,6 +224,10 @@ export default {
 				...this.selectedSeries,
 				isFavorite: this.isFavorite,
 				language: this.tmdbLanguage,
+				platformId: this.selectedPlatform?.id || null,
+				languageWatched: this.selectedLanguage?.id || null,
+				rating: this.selectedRating?.id || null,
+				watchedAt: this.dateWatched || null,
 			})
 			this.saving = false
 
@@ -273,6 +329,32 @@ export default {
 		align-items: center;
 		gap: 8px;
 		margin-bottom: 16px;
+	}
+}
+
+.watch-meta {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	margin-bottom: 16px;
+
+	.watch-meta-row {
+		display: flex;
+		gap: 16px;
+
+		@media (max-width: 600px) {
+			flex-direction: column;
+		}
+	}
+
+	.watch-meta-field {
+		flex: 1;
+
+		label {
+			display: block;
+			margin-bottom: 4px;
+			font-size: 14px;
+		}
 	}
 }
 

@@ -9,6 +9,7 @@ use OCA\MovieDB\Db\Episode;
 use OCA\MovieDB\Db\EpisodeMapper;
 use OCA\MovieDB\Db\MovieWatch;
 use OCA\MovieDB\Db\MovieWatchMapper;
+use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -18,6 +19,7 @@ class SeriesService {
     private SeriesMapper $mapper;
     private EpisodeMapper $episodeMapper;
     private MovieWatchMapper $watchMapper;
+    private PlatformMapper $platformMapper;
     private TmdbService $tmdbService;
     private IDBConnection $db;
 
@@ -25,12 +27,14 @@ class SeriesService {
         SeriesMapper $mapper,
         EpisodeMapper $episodeMapper,
         MovieWatchMapper $watchMapper,
+        PlatformMapper $platformMapper,
         TmdbService $tmdbService,
         IDBConnection $db
     ) {
         $this->mapper = $mapper;
         $this->episodeMapper = $episodeMapper;
         $this->watchMapper = $watchMapper;
+        $this->platformMapper = $platformMapper;
         $this->tmdbService = $tmdbService;
         $this->db = $db;
     }
@@ -118,6 +122,13 @@ class SeriesService {
                 }
             }
 
+            // If the Add form supplied series-level watch metadata (rating,
+            // platform, language, date), persist it as the single series-level
+            // watch row. The TV show owns this metadata, not individual episodes.
+            if ($this->hasWatchMetadata($data)) {
+                $this->upsertSeriesWatch($series->getId(), $userId, $data);
+            }
+
             $this->db->commit();
             return $series;
         } catch (\Throwable $e) {
@@ -159,7 +170,6 @@ class SeriesService {
         $data = $series->jsonSerialize();
 
         $episodes = $this->episodeMapper->findBySeries($id);
-        $watchCounts = $this->watchMapper->countWatchesPerEpisode($id, $userId);
         $today = (new DateTime())->format('Y-m-d');
 
         $seasons = [];
@@ -169,9 +179,8 @@ class SeriesService {
 
         foreach ($episodes as $ep) {
             $epArr = $ep->jsonSerialize();
-            $count = $watchCounts[$ep->getId()] ?? 0;
-            $epArr['watchCount'] = $count;
-            $epArr['watched'] = $count > 0;
+            $watched = $ep->getWatched();
+            $epArr['watched'] = $watched;
 
             $aired = $ep->getAirDate() !== null && $ep->getAirDate() <= $today;
             $epArr['aired'] = $aired;
@@ -180,7 +189,7 @@ class SeriesService {
             $isSpecial = $ep->getSeasonNumber() === 0;
             if ($aired && !$isSpecial) {
                 $airedCount++;
-                if ($count > 0) {
+                if ($watched) {
                     $watchedCount++;
                 } elseif ($nextEpisode === null) {
                     // First aired, unwatched, non-special episode (episodes are
@@ -201,7 +210,7 @@ class SeriesService {
             $seasons[$sn]['episodes'][] = $epArr;
             if ($aired && !$isSpecial) {
                 $seasons[$sn]['airedCount']++;
-                if ($count > 0) {
+                if ($watched) {
                     $seasons[$sn]['watchedCount']++;
                 }
             }
@@ -222,6 +231,25 @@ class SeriesService {
         $data['nextEpisode'] = $nextEpisode;
         $data['caughtUp'] = $airedCount > 0 && $watchedCount >= $airedCount;
 
+        // Series-level watch metadata (the TV show's own rating/platform/
+        // language/date), read from the single series-level watch row.
+        $summary = $this->watchMapper->getSeriesWatchSummary($id, $userId);
+        $data['rating'] = $summary['rating'];
+        $data['review'] = $summary['review'];
+        $data['watchedAt'] = $summary['watchedAt'];
+        $data['languageWatched'] = $summary['languageWatched'];
+        $data['platformId'] = $summary['platformId'];
+        $data['platformName'] = null;
+        if ($summary['platformId'] !== null) {
+            try {
+                $data['platformName'] = $this->platformMapper
+                    ->find($summary['platformId'])
+                    ->getName();
+            } catch (\Throwable $e) {
+                // Platform was deleted; leave the name null.
+            }
+        }
+
         return $data;
     }
 
@@ -235,92 +263,120 @@ class SeriesService {
     }
 
     /**
-     * Mark a single episode watched (idempotent: skips if already watched).
+     * Set a single episode's watched flag. Episodes are a plain
+     * watched/unwatched toggle — no per-episode metadata.
      *
      * @throws DoesNotExistException
      */
-    public function markEpisodeWatched(int $seriesId, int $episodeId, string $userId, array $data = []): void {
+    public function markEpisodeWatched(int $seriesId, int $episodeId, string $userId, bool $watched = true): void {
         $this->mapper->find($seriesId, $userId);
         $episode = $this->episodeMapper->find($episodeId);
         if ($episode->getSeriesId() !== $seriesId) {
             throw new DoesNotExistException('Episode does not belong to series');
         }
-        $watched = $this->watchMapper->findWatchedEpisodeIds($seriesId, $userId);
-        if (in_array($episodeId, $watched, true)) {
-            return; // already watched — idempotent
+        if ($episode->getWatched() === $watched) {
+            return; // idempotent
         }
-        $this->insertEpisodeWatch($episodeId, $seriesId, $userId, $data);
+        $episode->setWatched($watched);
+        $episode->setUpdatedAt((new DateTime())->format('Y-m-d H:i:s'));
+        $this->episodeMapper->update($episode);
     }
 
     /**
-     * Fan out over aired episodes of a season, skipping already-watched ones.
+     * Flip the watched flag on all aired episodes of a season.
      *
      * @throws DoesNotExistException
      */
-    public function markSeasonWatched(int $seriesId, int $seasonNumber, string $userId, array $data = []): int {
+    public function markSeasonWatched(int $seriesId, int $seasonNumber, string $userId, bool $watched = true): int {
         $this->mapper->find($seriesId, $userId);
         $episodes = $this->episodeMapper->findBySeriesAndSeason($seriesId, $seasonNumber);
-        return $this->markEpisodesWatched($seriesId, $episodes, $userId, $data);
+        return $this->setEpisodesWatched($episodes, $watched);
     }
 
     /**
-     * Fan out over all aired episodes of the series (excluding specials).
+     * Flip the watched flag on all aired episodes of the series (excluding specials).
      *
      * @throws DoesNotExistException
      */
-    public function markSeriesWatched(int $seriesId, string $userId, array $data = []): int {
+    public function markSeriesWatched(int $seriesId, string $userId, bool $watched = true): int {
         $this->mapper->find($seriesId, $userId);
         $episodes = array_filter(
             $this->episodeMapper->findBySeries($seriesId),
             static fn (Episode $e): bool => $e->getSeasonNumber() !== 0
         );
-        return $this->markEpisodesWatched($seriesId, $episodes, $userId, $data);
+        return $this->setEpisodesWatched($episodes, $watched);
     }
 
     /**
+     * Flip the watched flag on the aired episodes in $episodes via one bulk
+     * UPDATE. Only episodes whose flag actually changes are counted.
+     *
      * @param Episode[] $episodes
-     * @return int number of new watch rows inserted
+     * @return int number of episodes whose flag changed
      */
-    private function markEpisodesWatched(int $seriesId, array $episodes, string $userId, array $data): int {
-        $watched = $this->watchMapper->findWatchedEpisodeIds($seriesId, $userId);
-        $watchedSet = array_flip($watched);
+    private function setEpisodesWatched(array $episodes, bool $watched): int {
         $today = (new DateTime())->format('Y-m-d');
-        $inserted = 0;
-
-        $this->db->beginTransaction();
-        try {
-            foreach ($episodes as $ep) {
-                $aired = $ep->getAirDate() !== null && $ep->getAirDate() <= $today;
-                if (!$aired) {
-                    continue;
-                }
-                if (isset($watchedSet[$ep->getId()])) {
-                    continue; // idempotent
-                }
-                $this->insertEpisodeWatch($ep->getId(), $seriesId, $userId, $data);
-                $inserted++;
+        $ids = [];
+        foreach ($episodes as $ep) {
+            $aired = $ep->getAirDate() !== null && $ep->getAirDate() <= $today;
+            if (!$aired) {
+                continue;
             }
-            $this->db->commit();
-        } catch (\Throwable $e) {
-            $this->db->rollBack();
-            throw $e;
+            if ($ep->getWatched() === $watched) {
+                continue; // idempotent
+            }
+            $ids[] = $ep->getId();
         }
-
-        return $inserted;
+        if (empty($ids)) {
+            return 0;
+        }
+        return $this->episodeMapper->setWatchedForEpisodes($ids, $watched);
     }
 
-    private function insertEpisodeWatch(int $episodeId, int $seriesId, string $userId, array $data): void {
-        $watch = new MovieWatch();
-        $watch->setEpisodeId($episodeId);
-        $watch->setSeriesId($seriesId);
-        $watch->setUserId($userId);
-        $watch->setWatchedAt($data['watchedAt'] ?? (new DateTime())->format('Y-m-d'));
-        $watch->setRating(isset($data['rating']) ? (int)$data['rating'] : null);
-        $watch->setReview($data['review'] ?? null);
-        $watch->setPlatformId($data['platformId'] ?? null);
-        $watch->setLanguageWatched($data['languageWatched'] ?? null);
-        $watch->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
-        $this->watchMapper->insert($watch);
+    /**
+     * Does $data carry any series-level watch metadata worth persisting?
+     */
+    private function hasWatchMetadata(array $data): bool {
+        return isset($data['rating'])
+            || isset($data['platformId'])
+            || isset($data['languageWatched'])
+            || isset($data['watchedAt'])
+            || isset($data['review']);
+    }
+
+    /**
+     * Create or update the single series-level watch row (series_id set,
+     * episode_id NULL) carrying the show's rating/platform/language/date.
+     */
+    public function upsertSeriesWatch(int $seriesId, string $userId, array $data): void {
+        $watch = $this->watchMapper->findSeriesWatch($seriesId, $userId);
+        $isNew = $watch === null;
+        if ($isNew) {
+            $watch = new MovieWatch();
+            $watch->setSeriesId($seriesId);
+            $watch->setUserId($userId);
+            $watch->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
+        }
+
+        $watch->setWatchedAt($data['watchedAt'] ?? $watch->getWatchedAt() ?? (new DateTime())->format('Y-m-d'));
+        if (array_key_exists('rating', $data)) {
+            $watch->setRating($data['rating'] !== null ? (int)$data['rating'] : null);
+        }
+        if (array_key_exists('review', $data)) {
+            $watch->setReview($data['review']);
+        }
+        if (array_key_exists('platformId', $data)) {
+            $watch->setPlatformId($data['platformId'] !== null ? (int)$data['platformId'] : null);
+        }
+        if (array_key_exists('languageWatched', $data)) {
+            $watch->setLanguageWatched($data['languageWatched']);
+        }
+
+        if ($isNew) {
+            $this->watchMapper->insert($watch);
+        } else {
+            $this->watchMapper->update($watch);
+        }
     }
 
     /**
@@ -350,7 +406,15 @@ class SeriesService {
 
         $series->setUpdatedAt((new DateTime())->format('Y-m-d H:i:s'));
 
-        return $this->mapper->update($series);
+        $updated = $this->mapper->update($series);
+
+        // Series-level watch metadata (rating/platform/language/date) lives in a
+        // dedicated watch row, not on the series entity. Persist it if present.
+        if ($this->hasWatchMetadata($data)) {
+            $this->upsertSeriesWatch($id, $userId, $data);
+        }
+
+        return $updated;
     }
 
     /**

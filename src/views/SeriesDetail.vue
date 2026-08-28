@@ -54,6 +54,23 @@
 						<span v-if="series.director">{{ t('moviedb', 'Creator') }}: {{ series.director }}</span>
 					</div>
 
+					<!-- Series-level watch metadata (the show owns rating/platform/
+						 language/date, just like a movie). -->
+					<div v-if="hasWatchMeta" class="series-watch-summary">
+						<span v-if="series.rating" class="watch-meta-rating">
+							★ {{ series.rating }}/10
+						</span>
+						<span v-if="series.platformName">
+							{{ t('moviedb', 'Watched on') }}: {{ series.platformName }}
+						</span>
+						<span v-if="series.languageWatched">
+							{{ t('moviedb', 'Language') }}: {{ languageLabel(series.languageWatched) }}
+						</span>
+						<span v-if="series.watchedAt">
+							{{ t('moviedb', 'Date watched') }}: {{ formatDate(series.watchedAt) }}
+						</span>
+					</div>
+
 					<!-- Overall progress -->
 					<div class="progress-block">
 						<div class="progress-label">
@@ -66,11 +83,16 @@
 						<NcProgressBar :value="series.progress" size="medium" />
 						<div class="progress-actions">
 							<NcButton :disabled="series.caughtUp || marking"
-								@click="markSeriesWatched">
+								@click="markSeriesWatched(true)">
 								<template #icon>
 									<CheckAll :size="20" />
 								</template>
 								{{ series.caughtUp ? t('moviedb', 'Caught up') : t('moviedb', 'Mark series watched') }}
+							</NcButton>
+							<NcButton v-if="series.watchedEpisodeCount > 0"
+								:disabled="marking"
+								@click="markSeriesWatched(false)">
+								{{ t('moviedb', 'Mark series unwatched') }}
 							</NcButton>
 						</div>
 					</div>
@@ -86,7 +108,7 @@
 							</div>
 							<NcButton type="primary"
 								:disabled="marking"
-								@click="markEpisodeWatched(series.nextEpisode.id)">
+								@click="toggleEpisode(series.nextEpisode, true)">
 								<template #icon>
 									<Check :size="20" />
 								</template>
@@ -113,7 +135,7 @@
 								</span>
 								<NcButton v-if="season.seasonNumber !== 0"
 									:disabled="marking || season.watchedCount >= season.airedCount"
-									@click.stop="markSeasonWatched(season.seasonNumber)">
+									@click.stop="markSeasonWatched(season.seasonNumber, true)">
 									{{ t('moviedb', 'Mark season watched') }}
 								</NcButton>
 							</div>
@@ -123,32 +145,17 @@
 									:key="ep.id"
 									class="episode-row"
 									:class="{ watched: ep.watched, unaired: !ep.aired }">
+									<span class="episode-check">
+										<NcCheckboxRadioSwitch :model-value="ep.watched"
+											:disabled="!ep.aired || marking"
+											:aria-label="t('moviedb', 'Watched')"
+											@update:model-value="toggleEpisode(ep, $event)" />
+									</span>
 									<span class="episode-code">{{ ep.episodeNumber }}</span>
 									<span class="episode-name">{{ ep.name || t('moviedb', 'Episode {n}', { n: ep.episodeNumber }) }}</span>
 									<span v-if="ep.airDate" class="episode-air">{{ formatDate(ep.airDate) }}</span>
 									<span v-if="ep.runtime" class="episode-runtime">{{ formatRuntime(ep.runtime) }}</span>
-									<span v-if="ep.watchCount > 1" class="episode-watchcount" :title="t('moviedb', 'Watched {n} times', { n: ep.watchCount })">×{{ ep.watchCount }}</span>
 									<span v-if="!ep.aired" class="episode-badge unaired-badge">{{ t('moviedb', 'Unaired') }}</span>
-									<div class="episode-actions">
-										<NcButton v-if="!ep.watched"
-											:disabled="!ep.aired || marking"
-											:aria-label="t('moviedb', 'Mark watched')"
-											@click="markEpisodeWatched(ep.id)">
-											<template #icon>
-												<Check :size="18" />
-											</template>
-										</NcButton>
-										<template v-else>
-											<Check :size="18" class="watched-check" />
-											<NcButton :aria-label="t('moviedb', 'Log again')"
-												:title="t('moviedb', 'Log again')"
-												@click="openLog(ep)">
-												<template #icon>
-													<Plus :size="18" />
-												</template>
-											</NcButton>
-										</template>
-									</div>
 								</li>
 							</ul>
 						</div>
@@ -177,57 +184,23 @@
 				</NcButton>
 			</template>
 		</NcDialog>
-
-		<!-- Log rewatch dialog -->
-		<NcDialog :open="showLogDialog"
-			:name="t('moviedb', 'Log watch')"
-			@update:open="showLogDialog = $event">
-			<div class="log-watch-form">
-				<label>{{ t('moviedb', 'Date watched') }}
-					<input v-model="logForm.watchedAt" type="date" class="log-input">
-				</label>
-				<div class="log-rating-row">
-					<label>{{ t('moviedb', 'Rating') }}</label>
-					<div class="log-rating-control">
-						<RatingStars :rating="logForm.rating || 0" :max="10" @update="logForm.rating = $event" />
-						<span v-if="logForm.rating" class="log-rating-value">{{ logForm.rating }}/10</span>
-						<button v-if="logForm.rating" class="log-rating-clear" @click="logForm.rating = null">
-							×
-						</button>
-					</div>
-				</div>
-				<label>{{ t('moviedb', 'Review') }}
-					<textarea v-model="logForm.review" class="log-input" rows="3" />
-				</label>
-			</div>
-			<template #actions>
-				<NcButton @click="showLogDialog = false">
-					{{ t('moviedb', 'Cancel') }}
-				</NcButton>
-				<NcButton type="primary" @click="submitLog">
-					{{ t('moviedb', 'Save') }}
-				</NcButton>
-			</template>
-		</NcDialog>
 	</div>
 </template>
 
 <script>
-import { NcButton, NcLoadingIcon, NcEmptyContent, NcDialog, NcProgressBar } from '@nextcloud/vue'
+import { NcButton, NcLoadingIcon, NcEmptyContent, NcDialog, NcProgressBar, NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import Television from 'vue-material-design-icons/Television.vue'
-import Plus from 'vue-material-design-icons/Plus.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import CheckAll from 'vue-material-design-icons/CheckAll.vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
-import RatingStars from '../components/RatingStars.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { formatDate, formatRuntime } from '../utils/formatters.js'
+import { LANGUAGE_OPTIONS } from '../constants.js'
 import { useSeriesStore } from '../stores/series.js'
-import { useEpisodeWatchesStore } from '../stores/episodeWatches.js'
 
 export default {
 	name: 'SeriesDetail',
@@ -237,16 +210,15 @@ export default {
 		NcEmptyContent,
 		NcDialog,
 		NcProgressBar,
+		NcCheckboxRadioSwitch,
 		Pencil,
 		Delete,
 		ArrowLeft,
 		Television,
-		Plus,
 		Check,
 		CheckAll,
 		ChevronDown,
 		ChevronRight,
-		RatingStars,
 	},
 	props: {
 		id: {
@@ -256,21 +228,13 @@ export default {
 	},
 	setup() {
 		const seriesStore = useSeriesStore()
-		const episodeWatchesStore = useEpisodeWatchesStore()
-		return { seriesStore, episodeWatchesStore }
+		return { seriesStore }
 	},
 	data() {
 		return {
 			showDeleteDialog: false,
-			showLogDialog: false,
 			marking: false,
 			expandedSeasons: [],
-			logEpisodeId: null,
-			logForm: {
-				watchedAt: new Date().toISOString().slice(0, 10),
-				rating: null,
-				review: '',
-			},
 		}
 	},
 	computed: {
@@ -290,6 +254,11 @@ export default {
 				backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.7), var(--color-main-background)), url(${url})`,
 			}
 		},
+		hasWatchMeta() {
+			return !!(this.series
+				&& (this.series.rating || this.series.platformName
+					|| this.series.languageWatched || this.series.watchedAt))
+		},
 	},
 	async created() {
 		await this.seriesStore.fetchOne(this.id)
@@ -303,6 +272,9 @@ export default {
 	methods: {
 		formatDate,
 		formatRuntime,
+		languageLabel(code) {
+			return LANGUAGE_OPTIONS.find(l => l.id === code)?.label || code
+		},
 		episodeCode(ep) {
 			const s = String(ep.seasonNumber).padStart(2, '0')
 			const e = String(ep.episodeNumber).padStart(2, '0')
@@ -332,40 +304,23 @@ export default {
 				this.$router.push({ name: 'series' })
 			}
 		},
-		async markEpisodeWatched(episodeId) {
+		async toggleEpisode(ep, watched) {
 			if (this.marking) return
 			this.marking = true
-			await this.seriesStore.markEpisodeWatched(this.id, episodeId)
+			await this.seriesStore.markEpisodeWatched(this.id, ep.id, watched)
 			this.marking = false
 		},
-		async markSeasonWatched(seasonNumber) {
+		async markSeasonWatched(seasonNumber, watched) {
 			if (this.marking) return
 			this.marking = true
-			await this.seriesStore.markSeasonWatched(this.id, seasonNumber)
+			await this.seriesStore.markSeasonWatched(this.id, seasonNumber, watched)
 			this.marking = false
 		},
-		async markSeriesWatched() {
+		async markSeriesWatched(watched) {
 			if (this.marking) return
 			this.marking = true
-			await this.seriesStore.markSeriesWatched(this.id)
+			await this.seriesStore.markSeriesWatched(this.id, watched)
 			this.marking = false
-		},
-		openLog(ep) {
-			this.logEpisodeId = ep.id
-			this.logForm = { watchedAt: new Date().toISOString().slice(0, 10), rating: null, review: '' }
-			this.showLogDialog = true
-		},
-		async submitLog() {
-			if (!this.logEpisodeId) return
-			const data = {
-				watchedAt: this.logForm.watchedAt || null,
-				rating: this.logForm.rating || null,
-				review: this.logForm.review || null,
-			}
-			await this.episodeWatchesStore.create(this.logEpisodeId, data)
-			this.showLogDialog = false
-			// Refresh progress / watch counts.
-			await this.seriesStore.fetchOne(this.id)
 		},
 	},
 }
@@ -489,6 +444,20 @@ export default {
     flex-wrap: wrap;
 }
 
+.series-watch-summary {
+    display: flex;
+    gap: 16px;
+    color: var(--color-text-maxcontrast);
+    font-size: 14px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+
+    .watch-meta-rating {
+        color: var(--color-warning, #e9a800);
+        font-weight: 500;
+    }
+}
+
 .progress-block {
     background: var(--color-background-dark);
     border-radius: 8px;
@@ -508,6 +477,9 @@ export default {
 
     .progress-actions {
         margin-top: 12px;
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
     }
 }
 
@@ -603,6 +575,10 @@ export default {
         opacity: 0.6;
     }
 
+    .episode-check {
+        flex-shrink: 0;
+    }
+
     .episode-code {
         width: 24px;
         text-align: right;
@@ -619,8 +595,7 @@ export default {
     }
 
     .episode-air,
-    .episode-runtime,
-    .episode-watchcount {
+    .episode-runtime {
         font-size: 12px;
         color: var(--color-text-maxcontrast);
         flex-shrink: 0;
@@ -636,72 +611,6 @@ export default {
     .unaired-badge {
         background: var(--color-background-darker);
         color: var(--color-text-lighter);
-    }
-
-    .episode-actions {
-        display: flex;
-        align-items: center;
-        gap: 6px;
-        margin-left: auto;
-        flex-shrink: 0;
-    }
-
-    .watched-check {
-        color: var(--color-success, #46ba61);
-    }
-}
-
-.log-watch-form {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-
-    label {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        font-size: 14px;
-    }
-
-    .log-rating-row {
-        display: flex;
-        flex-direction: column;
-        gap: 4px;
-        font-size: 14px;
-    }
-
-    .log-rating-control {
-        display: flex;
-        align-items: center;
-        gap: 8px;
-    }
-
-    .log-rating-value {
-        font-size: 13px;
-        color: var(--color-text-maxcontrast);
-    }
-
-    .log-rating-clear {
-        background: none;
-        border: none;
-        cursor: pointer;
-        color: var(--color-text-lighter);
-        font-size: 16px;
-        padding: 0 4px;
-        line-height: 1;
-
-        &:hover {
-            color: var(--color-main-text);
-        }
-    }
-
-    .log-input {
-        border: 1px solid var(--color-border);
-        border-radius: 4px;
-        padding: 6px 8px;
-        background: var(--color-main-background);
-        color: var(--color-main-text);
-        font-size: 14px;
     }
 }
 </style>

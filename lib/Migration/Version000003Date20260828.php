@@ -164,6 +164,14 @@ class Version000003Date20260828 extends SimpleMigrationStep {
                 'notnull' => false,
                 'length' => 255,
             ]);
+            // Watched flag: episodes are a plain watched/unwatched checkbox. The
+            // TV show owns rating/platform/language/date (a single series-level
+            // watch row); episode-level metadata does not exist. Default false so
+            // freshly imported episodes start unwatched.
+            $table->addColumn('watched', Types::BOOLEAN, [
+                'notnull' => true,
+                'default' => false,
+            ]);
             $table->addColumn('created_at', Types::DATETIME, [
                 'notnull' => true,
             ]);

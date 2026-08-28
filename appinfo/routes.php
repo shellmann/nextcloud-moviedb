@@ -24,12 +24,6 @@ return [
         ['name' => 'series#markWatched', 'url' => '/api/series/{id}/watched', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
         ['name' => 'series#markSeasonWatched', 'url' => '/api/series/{id}/seasons/{seasonNumber}/watched', 'verb' => 'POST', 'requirements' => ['id' => '\d+', 'seasonNumber' => '\d+']],
 
-        // Episode watch history
-        ['name' => 'episode_watch#index',   'url' => '/api/episodes/{episodeId}/watches',           'verb' => 'GET',    'requirements' => ['episodeId' => '\d+']],
-        ['name' => 'episode_watch#create',  'url' => '/api/episodes/{episodeId}/watches',           'verb' => 'POST',   'requirements' => ['episodeId' => '\d+']],
-        ['name' => 'episode_watch#update',  'url' => '/api/episodes/{episodeId}/watches/{watchId}', 'verb' => 'PUT',    'requirements' => ['episodeId' => '\d+', 'watchId' => '\d+']],
-        ['name' => 'episode_watch#destroy', 'url' => '/api/episodes/{episodeId}/watches/{watchId}', 'verb' => 'DELETE', 'requirements' => ['episodeId' => '\d+', 'watchId' => '\d+']],
-
 
         // Watchlist CRUD
         ['name' => 'watchlist#index', 'url' => '/api/watchlist', 'verb' => 'GET'],

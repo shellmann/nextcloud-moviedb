@@ -167,11 +167,21 @@ describe('Series Store', () => {
 			const refreshed = { id: 5, progress: 10, watchedEpisodeCount: 1 }
 			api.markEpisodeWatched.mockResolvedValue({ data: { series: refreshed } })
 
-			const result = await store.markEpisodeWatched(5, 101, { rating: 8 })
+			const result = await store.markEpisodeWatched(5, 101, true)
 
-			expect(api.markEpisodeWatched).toHaveBeenCalledWith(5, 101, { rating: 8 })
+			expect(api.markEpisodeWatched).toHaveBeenCalledWith(5, 101, true)
 			expect(store.currentSeries).toEqual(refreshed)
 			expect(result).toEqual(refreshed)
+		})
+
+		it('markEpisodeWatched forwards a false flag to untick', async () => {
+			const refreshed = { id: 5, progress: 0, watchedEpisodeCount: 0 }
+			api.markEpisodeWatched.mockResolvedValue({ data: { series: refreshed } })
+
+			await store.markEpisodeWatched(5, 101, false)
+
+			expect(api.markEpisodeWatched).toHaveBeenCalledWith(5, 101, false)
+			expect(store.currentSeries).toEqual(refreshed)
 		})
 
 		it('markSeasonWatched sets currentSeries to server payload', async () => {
@@ -180,7 +190,7 @@ describe('Series Store', () => {
 
 			await store.markSeasonWatched(5, 2)
 
-			expect(api.markSeasonWatched).toHaveBeenCalledWith(5, 2, {})
+			expect(api.markSeasonWatched).toHaveBeenCalledWith(5, 2, true)
 			expect(store.currentSeries).toEqual(refreshed)
 		})
 

@@ -93,8 +93,12 @@ class StatsController extends AuthenticatedController {
 
         $limit = min((int)$this->request->getParam('limit', 5), 20);
         $movies = $this->service->getRecentMovies($this->userId, $limit);
+        $series = $this->service->getRecentSeries($this->userId, $limit);
 
-        return new JSONResponse(['movies' => $movies]);
+        return new JSONResponse([
+            'movies' => $movies,
+            'series' => $series,
+        ]);
     }
 
     #[NoAdminRequired]
@@ -105,7 +109,11 @@ class StatsController extends AuthenticatedController {
 
         $limit = min((int)$this->request->getParam('limit', 5), 20);
         $movies = $this->service->getTopRated($this->userId, $limit);
+        $series = $this->service->getTopRatedSeries($this->userId, $limit);
 
-        return new JSONResponse(['movies' => $movies]);
+        return new JSONResponse([
+            'movies' => $movies,
+            'series' => $series,
+        ]);
     }
 }

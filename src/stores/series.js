@@ -162,15 +162,15 @@ export const useSeriesStore = defineStore('series', {
 		},
 
 		/**
-		 * Marks a single episode watched; refreshes currentSeries with server progress.
+		 * Toggles a single episode's watched flag; refreshes currentSeries with server progress.
 		 * @param {number} id - Series ID
 		 * @param {number} episodeId - Episode ID
-		 * @param {object} data - Optional watch metadata (rating, platformId, etc.)
+		 * @param {boolean} watched - Watched state to set (default true)
 		 * @return {Promise<object | null>} The refreshed series or null on error
 		 */
-		async markEpisodeWatched(id, episodeId, data = {}) {
+		async markEpisodeWatched(id, episodeId, watched = true) {
 			try {
-				const response = await api.markEpisodeWatched(id, episodeId, data)
+				const response = await api.markEpisodeWatched(id, episodeId, watched)
 				this.currentSeries = response.data.series
 				return response.data.series
 			} catch (error) {
@@ -181,17 +181,19 @@ export const useSeriesStore = defineStore('series', {
 		},
 
 		/**
-		 * Marks all aired episodes of a season watched (idempotent).
+		 * Marks all aired episodes of a season watched/unwatched.
 		 * @param {number} id - Series ID
 		 * @param {number} seasonNumber - Season number
-		 * @param {object} data - Optional watch metadata
+		 * @param {boolean} watched - Watched state to set (default true)
 		 * @return {Promise<object | null>} The refreshed series or null on error
 		 */
-		async markSeasonWatched(id, seasonNumber, data = {}) {
+		async markSeasonWatched(id, seasonNumber, watched = true) {
 			try {
-				const response = await api.markSeasonWatched(id, seasonNumber, data)
+				const response = await api.markSeasonWatched(id, seasonNumber, watched)
 				this.currentSeries = response.data.series
-				showSuccess(t('moviedb', 'Season marked as watched.'))
+				showSuccess(watched
+					? t('moviedb', 'Season marked as watched.')
+					: t('moviedb', 'Season marked as unwatched.'))
 				return response.data.series
 			} catch (error) {
 				console.error('Failed to mark season watched:', error)
@@ -201,16 +203,18 @@ export const useSeriesStore = defineStore('series', {
 		},
 
 		/**
-		 * Marks all aired episodes of the series watched (idempotent, excludes specials).
+		 * Marks all aired episodes of the series watched/unwatched (excludes specials).
 		 * @param {number} id - Series ID
-		 * @param {object} data - Optional watch metadata
+		 * @param {boolean} watched - Watched state to set (default true)
 		 * @return {Promise<object | null>} The refreshed series or null on error
 		 */
-		async markSeriesWatched(id, data = {}) {
+		async markSeriesWatched(id, watched = true) {
 			try {
-				const response = await api.markSeriesWatched(id, data)
+				const response = await api.markSeriesWatched(id, watched)
 				this.currentSeries = response.data.series
-				showSuccess(t('moviedb', 'Series marked as watched.'))
+				showSuccess(watched
+					? t('moviedb', 'Series marked as watched.')
+					: t('moviedb', 'Series marked as unwatched.'))
 				return response.data.series
 			} catch (error) {
 				console.error('Failed to mark series watched:', error)

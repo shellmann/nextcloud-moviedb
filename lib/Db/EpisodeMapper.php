@@ -88,4 +88,64 @@ class EpisodeMapper extends QBMapper {
 
         $qb->executeStatement();
     }
+
+    /**
+     * Flip the watched flag on a set of episodes in one statement. Ownership is
+     * verified by the caller before invoking this. Returns the number of rows
+     * changed. A no-op (empty id list) returns 0 without touching the DB.
+     *
+     * @param int[] $episodeIds
+     */
+    public function setWatchedForEpisodes(array $episodeIds, bool $watched): int {
+        if (empty($episodeIds)) {
+            return 0;
+        }
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->update($this->getTableName())
+            ->set('watched', $qb->createNamedParameter($watched, IQueryBuilder::PARAM_BOOL))
+            ->where($qb->expr()->in('id', $qb->createNamedParameter($episodeIds, IQueryBuilder::PARAM_INT_ARRAY)));
+
+        return $qb->executeStatement();
+    }
+
+    /**
+     * Total watched episodes across all of a user's series. Episodes have no
+     * user_id, so join through moviedb_series.
+     */
+    public function countWatchedForUser(string $userId): int {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->selectAlias($qb->func()->count('*'), 'count')
+            ->from($this->getTableName(), 'e')
+            ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
+            ->where($qb->expr()->eq('s.user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('e.watched', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));
+
+        $result = $qb->executeQuery();
+        $row = $result->fetch();
+        $result->closeCursor();
+
+        return (int)($row['count'] ?? 0);
+    }
+
+    /**
+     * Total runtime of all watched episodes across a user's series.
+     */
+    public function getWatchedRuntimeForUser(string $userId): int {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->selectAlias($qb->func()->sum('e.runtime'), 'total')
+            ->from($this->getTableName(), 'e')
+            ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
+            ->where($qb->expr()->eq('s.user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('e.watched', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)))
+            ->andWhere($qb->expr()->isNotNull('e.runtime'));
+
+        $result = $qb->executeQuery();
+        $row = $result->fetch();
+        $result->closeCursor();
+
+        return (int)($row['total'] ?? 0);
+    }
 }

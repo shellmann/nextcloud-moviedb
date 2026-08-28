@@ -14,6 +14,34 @@
 				<NcTextField v-model="formData.title" required />
 			</div>
 
+			<div class="form-row-inline">
+				<div class="form-group">
+					<label>{{ t('moviedb', 'Platform') }}</label>
+					<NcSelect v-model="selectedPlatform"
+						:options="platformOptions"
+						:placeholder="t('moviedb', 'Select platform')" />
+				</div>
+				<div class="form-group">
+					<label>{{ t('moviedb', 'Language Watched') }}</label>
+					<NcSelect v-model="selectedLanguage"
+						:options="languageOptions"
+						:placeholder="t('moviedb', 'Select language')" />
+				</div>
+			</div>
+
+			<div class="form-row-inline">
+				<div class="form-group">
+					<label>{{ t('moviedb', 'Date Watched') }}</label>
+					<NcTextField v-model="formData.watchedAt" type="date" />
+				</div>
+				<div class="form-group">
+					<label>{{ t('moviedb', 'Rating') }}</label>
+					<NcSelect v-model="selectedRating"
+						:options="ratingOptions"
+						:placeholder="t('moviedb', 'Select rating')" />
+				</div>
+			</div>
+
 			<div class="form-group">
 				<label>
 					<input v-model="formData.isFavorite" type="checkbox">
@@ -34,8 +62,10 @@
 </template>
 
 <script>
-import { NcLoadingIcon, NcTextField, NcButton } from '@nextcloud/vue'
+import { NcLoadingIcon, NcTextField, NcButton, NcSelect } from '@nextcloud/vue'
+import { LANGUAGE_OPTIONS, getRatingOptions } from '../constants.js'
 import { useSeriesStore } from '../stores/series.js'
+import { usePlatformsStore } from '../stores/platforms.js'
 
 export default {
 	name: 'EditSeries',
@@ -43,6 +73,7 @@ export default {
 		NcLoadingIcon,
 		NcTextField,
 		NcButton,
+		NcSelect,
 	},
 	props: {
 		id: {
@@ -52,12 +83,18 @@ export default {
 	},
 	setup() {
 		const seriesStore = useSeriesStore()
-		return { seriesStore }
+		const platformsStore = usePlatformsStore()
+		return { seriesStore, platformsStore }
 	},
 	data() {
 		return {
 			formData: null,
 			saving: false,
+			selectedPlatform: null,
+			selectedLanguage: null,
+			selectedRating: null,
+			languageOptions: LANGUAGE_OPTIONS,
+			ratingOptions: getRatingOptions(),
 		}
 	},
 	computed: {
@@ -66,6 +103,9 @@ export default {
 		},
 		loading() {
 			return this.seriesStore.loading
+		},
+		platformOptions() {
+			return this.platformsStore.platforms.map(p => ({ id: p.id, label: p.name }))
 		},
 	},
 	watch: {
@@ -76,12 +116,23 @@ export default {
 					this.formData = {
 						title: series.title,
 						isFavorite: !!series.isFavorite,
+						watchedAt: series.watchedAt || '',
 					}
+					this.selectedPlatform = series.platformId
+						? this.platformOptions.find(p => p.id === series.platformId) || null
+						: null
+					this.selectedLanguage = series.languageWatched
+						? this.languageOptions.find(l => l.id === series.languageWatched) || null
+						: null
+					this.selectedRating = series.rating
+						? this.ratingOptions.find(r => r.id === series.rating) || null
+						: null
 				}
 			},
 		},
 	},
 	created() {
+		this.platformsStore.fetchAll()
 		this.seriesStore.fetchOne(this.id)
 	},
 	methods: {
@@ -90,6 +141,10 @@ export default {
 			const series = await this.seriesStore.update(this.id, {
 				title: this.formData.title,
 				isFavorite: this.formData.isFavorite,
+				platformId: this.selectedPlatform?.id || null,
+				languageWatched: this.selectedLanguage?.id || null,
+				rating: this.selectedRating?.id || null,
+				watchedAt: this.formData.watchedAt || null,
 			})
 			if (series) {
 				this.$router.push({ name: 'series-detail', params: { id: this.id } })
@@ -138,6 +193,20 @@ export default {
 
         input[type="checkbox"] {
             margin-right: 8px;
+        }
+    }
+
+    .form-row-inline {
+        display: flex;
+        gap: 16px;
+
+        .form-group {
+            flex: 1;
+        }
+
+        @media (max-width: 600px) {
+            flex-direction: column;
+            gap: 0;
         }
     }
 

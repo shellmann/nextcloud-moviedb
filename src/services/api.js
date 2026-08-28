@@ -149,28 +149,14 @@ export default {
 	getSeriesEpisodes(id) {
 		return axios.get(`${baseUrl}/series/${id}/episodes`)
 	},
-	markSeriesWatched(id, data = {}) {
-		return axios.post(`${baseUrl}/series/${id}/watched`, data)
+	markSeriesWatched(id, watched = true) {
+		return axios.post(`${baseUrl}/series/${id}/watched`, { watched })
 	},
-	markEpisodeWatched(id, episodeId, data = {}) {
-		return axios.post(`${baseUrl}/series/${id}/watched`, { ...data, episodeId })
+	markEpisodeWatched(id, episodeId, watched = true) {
+		return axios.post(`${baseUrl}/series/${id}/watched`, { episodeId, watched })
 	},
-	markSeasonWatched(id, seasonNumber, data = {}) {
-		return axios.post(`${baseUrl}/series/${id}/seasons/${seasonNumber}/watched`, data)
-	},
-
-	// Episode watch history
-	getEpisodeWatches(episodeId) {
-		return axios.get(`${baseUrl}/episodes/${episodeId}/watches`)
-	},
-	createEpisodeWatch(episodeId, data) {
-		return axios.post(`${baseUrl}/episodes/${episodeId}/watches`, data)
-	},
-	updateEpisodeWatch(episodeId, watchId, data) {
-		return axios.put(`${baseUrl}/episodes/${episodeId}/watches/${watchId}`, data)
-	},
-	deleteEpisodeWatch(episodeId, watchId) {
-		return axios.delete(`${baseUrl}/episodes/${episodeId}/watches/${watchId}`)
+	markSeasonWatched(id, seasonNumber, watched = true) {
+		return axios.post(`${baseUrl}/series/${id}/seasons/${seasonNumber}/watched`, { watched })
 	},
 
 	// Statistics

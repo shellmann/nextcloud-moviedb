@@ -14,6 +14,9 @@
 			<div v-else class="no-poster">
 				<Movie :size="32" />
 			</div>
+			<div class="type-badge">
+				{{ t('moviedb', 'Movie') }}
+			</div>
 			<div v-if="movie.isFavorite" class="favorite-badge">
 				<Heart :size="16" />
 			</div>
@@ -140,6 +143,20 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
+}
+
+.type-badge {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
 }
 
 .rating-badge {

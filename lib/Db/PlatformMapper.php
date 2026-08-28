@@ -95,7 +95,9 @@ class PlatformMapper extends QBMapper {
     }
 
     /**
-     * Create default platforms
+     * Create the default platforms. Idempotent: any default name that already
+     * exists is skipped, so a concurrent double-call (two requests both seeing
+     * an empty table) cannot duplicate rows.
      */
     public function createDefaults(): void {
         $defaults = [
@@ -113,9 +115,17 @@ class PlatformMapper extends QBMapper {
             ['name' => 'Other', 'icon' => 'other'],
         ];
 
+        $existing = [];
+        foreach ($this->findDefaults() as $platform) {
+            $existing[$platform->getName()] = true;
+        }
+
         $now = (new \DateTime())->format('Y-m-d H:i:s');
 
         foreach ($defaults as $default) {
+            if (isset($existing[$default['name']])) {
+                continue;
+            }
             $platform = new Platform();
             $platform->setUserId(null);
             $platform->setName($default['name']);

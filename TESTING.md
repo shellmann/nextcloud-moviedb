@@ -38,10 +38,10 @@ npm run test:coverage
 ### Test Files
 Located in `tests/js/`:
 - `stores/movies.spec.js` - Tests for movies Pinia store (24 tests)
-- `stores/series.spec.js` - Tests for series Pinia store (19 tests)
+- `stores/series.spec.js` - Tests for series Pinia store, incl. episode
+  watched-flag toggle + series-owned metadata (20 tests)
 - `stores/watchlist.spec.js` - Tests for watchlist store incl. TV support (30 tests)
-- `stores/watches.spec.js` - Tests for movie-watches store (9 tests)
-- `stores/episodeWatches.spec.js` - Tests for episode-watches store (8 tests)
+- `stores/watches.spec.js` - Tests for movie-watches (rewatch) store (9 tests)
 - `components/MovieCard.spec.js` - Tests for MovieCard component (9 tests)
 - `components/TmdbSearchSection.spec.js` - Tests for TMDB search + type toggle (8 tests)
 - `utils/formatters.spec.js` - Tests for utility functions (8 tests)
@@ -50,16 +50,15 @@ Located in `tests/js/`:
 ### Example Output
 ```
 ✓ tests/js/stores/movies.spec.js (24)
-✓ tests/js/stores/series.spec.js (19)
+✓ tests/js/stores/series.spec.js (20)
 ✓ tests/js/stores/watchlist.spec.js (30)
 ✓ tests/js/stores/watches.spec.js (9)
-✓ tests/js/stores/episodeWatches.spec.js (8)
 ✓ tests/js/components/MovieCard.spec.js (9)
 ✓ tests/js/components/TmdbSearchSection.spec.js (8)
 ✓ tests/js/utils/formatters.spec.js (8)
 
-Test Files  8 passed (8)
-Tests  115 passed (115)
+Test Files  7 passed (7)
+Tests  108 passed (108)
 ```
 
 ---
@@ -144,22 +143,24 @@ Movie Service (OCA\MovieDB\Tests\Unit\Service\MovieService)
  ✔ Find throws does not exist exception
  ✔ Find all
  ✔ Count
- ... (16 tests total)
+ ... (14 tests total)
 
 Watchlist Service (OCA\MovieDB\Tests\Unit\Service\WatchlistService)
  ... (incl. media-type persistence + type-aware existsByTmdbId)
 
 Series Service (OCA\MovieDB\Tests\Unit\Service\SeriesService)
- ... (createFromTmdb, seasons/episodes import)
+ ... (createFromTmdb, seasons/episodes import, progress from the episode
+      watched flag, markEpisode/Season/SeriesWatched, series-owned watch
+      metadata via upsertSeriesWatch)
 
 Watchlist Controller (OCA\MovieDB\Tests\Unit\Controller\WatchlistController)
  ✔ Move series imports show and returns series
  ✔ Move movie creates movie and returns movie
 
 Platform Service (OCA\MovieDB\Tests\Unit\Service\PlatformService)
- ... (8 tests)
+ ... (11 tests)
 
-Tests: 88, Assertions: 232+
+Tests: 95, Assertions: 243
 ```
 
 ---
@@ -413,13 +414,16 @@ $db->exec("DELETE FROM oc_migrations WHERE app=\"moviedb\"");
 docker exec -u www-data nc-test php occ app:enable moviedb
 
 # Seed one movie WITH the retained legacy columns populated (worst case for
-# hydration) + a watch row, one series + episodes, and one watchlist row of each
-# media_type, then exercise every mapper read path in NC context:
+# hydration) + a watch row, one series + episodes (some with watched=1), a
+# series-level watch row (series_id set, episode_id/movie_id NULL), and one
+# watchlist row of each media_type, then exercise every mapper read path in NC
+# context:
 #   MovieMapper::findAll (default + each sort + platform/genre filters), find,
 #   findByTmdbId, every MovieWatchMapper aggregate (getTotalRuntime,
-#   getAverageRating, getCountByPlatform, getCountByYear, findLatestPerMovie),
-#   SeriesMapper::findAll/find, EpisodeMapper reads, and
-#   WatchlistMapper::findAll (incl. the media_type filter) / findByTmdbId.
+#   getAverageRating, getCountByPlatform, getCountByYear, findLatestPerMovie,
+#   getSeriesWatchSummary), SeriesMapper::findAll/find, EpisodeMapper reads
+#   (incl. countWatchedForUser / getWatchedRuntimeForUser over the watched flag),
+#   and WatchlistMapper::findAll (incl. the media_type filter) / findByTmdbId.
 # All must return without throwing BadFunctionCallException — in particular the
 # new moviedb_watchlist.media_type column must hydrate onto WatchlistItem.
 ```
@@ -694,9 +698,9 @@ composer test                     # PHP tests (in Nextcloud)
 | **Backend - Mappers** | ~15% | 50% | 🟡 In Progress |
 
 ### Test File Count
-- **JavaScript**: 8 files, 115 tests ✅
-- **PHP**: 8 files, 88 tests ✅
-- **Total**: 16 files, 203 tests
+- **JavaScript**: 7 files, 108 tests ✅
+- **PHP**: 10 files, 95 tests (243 assertions) ✅
+- **Total**: 17 files, 203 tests
 
 ---
 
@@ -819,19 +823,23 @@ real Nextcloud middleware.
 
 ## TV Show / Series Smoke Check (v1.3.0)
 
-Series live in `oc_moviedb_series` + `oc_moviedb_episodes` and share the watches
-table (`oc_moviedb_movie_watches`, with nullable `movie_id` + `episode_id`/
-`series_id`). Work through this after the movie checks.
+Series live in `oc_moviedb_series` + `oc_moviedb_episodes`. Each episode carries a
+**`watched` boolean** — its watched state is a plain checkbox, with no per-episode
+rating/platform/language/date. The **show itself** owns that metadata (rating,
+platform, language, watch date), stored as a **single series-level row** in
+`oc_moviedb_movie_watches` (`series_id` set, `episode_id` NULL, `movie_id` NULL).
+Work through this after the movie checks.
 
 | # | Check | What to look for |
 |---|-------|-----------------|
-| 1 | **Add a show** | Go to `/tv/add`, use the Movies/TV toggle, search a multi-season show (e.g. *Game of Thrones*). It imports with all seasons + episodes, **including specials** (season 0). No 500. |
-| 2 | **Derived progress + "Up next"** | Open the show at `/tv/:id`. Progress shows 0% right after import; the "Up next" hint points at S1E1. |
-| 3 | **Mark episode watched** | Mark one episode watched — progress ticks up, "Up next" advances. Marking the **same** episode again is idempotent (no duplicate watch row). |
-| 4 | **Mark season / whole series watched** | Mark a full season, then the whole series — progress reaches 100%, all episodes flagged. |
-| 5 | **Per-episode rewatch** | Re-mark an already-watched episode via the rewatch action — a new watch row is added, progress stays 100%. |
-| 6 | **Delete series cascade** | Delete the show — its episodes and watch rows are removed (no orphans in `oc_moviedb_episodes` / watches). |
-| 7 | **Dashboard TV tiles** | Dashboard shows non-zero *TV shows* and *episodes watched* tiles. No 500 on `/api/stats`. |
+| 1 | **Add a show** | Go to `/tv/add`, use the Movies/TV toggle, search a multi-season show (e.g. *Game of Thrones*). It imports with all seasons + episodes, **including specials** (season 0). On the confirm screen set rating / platform / language / date — these belong to the show. No 500. |
+| 2 | **Series-owned metadata persists** | Open the show at `/tv/:id`. The header shows the rating / "Watched on" platform / language / date set on add. In the DB there is exactly **one** series-level row in `oc_moviedb_movie_watches` (`series_id` set, `episode_id` NULL) carrying them. |
+| 3 | **Derived progress + "Up next"** | Progress shows 0% right after import (episodes all unwatched); the "Up next" hint points at the first aired, non-special episode. Specials (S0) and unaired episodes are excluded from the denominator. |
+| 4 | **Mark episode watched (checkbox toggle)** | Tick an episode's **Watched** checkbox — progress ticks up, "Up next" advances, `oc_moviedb_episodes.watched` flips to 1. **Untick** it — progress reverses and the flag flips back to 0. No metadata dialog appears; no watch row is created per episode. |
+| 5 | **Mark season / whole series watched** | "Mark season watched" flips all **aired, non-special** episodes in that season; "Mark series watched" does the same across the show — progress reaches 100% over aired non-specials, and the buttons are idempotent (re-clicking a fully-watched season is a no-op). |
+| 6 | **Edit show metadata** | Edit the show — the rating / platform / language / date fields pre-fill from the series-level watch row; changing and saving them **updates that same row** (no duplicate), and the header reflects the change. |
+| 7 | **Delete series cascade** | Delete the show — its episodes and the series-level watch row are removed (no orphans in `oc_moviedb_episodes` / watches). |
+| 8 | **Dashboard TV tiles** | Dashboard shows non-zero *TV shows* and *episodes watched* tiles (episodes watched counts the `watched` flag), and the show appears under *Recently Watched* once it has ≥1 watched episode. No 500 on `/api/stats`. |
 
 ---
 

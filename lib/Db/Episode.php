@@ -28,6 +28,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setRuntime(?int $runtime)
  * @method string|null getStillPath()
  * @method void setStillPath(?string $stillPath)
+ * @method bool getWatched()
+ * @method void setWatched(bool $watched)
  * @method string getCreatedAt()
  * @method void setCreatedAt(string $createdAt)
  * @method string|null getUpdatedAt()
@@ -43,6 +45,7 @@ class Episode extends Entity implements JsonSerializable {
     protected ?string $airDate = null;
     protected ?int $runtime = null;
     protected ?string $stillPath = null;
+    protected bool $watched = false;
     protected string $createdAt = '';
     protected ?string $updatedAt = null;
 
@@ -53,6 +56,7 @@ class Episode extends Entity implements JsonSerializable {
         $this->addType('seasonNumber', 'integer');
         $this->addType('episodeNumber', 'integer');
         $this->addType('runtime', 'integer');
+        $this->addType('watched', 'boolean');
     }
 
     public function jsonSerialize(): array {
@@ -67,6 +71,7 @@ class Episode extends Entity implements JsonSerializable {
             'airDate' => $this->airDate,
             'runtime' => $this->runtime,
             'stillPath' => $this->stillPath,
+            'watched' => $this->watched,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
         ];

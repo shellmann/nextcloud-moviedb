@@ -177,16 +177,18 @@ class SeriesController extends AuthenticatedController {
             return $error;
         }
 
-        $data = $this->request->getParams();
+        // Episodes are a plain watched/unwatched toggle; default true so an
+        // omitted flag still marks watched (season/series "mark all" buttons).
+        $watched = $this->parseWatchedFlag($this->request->getParam('watched'));
 
         try {
             $episodeId = $this->request->getParam('episodeId');
             if ($episodeId !== null && $episodeId !== '') {
                 // Single episode.
-                $this->service->markEpisodeWatched($id, (int)$episodeId, $this->userId, $data);
+                $this->service->markEpisodeWatched($id, (int)$episodeId, $this->userId, $watched);
             } else {
                 // Whole series.
-                $this->service->markSeriesWatched($id, $this->userId, $data);
+                $this->service->markSeriesWatched($id, $this->userId, $watched);
             }
             $series = $this->service->findWithProgress($id, $this->userId);
             return new JSONResponse(['series' => $series]);
@@ -210,10 +212,10 @@ class SeriesController extends AuthenticatedController {
             return $error;
         }
 
-        $data = $this->request->getParams();
+        $watched = $this->parseWatchedFlag($this->request->getParam('watched'));
 
         try {
-            $this->service->markSeasonWatched($id, $seasonNumber, $this->userId, $data);
+            $this->service->markSeasonWatched($id, $seasonNumber, $this->userId, $watched);
             $series = $this->service->findWithProgress($id, $this->userId);
             return new JSONResponse(['series' => $series]);
         } catch (DoesNotExistException $e) {
@@ -229,5 +231,19 @@ class SeriesController extends AuthenticatedController {
             ]);
             return new JSONResponse(['error' => 'Failed to mark season watched. Please try again.'], Http::STATUS_BAD_REQUEST);
         }
+    }
+
+    /**
+     * Interpret the optional `watched` request param. Absent → true (mark
+     * watched); accepts booleans and the strings "false"/"0" for un-marking.
+     */
+    private function parseWatchedFlag(mixed $raw): bool {
+        if ($raw === null) {
+            return true;
+        }
+        if (is_bool($raw)) {
+            return $raw;
+        }
+        return !in_array((string)$raw, ['false', '0', ''], true);
     }
 }
