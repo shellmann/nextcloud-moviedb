@@ -8,6 +8,7 @@ use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\WatchlistService;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Service\MovieWatchService;
+use OCA\MovieDB\Service\SeriesService;
 use OCA\MovieDB\Service\TmdbService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -22,6 +23,7 @@ class WatchlistController extends AuthenticatedController {
     private WatchlistService $service;
     private MovieService $movieService;
     private MovieWatchService $watchService;
+    private SeriesService $seriesService;
     private TmdbService $tmdbService;
     private IDBConnection $db;
     private LoggerInterface $logger;
@@ -31,6 +33,7 @@ class WatchlistController extends AuthenticatedController {
         WatchlistService $service,
         MovieService $movieService,
         MovieWatchService $watchService,
+        SeriesService $seriesService,
         TmdbService $tmdbService,
         IDBConnection $db,
         IUserSession $userSession,
@@ -40,6 +43,7 @@ class WatchlistController extends AuthenticatedController {
         $this->service = $service;
         $this->movieService = $movieService;
         $this->watchService = $watchService;
+        $this->seriesService = $seriesService;
         $this->tmdbService = $tmdbService;
         $this->db = $db;
         $this->logger = $logger;
@@ -92,13 +96,17 @@ class WatchlistController extends AuthenticatedController {
             return new JSONResponse(['error' => 'Title is required'], Http::STATUS_BAD_REQUEST);
         }
 
-        // Check if already in watchlist
-        if (!empty($data['tmdbId']) && $this->service->existsByTmdbId($this->userId, (int)$data['tmdbId'])) {
-            return new JSONResponse(['error' => 'Movie already in watchlist'], Http::STATUS_CONFLICT);
+        $mediaType = $data['mediaType'] ?? 'movie';
+
+        // Check if already in watchlist (a movie and show may share a TMDB id → key on type too)
+        if (!empty($data['tmdbId']) && $this->service->existsByTmdbId($this->userId, (int)$data['tmdbId'], $mediaType)) {
+            return new JSONResponse(['error' => 'Already in watchlist'], Http::STATUS_CONFLICT);
         }
 
         // Check if already watched — allow adding but flag it so the UI can warn the user
-        $alreadyWatched = !empty($data['tmdbId'])
+        // (movies only; series have no equivalent single "watched" flag)
+        $alreadyWatched = $mediaType === 'movie'
+            && !empty($data['tmdbId'])
             && $this->movieService->findByTmdbId($this->userId, (int)$data['tmdbId']) !== null;
 
         try {
@@ -170,6 +178,13 @@ class WatchlistController extends AuthenticatedController {
         try {
             // Get the watchlist item
             $item = $this->service->find($id, $this->userId);
+
+            // Series items import the whole show (all seasons/episodes) rather than
+            // logging a single watch. No episodes are auto-marked watched — the user
+            // tracks progress per-episode/season afterward on the /tv detail page.
+            if ($item->getMediaType() === 'series') {
+                return $this->moveSeriesToWatched($id, $item);
+            }
 
             // Get additional watch data from request
             $watchData = $this->request->getParams();
@@ -247,5 +262,64 @@ class WatchlistController extends AuthenticatedController {
                 Http::STATUS_BAD_REQUEST
             );
         }
+    }
+
+    /**
+     * Import a series watchlist item as a tracked show and drop the watchlist row.
+     *
+     * Fetches full TMDB details (seasons drive per-season episode import) and calls
+     * SeriesService::createFromTmdb. Deletes the watchlist row in the same transaction.
+     * Does NOT mark any episodes watched — the show starts at 0% progress.
+     */
+    private function moveSeriesToWatched(int $id, \OCA\MovieDB\Db\WatchlistItem $item): JSONResponse {
+        $seriesData = [
+            'tmdbId' => $item->getTmdbId(),
+            'title' => $item->getTitle(),
+            'posterPath' => $item->getPosterPath(),
+            'overview' => $item->getOverview(),
+            'genreIds' => $item->getGenreIds(),
+            'firstAirDate' => $item->getReleaseDate(),
+        ];
+
+        $language = $this->request->getParam('language', 'en-US');
+
+        // Enrich from TMDB so createFromTmdb can fan out episodes across seasons.
+        if ($item->getTmdbId()) {
+            try {
+                $details = $this->tmdbService->getSeriesDetails($item->getTmdbId(), $this->userId, $language);
+                $seriesData['title'] = $details['name'] ?? $seriesData['title'];
+                $seriesData['originalTitle'] = $details['original_name'] ?? null;
+                $seriesData['posterPath'] = $details['poster_path'] ?? $seriesData['posterPath'];
+                $seriesData['backdropPath'] = $details['backdrop_path'] ?? null;
+                $seriesData['overview'] = $details['overview'] ?? $seriesData['overview'];
+                $seriesData['genreIds'] = !empty($details['genres'])
+                    ? array_map(static fn ($g) => $g['id'], $details['genres'])
+                    : $seriesData['genreIds'];
+                $seriesData['firstAirDate'] = $details['first_air_date'] ?? $seriesData['firstAirDate'];
+                $seriesData['numberOfSeasons'] = $details['number_of_seasons'] ?? null;
+                $seriesData['numberOfEpisodes'] = $details['number_of_episodes'] ?? null;
+                $seriesData['status'] = $details['status'] ?? null;
+                $seriesData['castData'] = $details['cast'] ?? null;
+                $seriesData['director'] = $details['director'] ?? null;
+                $seriesData['seasons'] = $details['seasons'] ?? [];
+            } catch (\Exception $e) {
+                $this->logger->warning('Failed to fetch TMDB details for series ' . $item->getTmdbId(), [
+                    'exception' => $e,
+                ]);
+                // Continue without full details — series is still created (no episodes).
+            }
+        }
+
+        $this->db->beginTransaction();
+        try {
+            $series = $this->seriesService->createFromTmdb($this->userId, $seriesData, $language);
+            $this->service->delete($id, $this->userId);
+            $this->db->commit();
+        } catch (\Exception $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+
+        return new JSONResponse(['series' => $series]);
     }
 }

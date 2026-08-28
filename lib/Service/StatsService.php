@@ -7,6 +7,7 @@ namespace OCA\MovieDB\Service;
 use OCA\MovieDB\Db\MovieMapper;
 use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Db\PlatformMapper;
+use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Db\WatchlistMapper;
 
 class StatsService {
@@ -14,24 +15,31 @@ class StatsService {
     private MovieWatchMapper $watchMapper;
     private WatchlistMapper $watchlistMapper;
     private PlatformMapper $platformMapper;
+    private SeriesMapper $seriesMapper;
 
     public function __construct(
         MovieMapper $movieMapper,
         MovieWatchMapper $watchMapper,
         WatchlistMapper $watchlistMapper,
-        PlatformMapper $platformMapper
+        PlatformMapper $platformMapper,
+        SeriesMapper $seriesMapper
     ) {
         $this->movieMapper = $movieMapper;
         $this->watchMapper = $watchMapper;
         $this->watchlistMapper = $watchlistMapper;
         $this->platformMapper = $platformMapper;
+        $this->seriesMapper = $seriesMapper;
     }
 
     public function getOverview(string $userId): array {
         $totalMovies = $this->movieMapper->countAll($userId);
-        $totalRuntime = $this->watchMapper->getTotalRuntime($userId);
+        $movieRuntime = $this->watchMapper->getTotalRuntime($userId);
+        $episodeRuntime = $this->watchMapper->getTotalEpisodeRuntime($userId);
+        $totalRuntime = $movieRuntime + $episodeRuntime;
         $avgRating = $this->watchMapper->getAverageRating($userId);
         $watchlistCount = $this->watchlistMapper->countAll($userId);
+        $totalSeries = $this->seriesMapper->countAll($userId);
+        $totalEpisodesWatched = $this->watchMapper->countWatchedEpisodes($userId);
 
         $currentYear = (int)date('Y');
         $thisYearMovies = $this->movieMapper->countAll($userId, [
@@ -40,6 +48,8 @@ class StatsService {
 
         return [
             'totalMovies' => $totalMovies,
+            'totalSeries' => $totalSeries,
+            'totalEpisodesWatched' => $totalEpisodesWatched,
             'totalRuntime' => $totalRuntime,
             'totalRuntimeHours' => round($totalRuntime / 60, 1),
             'averageRating' => $avgRating,

@@ -26,18 +26,20 @@ use OCP\AppFramework\Db\Entity;
  * @method void setOverview(?string $overview)
  * @method array|null getGenreIds()
  * @method void setGenreIds(?array $genreIds)
- * @method string|null getReleaseDate()
- * @method void setReleaseDate(?string $releaseDate)
- * @method int|null getReleaseYear()
- * @method void setReleaseYear(?int $releaseYear)
- * @method int|null getRuntime()
- * @method void setRuntime(?int $runtime)
+ * @method string|null getFirstAirDate()
+ * @method void setFirstAirDate(?string $firstAirDate)
+ * @method int|null getFirstAirYear()
+ * @method void setFirstAirYear(?int $firstAirYear)
+ * @method int|null getNumberOfSeasons()
+ * @method void setNumberOfSeasons(?int $numberOfSeasons)
+ * @method int|null getNumberOfEpisodes()
+ * @method void setNumberOfEpisodes(?int $numberOfEpisodes)
+ * @method string|null getStatus()
+ * @method void setStatus(?string $status)
  * @method array|null getCastData()
  * @method void setCastData(?array $castData)
  * @method string|null getDirector()
  * @method void setDirector(?string $director)
- * @method string getMediaType()
- * @method void setMediaType(string $mediaType)
  * @method int|null getLastRating()
  * @method void setLastRating(?int $lastRating)
  * @method string|null getLastWatchedAt()
@@ -49,7 +51,7 @@ use OCP\AppFramework\Db\Entity;
  * @method string|null getUpdatedAt()
  * @method void setUpdatedAt(?string $updatedAt)
  */
-class Movie extends Entity implements JsonSerializable {
+class Series extends Entity implements JsonSerializable {
     protected string $userId = '';
     protected ?int $tmdbId = null;
     protected string $title = '';
@@ -58,12 +60,13 @@ class Movie extends Entity implements JsonSerializable {
     protected ?string $backdropPath = null;
     protected ?string $overview = null;
     protected ?array $genreIds = null;
-    protected ?string $releaseDate = null;
-    protected ?int $releaseYear = null;
-    protected ?int $runtime = null;
+    protected ?string $firstAirDate = null;
+    protected ?int $firstAirYear = null;
+    protected ?int $numberOfSeasons = null;
+    protected ?int $numberOfEpisodes = null;
+    protected ?string $status = null;
     protected ?array $castData = null;
     protected ?string $director = null;
-    protected string $mediaType = 'movie';
     protected ?int $lastRating = null;
     protected ?string $lastWatchedAt = null;
     protected bool $isFavorite = false;
@@ -74,8 +77,9 @@ class Movie extends Entity implements JsonSerializable {
         $this->addType('id', 'integer');
         $this->addType('tmdbId', 'integer');
         $this->addType('genreIds', 'json');
-        $this->addType('releaseYear', 'integer');
-        $this->addType('runtime', 'integer');
+        $this->addType('firstAirYear', 'integer');
+        $this->addType('numberOfSeasons', 'integer');
+        $this->addType('numberOfEpisodes', 'integer');
         $this->addType('castData', 'json');
         $this->addType('lastRating', 'integer');
         $this->addType('isFavorite', 'boolean');
@@ -92,12 +96,13 @@ class Movie extends Entity implements JsonSerializable {
             'backdropPath' => $this->backdropPath,
             'overview' => $this->overview,
             'genreIds' => $this->genreIds,
-            'releaseDate' => $this->releaseDate,
-            'releaseYear' => $this->releaseYear,
-            'runtime' => $this->runtime,
+            'firstAirDate' => $this->firstAirDate,
+            'firstAirYear' => $this->firstAirYear,
+            'numberOfSeasons' => $this->numberOfSeasons,
+            'numberOfEpisodes' => $this->numberOfEpisodes,
+            'status' => $this->status,
             'castData' => $this->castData,
             'director' => $this->director,
-            'mediaType' => $this->mediaType,
             'lastRating' => $this->lastRating,
             'lastWatchedAt' => $this->lastWatchedAt,
             'isFavorite' => $this->isFavorite,

@@ -16,6 +16,13 @@
 						<Movie :size="20" />
 					</template>
 				</NcAppNavigationItem>
+				<NcAppNavigationItem :name="t('moviedb', 'My TV Shows')"
+					:to="{ name: 'series' }"
+					:exact="true">
+					<template #icon>
+						<Television :size="20" />
+					</template>
+				</NcAppNavigationItem>
 				<NcAppNavigationItem :name="t('moviedb', 'Watchlist')"
 					:to="{ name: 'watchlist' }">
 					<template #icon>
@@ -56,6 +63,7 @@ import {
 
 import ViewDashboard from 'vue-material-design-icons/ViewDashboard.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
+import Television from 'vue-material-design-icons/Television.vue'
 import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
@@ -74,6 +82,7 @@ export default {
 		NcCounterBubble,
 		ViewDashboard,
 		Movie,
+		Television,
 		PlaylistPlay,
 		Plus,
 		Cog,

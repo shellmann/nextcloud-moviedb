@@ -10,36 +10,30 @@ use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
 /**
- * @extends QBMapper<Movie>
+ * @extends QBMapper<Series>
  */
-class MovieMapper extends QBMapper {
+class SeriesMapper extends QBMapper {
 
     /**
-     * Explicit list of columns that back a Movie entity property.
-     *
-     * We deliberately do NOT `SELECT *` here: v1.2.0 retains the legacy watch
-     * columns (date_watched/rating/review/platform_id/language_watched) in the
-     * table — they could not be dropped without breaking SQLite fresh installs
-     * (see Version000002 comment). QBMapper hydration (Entity::fromRow) calls a
-     * setter for every selected column and throws BadFunctionCallException on
-     * any column lacking a property, so we select only the entity-backed
-     * columns. `media_type` is included here (wired to Movie::$mediaType in
-     * v1.3.0); the legacy watch columns remain excluded.
+     * Explicit column allow-list (same reasoning as MovieMapper): the latest-watch
+     * aggregate adds aliased columns (last_watched_at/last_rating) that back entity
+     * properties but are not real table columns, so we never SELECT *.
      */
     private const COLUMNS = [
         'id', 'user_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
-        'backdrop_path', 'overview', 'genre_ids', 'release_date', 'release_year',
-        'runtime', 'cast_data', 'director', 'media_type', 'is_favorite', 'created_at', 'updated_at',
+        'backdrop_path', 'overview', 'genre_ids', 'first_air_date', 'first_air_year',
+        'number_of_seasons', 'number_of_episodes', 'status', 'cast_data', 'director',
+        'is_favorite', 'created_at', 'updated_at',
     ];
 
     public function __construct(IDBConnection $db) {
-        parent::__construct($db, 'moviedb_movies', Movie::class);
+        parent::__construct($db, 'moviedb_series', Series::class);
     }
 
     /**
      * @throws DoesNotExistException
      */
-    public function find(int $id, ?string $userId = null): Movie {
+    public function find(int $id, ?string $userId = null): Series {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select(...self::COLUMNS)
@@ -51,28 +45,25 @@ class MovieMapper extends QBMapper {
     }
 
     /**
-     * @return Movie[]
+     * @return Series[]
      */
     public function findAll(string $userId, array $filters = [], int $limit = 50, int $offset = 0): array {
         $qb = $this->db->getQueryBuilder();
 
-        // Bind user_id once on the OUTER builder; the placeholder is reused both
-        // in the aggregate subquery text and in the outer WHERE. Parameters live
-        // on the executing builder, and createFunction() carries none of its own,
-        // so a subquery built on a throwaway builder must reference an outer param.
-        $userParam = $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR, ':lw_user_id');
+        // Bind user_id once on the OUTER builder; the placeholder is reused both in
+        // the aggregate subquery text and in the outer WHERE. Mirrors MovieMapper.
+        $userParam = $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR, ':lw_series_user_id');
 
-        // Latest-watch-per-movie aggregate. Built on a nested builder only to emit
-        // correctly *PREFIX*-ed, per-platform-quoted SQL (no getTablePrefix(), no
-        // hand-written backticks — both break on non-MySQL). It references the
-        // outer :lw_user_id placeholder literally.
+        // Latest-watch-per-series aggregate over episode watches. Episode rows carry
+        // a denormalized series_id, so no join to episodes is needed here.
         $sub = $this->db->getQueryBuilder();
-        $sub->select('w.movie_id')
+        $sub->select('w.series_id')
             ->selectAlias($sub->func()->max('w.watched_at'), 'watched_at')
             ->selectAlias($sub->func()->max('w.rating'), 'rating')
             ->from('moviedb_movie_watches', 'w')
-            ->where('w.user_id = :lw_user_id')
-            ->groupBy('w.movie_id');
+            ->where('w.user_id = :lw_series_user_id')
+            ->andWhere($sub->expr()->isNotNull('w.series_id'))
+            ->groupBy('w.series_id');
 
         $qb->select(array_map(static fn (string $c): string => 'm.' . $c, self::COLUMNS))
             ->addSelect('lw.watched_at AS last_watched_at')
@@ -82,7 +73,7 @@ class MovieMapper extends QBMapper {
                 'm',
                 $qb->createFunction('(' . $sub->getSQL() . ')'),
                 'lw',
-                $qb->expr()->eq('m.id', 'lw.movie_id')
+                $qb->expr()->eq('m.id', 'lw.series_id')
             )
             ->where($qb->expr()->eq('m.user_id', $userParam));
 
@@ -90,7 +81,7 @@ class MovieMapper extends QBMapper {
 
         $sortField = $filters['sort'] ?? 'date_watched';
         $sortDir = strtoupper($filters['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
-        $allowedSortFields = ['date_watched', 'title', 'rating', 'release_year', 'created_at'];
+        $allowedSortFields = ['date_watched', 'title', 'rating', 'first_air_year', 'created_at'];
 
         if ($sortField === 'date_watched') {
             $qb->orderBy('lw.watched_at', $sortDir);
@@ -124,15 +115,9 @@ class MovieMapper extends QBMapper {
         return (int)($row['count'] ?? 0);
     }
 
-    /**
-     * Apply shared filter logic to a query builder.
-     */
     private function applyFilters(IQueryBuilder $qb, array $filters): void {
         if (!empty($filters['genre'])) {
             $genreId = (int)$filters['genre'];
-            // genre_ids is a JSON column; Postgres' json type has no LIKE operator,
-            // so cast to text before matching. (SQLite/MySQL store JSON as text and
-            // would tolerate a bare LIKE, but the cast is portable across all three.)
             $genreCol = $qb->expr()->castColumn('m.genre_ids', IQueryBuilder::PARAM_STR);
             $qb->andWhere(
                 $qb->expr()->orX(
@@ -144,23 +129,8 @@ class MovieMapper extends QBMapper {
             );
         }
         if (!empty($filters['year'])) {
-            $qb->andWhere($qb->expr()->eq('m.release_year',
+            $qb->andWhere($qb->expr()->eq('m.first_air_year',
                 $qb->createNamedParameter((int)$filters['year'], IQueryBuilder::PARAM_INT)));
-        }
-        if (!empty($filters['platform'])) {
-            // Filter to movies that have at least one watch on this platform.
-            // Nested builder emits *PREFIX*-ed, correctly-quoted SQL; the platform
-            // id is bound on the outer builder and referenced by placeholder name.
-            // (createNamedParameter is called for its binding side effect — the
-            // returned ':flt_platform' placeholder is what the subquery text uses.)
-            $qb->createNamedParameter((int)$filters['platform'], IQueryBuilder::PARAM_INT, ':flt_platform');
-            $sub = $this->db->getQueryBuilder();
-            $sub->selectDistinct('pw.movie_id')
-                ->from('moviedb_movie_watches', 'pw')
-                ->where('pw.platform_id = :flt_platform');
-            $qb->andWhere(
-                $qb->expr()->in('m.id', $qb->createFunction('(' . $sub->getSQL() . ')'))
-            );
         }
         if (!empty($filters['search'])) {
             $qb->andWhere($qb->expr()->iLike('m.title',
@@ -171,7 +141,7 @@ class MovieMapper extends QBMapper {
         }
     }
 
-    public function findByTmdbId(string $userId, int $tmdbId): ?Movie {
+    public function findByTmdbId(string $userId, int $tmdbId): ?Series {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select(...self::COLUMNS)
@@ -187,4 +157,3 @@ class MovieMapper extends QBMapper {
         }
     }
 }
-

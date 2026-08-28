@@ -10,8 +10,12 @@ use OCP\AppFramework\Db\Entity;
 /**
  * @method int getId()
  * @method void setId(int $id)
- * @method int getMovieId()
- * @method void setMovieId(int $movieId)
+ * @method int|null getMovieId()
+ * @method void setMovieId(?int $movieId)
+ * @method int|null getEpisodeId()
+ * @method void setEpisodeId(?int $episodeId)
+ * @method int|null getSeriesId()
+ * @method void setSeriesId(?int $seriesId)
  * @method string getUserId()
  * @method void setUserId(string $userId)
  * @method string|null getWatchedAt()
@@ -30,7 +34,9 @@ use OCP\AppFramework\Db\Entity;
  * @method void setUpdatedAt(?string $updatedAt)
  */
 class MovieWatch extends Entity implements JsonSerializable {
-    protected int $movieId = 0;
+    protected ?int $movieId = null;
+    protected ?int $episodeId = null;
+    protected ?int $seriesId = null;
     protected string $userId = '';
     protected ?string $watchedAt = null;
     protected ?int $rating = null;
@@ -43,6 +49,8 @@ class MovieWatch extends Entity implements JsonSerializable {
     public function __construct() {
         $this->addType('id', 'integer');
         $this->addType('movieId', 'integer');
+        $this->addType('episodeId', 'integer');
+        $this->addType('seriesId', 'integer');
         $this->addType('rating', 'integer');
         $this->addType('platformId', 'integer');
     }
@@ -51,6 +59,8 @@ class MovieWatch extends Entity implements JsonSerializable {
         return [
             'id'               => $this->id,
             'movieId'          => $this->movieId,
+            'episodeId'        => $this->episodeId,
+            'seriesId'         => $this->seriesId,
             'userId'           => $this->userId,
             'watchedAt'        => $this->watchedAt,
             'rating'           => $this->rating,

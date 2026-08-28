@@ -29,6 +29,26 @@
 					{{ t('moviedb', 'Movies Watched') }}
 				</div>
 			</div>
+			<div class="stat-card clickable"
+				role="link"
+				tabindex="0"
+				@click="$router.push({ name: 'series' })"
+				@keydown.enter="$router.push({ name: 'series' })">
+				<div class="stat-value">
+					{{ stats.totalSeries }}
+				</div>
+				<div class="stat-label">
+					{{ t('moviedb', 'TV Shows') }}
+				</div>
+			</div>
+			<div class="stat-card">
+				<div class="stat-value">
+					{{ stats.totalEpisodesWatched }}
+				</div>
+				<div class="stat-label">
+					{{ t('moviedb', 'Episodes Watched') }}
+				</div>
+			</div>
 			<div class="stat-card">
 				<div class="stat-value">
 					{{ stats.totalRuntimeHours }}h
@@ -109,6 +129,8 @@ export default {
 		return {
 			stats: {
 				totalMovies: 0,
+				totalSeries: 0,
+				totalEpisodesWatched: 0,
 				totalRuntimeHours: 0,
 				averageRating: 0,
 				watchlistCount: 0,

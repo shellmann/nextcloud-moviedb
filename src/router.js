@@ -4,6 +4,10 @@ import MovieList from './views/MovieList.vue'
 import AddMovie from './views/AddMovie.vue'
 import MovieDetail from './views/MovieDetail.vue'
 import EditMovie from './views/EditMovie.vue'
+import SeriesList from './views/SeriesList.vue'
+import AddSeries from './views/AddSeries.vue'
+import SeriesDetail from './views/SeriesDetail.vue'
+import EditSeries from './views/EditSeries.vue'
 import Watchlist from './views/Watchlist.vue'
 import AddToWatchlist from './views/AddToWatchlist.vue'
 import Settings from './views/Settings.vue'
@@ -34,6 +38,28 @@ const routes = [
 		path: '/movies/:id/edit',
 		name: 'edit-movie',
 		component: EditMovie,
+		props: true,
+	},
+	{
+		path: '/tv',
+		name: 'series',
+		component: SeriesList,
+	},
+	{
+		path: '/tv/add',
+		name: 'add-series',
+		component: AddSeries,
+	},
+	{
+		path: '/tv/:id',
+		name: 'series-detail',
+		component: SeriesDetail,
+		props: true,
+	},
+	{
+		path: '/tv/:id/edit',
+		name: 'edit-series',
+		component: EditSeries,
 		props: true,
 	},
 	{

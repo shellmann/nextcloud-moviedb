@@ -19,10 +19,23 @@ export const useWatchlistStore = defineStore('watchlist', {
 		sort: 'priority',
 		/** @type {string} Current sort direction */
 		dir: 'DESC',
+		/** @type {string} Type filter: 'all' | 'movie' | 'series' */
+		typeFilter: 'all',
 	}),
 
 	getters: {
 		hasItems: (state) => state.items.length > 0,
+		/**
+		 * Items filtered by the active media-type filter (client-side; lists are small).
+		 * @param {object} state - Store state
+		 * @return {Array<object>} Filtered items
+		 */
+		filteredItems: (state) => {
+			if (state.typeFilter === 'all') {
+				return state.items
+			}
+			return state.items.filter(i => (i.mediaType || 'movie') === state.typeFilter)
+		},
 	},
 
 	actions: {
@@ -65,6 +78,14 @@ export const useWatchlistStore = defineStore('watchlist', {
 		},
 
 		/**
+		 * Sets the media-type filter ('all' | 'movie' | 'series').
+		 * @param {string} type - The type filter to apply
+		 */
+		setTypeFilter(type) {
+			this.typeFilter = type
+		},
+
+		/**
 		 * Adds a new item to the watchlist.
 		 * @param {object} itemData - Watchlist item data
 		 * @return {Promise<object | null>} The created item or null on error
@@ -83,7 +104,7 @@ export const useWatchlistStore = defineStore('watchlist', {
 			} catch (error) {
 				console.error('Failed to add to watchlist:', error)
 				if (error.response?.status === 409) {
-					showError(t('moviedb', 'This movie is already in your watchlist.'))
+					showError(t('moviedb', 'This title is already in your watchlist.'))
 				} else {
 					showError(t('moviedb', 'Failed to add to watchlist. Please try again.'))
 				}
@@ -134,18 +155,23 @@ export const useWatchlistStore = defineStore('watchlist', {
 		},
 
 		/**
-		 * Moves a watchlist item to the watched movies list.
+		 * Moves a watchlist item off the watchlist: a movie is logged as watched,
+		 * a series is imported as a tracked show (at 0% progress).
 		 * @param {number} id - Watchlist item ID
 		 * @param {object} watchData - Additional data (date watched, rating, etc.)
-		 * @return {Promise<object | null>} The created movie or null on error
+		 * @return {Promise<object | null>} `{ movie }` or `{ series }`, or null on error
 		 */
 		async moveToWatched(id, watchData) {
 			try {
 				const response = await api.moveToWatched(id, watchData)
 				this.items = this.items.filter(i => i.id !== id)
 				this.total--
-				showSuccess(t('moviedb', 'Moved to watched movies.'))
-				return response.data.movie
+				if (response.data.series) {
+					showSuccess(t('moviedb', 'Added to your TV shows.'))
+				} else {
+					showSuccess(t('moviedb', 'Moved to watched movies.'))
+				}
+				return response.data
 			} catch (error) {
 				console.error('Failed to move to watched:', error)
 				showError(t('moviedb', 'Failed to move to watched. Please try again.'))

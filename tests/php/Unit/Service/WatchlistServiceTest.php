@@ -125,6 +125,7 @@ class WatchlistServiceTest extends TestCase {
                 return $item->getUserId() === $userId
                     && $item->getTitle() === 'Oppenheimer'
                     && $item->getPriority() === 0
+                    && $item->getMediaType() === 'movie'
                     && $item->getAddedAt() !== null;
             }))
             ->willReturnCallback(function (WatchlistItem $item) {
@@ -136,6 +137,31 @@ class WatchlistServiceTest extends TestCase {
 
         $this->assertEquals('Oppenheimer', $result->getTitle());
         $this->assertEquals(0, $result->getPriority());
+        $this->assertEquals('movie', $result->getMediaType());
+    }
+
+    public function testCreatePersistsSeriesMediaType(): void {
+        $userId = 'testuser';
+        $data = [
+            'tmdbId' => 1399,
+            'title' => 'Game of Thrones',
+            'mediaType' => 'series',
+        ];
+
+        $this->mapper->expects($this->once())
+            ->method('insert')
+            ->with($this->callback(function (WatchlistItem $item) {
+                return $item->getTitle() === 'Game of Thrones'
+                    && $item->getMediaType() === 'series';
+            }))
+            ->willReturnCallback(function (WatchlistItem $item) {
+                $item->setId(1);
+                return $item;
+            });
+
+        $result = $this->service->create($userId, $data);
+
+        $this->assertEquals('series', $result->getMediaType());
     }
 
     public function testUpdate(): void {
@@ -233,7 +259,7 @@ class WatchlistServiceTest extends TestCase {
 
         $this->mapper->expects($this->once())
             ->method('findByTmdbId')
-            ->with($userId, $tmdbId)
+            ->with($userId, $tmdbId, null)
             ->willReturn($item);
 
         $result = $this->service->existsByTmdbId($userId, $tmdbId);
@@ -250,6 +276,21 @@ class WatchlistServiceTest extends TestCase {
             ->willReturn(null);
 
         $result = $this->service->existsByTmdbId($userId, $tmdbId);
+
+        $this->assertFalse($result);
+    }
+
+    public function testExistsByTmdbIdIsTypeAware(): void {
+        $userId = 'testuser';
+        $tmdbId = 1399;
+
+        // A movie with this TMDB id exists, but no series with it does.
+        $this->mapper->expects($this->once())
+            ->method('findByTmdbId')
+            ->with($userId, $tmdbId, 'series')
+            ->willReturn(null);
+
+        $result = $this->service->existsByTmdbId($userId, $tmdbId, 'series');
 
         $this->assertFalse($result);
     }

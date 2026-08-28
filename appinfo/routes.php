@@ -14,6 +14,23 @@ return [
         ['name' => 'movie#update', 'url' => '/api/movies/{id}', 'verb' => 'PUT'],
         ['name' => 'movie#destroy', 'url' => '/api/movies/{id}', 'verb' => 'DELETE'],
 
+        // Series CRUD + mark-watched fan-out
+        ['name' => 'series#index', 'url' => '/api/series', 'verb' => 'GET'],
+        ['name' => 'series#create', 'url' => '/api/series', 'verb' => 'POST'],
+        ['name' => 'series#show', 'url' => '/api/series/{id}', 'verb' => 'GET', 'requirements' => ['id' => '\d+']],
+        ['name' => 'series#update', 'url' => '/api/series/{id}', 'verb' => 'PUT', 'requirements' => ['id' => '\d+']],
+        ['name' => 'series#destroy', 'url' => '/api/series/{id}', 'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
+        ['name' => 'series#episodes', 'url' => '/api/series/{id}/episodes', 'verb' => 'GET', 'requirements' => ['id' => '\d+']],
+        ['name' => 'series#markWatched', 'url' => '/api/series/{id}/watched', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
+        ['name' => 'series#markSeasonWatched', 'url' => '/api/series/{id}/seasons/{seasonNumber}/watched', 'verb' => 'POST', 'requirements' => ['id' => '\d+', 'seasonNumber' => '\d+']],
+
+        // Episode watch history
+        ['name' => 'episode_watch#index',   'url' => '/api/episodes/{episodeId}/watches',           'verb' => 'GET',    'requirements' => ['episodeId' => '\d+']],
+        ['name' => 'episode_watch#create',  'url' => '/api/episodes/{episodeId}/watches',           'verb' => 'POST',   'requirements' => ['episodeId' => '\d+']],
+        ['name' => 'episode_watch#update',  'url' => '/api/episodes/{episodeId}/watches/{watchId}', 'verb' => 'PUT',    'requirements' => ['episodeId' => '\d+', 'watchId' => '\d+']],
+        ['name' => 'episode_watch#destroy', 'url' => '/api/episodes/{episodeId}/watches/{watchId}', 'verb' => 'DELETE', 'requirements' => ['episodeId' => '\d+', 'watchId' => '\d+']],
+
+
         // Watchlist CRUD
         ['name' => 'watchlist#index', 'url' => '/api/watchlist', 'verb' => 'GET'],
         ['name' => 'watchlist#show', 'url' => '/api/watchlist/{id}', 'verb' => 'GET'],
@@ -34,6 +51,13 @@ return [
         ['name' => 'tmdb#genres', 'url' => '/api/tmdb/genres', 'verb' => 'GET'],
         ['name' => 'tmdb#checkApiKey', 'url' => '/api/tmdb/check', 'verb' => 'GET'],
         ['name' => 'tmdb#image', 'url' => '/api/tmdb/image/{path}', 'verb' => 'GET', 'requirements' => ['path' => '.+']],
+
+        // TMDB series API proxy — declare literal routes BEFORE the {tmdbId}
+        // catch-all so "search"/"genres" are not captured as a tmdbId.
+        ['name' => 'tmdb#searchSeries', 'url' => '/api/tmdb/series/search', 'verb' => 'GET'],
+        ['name' => 'tmdb#seriesGenres', 'url' => '/api/tmdb/series/genres', 'verb' => 'GET'],
+        ['name' => 'tmdb#seasonDetails', 'url' => '/api/tmdb/series/{tmdbId}/season/{seasonNumber}', 'verb' => 'GET', 'requirements' => ['tmdbId' => '\d+', 'seasonNumber' => '\d+']],
+        ['name' => 'tmdb#seriesDetails', 'url' => '/api/tmdb/series/{tmdbId}', 'verb' => 'GET', 'requirements' => ['tmdbId' => '\d+']],
 
         // Movie watch history
         ['name' => 'movie_watch#index',   'url' => '/api/movies/{movieId}/watches',           'verb' => 'GET'],

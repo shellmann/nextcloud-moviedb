@@ -7,7 +7,7 @@
 					<template #icon>
 						<Plus :size="20" />
 					</template>
-					{{ t('moviedb', 'Add Movie') }}
+					{{ t('moviedb', 'Add') }}
 				</NcButton>
 				<NcButton :aria-label="t('moviedb', 'Pick Random')"
 					:title="t('moviedb', 'Pick Random')"
@@ -20,6 +20,12 @@
 		</div>
 
 		<div class="filters">
+			<NcSelect v-model="selectedType"
+				:options="typeOptions"
+				:placeholder="t('moviedb', 'Type')"
+				:aria-label="t('moviedb', 'Filter by type')"
+				:clearable="false"
+				@update:modelValue="onTypeChange" />
 			<NcSelect v-model="selectedSort"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
@@ -48,14 +54,17 @@
 				<div class="item-info">
 					<div class="item-header">
 						<h3>{{ item.title }}</h3>
+						<span class="type-badge" :class="isSeries(item) ? 'type-tv' : 'type-movie'">
+							{{ isSeries(item) ? t('moviedb', 'TV') : t('moviedb', 'Movie') }}
+						</span>
 						<span v-if="item.priority > 0" class="priority-badge" :class="getPriorityColor(item.priority)">
 							{{ getPriorityLabel(item.priority) }}
 						</span>
 					</div>
 					<p v-if="item.releaseDate" class="release-date">
 						{{ item.releaseDate.substring(0, 4) }}
-						<span v-if="getGenreNames(item.genreIds).length" class="genre-tags">
-							<span v-for="genre in getGenreNames(item.genreIds)" :key="genre" class="genre-tag">{{ genre }}</span>
+						<span v-if="getGenreNames(item).length" class="genre-tags">
+							<span v-for="genre in getGenreNames(item)" :key="genre" class="genre-tag">{{ genre }}</span>
 						</span>
 					</p>
 					<p v-if="item.notes" class="notes">
@@ -66,7 +75,7 @@
 							<template #icon>
 								<Check :size="20" />
 							</template>
-							{{ t('moviedb', 'Mark as Watched') }}
+							{{ isSeries(item) ? t('moviedb', 'Add to TV Shows') : t('moviedb', 'Mark as Watched') }}
 						</NcButton>
 						<NcButton :aria-label="t('moviedb', 'Edit')"
 							@click="openEditModal(item)">
@@ -92,7 +101,7 @@
 			</template>
 			<template #action>
 				<NcButton @click="$router.push({ name: 'add-to-watchlist' })">
-					{{ t('moviedb', 'Search for movies to add') }}
+					{{ t('moviedb', 'Search for something to add') }}
 				</NcButton>
 			</template>
 		</NcEmptyContent>
@@ -186,10 +195,11 @@ import DiceMultiple from 'vue-material-design-icons/DiceMultiple.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
-import { LANGUAGE_OPTIONS, GENRE_OPTIONS, getRatingOptions, getPriorityOptions, getPriorityLabel, getPriorityColor } from '../constants.js'
+import { LANGUAGE_OPTIONS, getGenreOptions, getRatingOptions, getPriorityOptions, getPriorityLabel, getPriorityColor, MEDIA_TYPE } from '../constants.js'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
 import { usePlatformsStore } from '../stores/platforms.js'
+import { useSettingsStore } from '../stores/settings.js'
 
 export default {
 	name: 'Watchlist',
@@ -211,7 +221,8 @@ export default {
 	setup() {
 		const watchlistStore = useWatchlistStore()
 		const platformsStore = usePlatformsStore()
-		return { watchlistStore, platformsStore }
+		const settingsStore = useSettingsStore()
+		return { watchlistStore, platformsStore, settingsStore }
 	},
 	data() {
 		return {
@@ -222,6 +233,7 @@ export default {
 			pendingRemoveId: null,
 			highlightedId: null,
 			selectedSort: null,
+			selectedType: null,
 			watchedData: {
 				platform: null,
 				language: null,
@@ -240,12 +252,17 @@ export default {
 				{ id: 'added_at', label: t('moviedb', 'Date Added') },
 				{ id: 'title', label: t('moviedb', 'Title') },
 			],
+			typeOptions: [
+				{ id: 'all', label: t('moviedb', 'All') },
+				{ id: 'movie', label: t('moviedb', 'Movies') },
+				{ id: 'series', label: t('moviedb', 'TV Shows') },
+			],
 			saving: false,
 		}
 	},
 	computed: {
 		items() {
-			return this.watchlistStore.items
+			return this.watchlistStore.filteredItems
 		},
 		loading() {
 			return this.watchlistStore.loading
@@ -259,17 +276,25 @@ export default {
 	},
 	created() {
 		this.selectedSort = this.sortOptions[0]
+		this.selectedType = this.typeOptions[0]
 		this.watchlistStore.resetSort()
+		this.watchlistStore.setTypeFilter('all')
 		this.watchlistStore.fetchAll()
 	},
 	methods: {
 		getPosterUrl,
 		getPriorityLabel,
 		getPriorityColor,
+		isSeries(item) {
+			return (item.mediaType || 'movie') === MEDIA_TYPE.SERIES
+		},
 		onSortChange(selected) {
 			if (selected) {
 				this.watchlistStore.setSort(selected.id, 'DESC')
 			}
+		},
+		onTypeChange(selected) {
+			this.watchlistStore.setTypeFilter(selected ? selected.id : 'all')
 		},
 		pickRandom() {
 			if (!this.items.length) return
@@ -286,15 +311,28 @@ export default {
 				this.highlightedId = null
 			}, 4000)
 		},
-		getGenreNames(genreIds) {
+		getGenreNames(item) {
+			const genreIds = item.genreIds
 			if (!genreIds) return []
 			const ids = Array.isArray(genreIds) ? genreIds : JSON.parse(genreIds || '[]')
+			const options = getGenreOptions(this.isSeries(item) ? MEDIA_TYPE.SERIES : MEDIA_TYPE.MOVIE)
 			return ids
-				.map(id => GENRE_OPTIONS.find(g => g.id === id)?.label)
+				.map(id => options.find(g => g.id === id)?.label)
 				.filter(Boolean)
 				.slice(0, 2)
 		},
-		openWatchedModal(item) {
+		async openWatchedModal(item) {
+			// Series don't have a single watch event — importing the show tracks it
+			// at 0% and the user marks episodes/seasons afterward. Skip the modal.
+			if (this.isSeries(item)) {
+				const result = await this.watchlistStore.moveToWatched(item.id, {
+					language: this.settingsStore.defaultLanguage || 'en-US',
+				})
+				if (result?.series) {
+					this.$router.push({ name: 'series-detail', params: { id: String(result.series.id) } })
+				}
+				return
+			}
 			this.selectedItem = item
 			this.watchedData = {
 				platform: null,
@@ -306,13 +344,13 @@ export default {
 		},
 		async confirmWatched() {
 			this.saving = true
-			const movie = await this.watchlistStore.moveToWatched(this.selectedItem.id, {
+			const result = await this.watchlistStore.moveToWatched(this.selectedItem.id, {
 				platformId: this.watchedData.platform?.id,
 				languageWatched: this.watchedData.language?.id,
 				dateWatched: this.watchedData.dateWatched,
 				rating: this.watchedData.rating?.id,
 			})
-			if (movie) {
+			if (result) {
 				this.showWatchedModal = false
 			}
 			this.saving = false
@@ -460,6 +498,24 @@ export default {
         font-size: 1.1em;
     }
 
+    .type-badge {
+        font-size: 10px;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-weight: bold;
+        text-transform: uppercase;
+
+        &.type-movie {
+            background: var(--color-primary-element-light);
+            color: var(--color-primary-element-light-text);
+        }
+
+        &.type-tv {
+            background: var(--color-success);
+            color: var(--color-success-text, #fff);
+        }
+    }
+
     .priority-badge {
         font-size: 11px;
         padding: 2px 8px;
@@ -468,7 +524,6 @@ export default {
         text-transform: uppercase;
         background: var(--color-background-darker);
         color: var(--color-text-lighter);
-
         &.warning {
             background: var(--color-warning);
             color: var(--color-warning-text);

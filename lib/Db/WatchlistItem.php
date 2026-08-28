@@ -30,6 +30,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setPriority(int $priority)
  * @method string|null getNotes()
  * @method void setNotes(?string $notes)
+ * @method string getMediaType()
+ * @method void setMediaType(string $mediaType)
  */
 class WatchlistItem extends Entity implements JsonSerializable {
     protected string $userId = '';
@@ -42,6 +44,7 @@ class WatchlistItem extends Entity implements JsonSerializable {
     protected string $addedAt = '';
     protected int $priority = 0;
     protected ?string $notes = null;
+    protected string $mediaType = 'movie';
 
     public function __construct() {
         $this->addType('id', 'integer');
@@ -63,6 +66,7 @@ class WatchlistItem extends Entity implements JsonSerializable {
             'addedAt' => $this->addedAt,
             'priority' => $this->priority,
             'notes' => $this->notes,
+            'mediaType' => $this->mediaType,
         ];
     }
 }

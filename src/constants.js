@@ -79,6 +79,42 @@ export const GENRE_OPTIONS = [
 	{ id: 37, label: 'Western' },
 ]
 
+// TMDB TV genre ids (distinct list from /genre/tv/list)
+export const TV_GENRE_OPTIONS = [
+	{ id: 10759, label: 'Action & Adventure' },
+	{ id: 16, label: 'Animation' },
+	{ id: 35, label: 'Comedy' },
+	{ id: 80, label: 'Crime' },
+	{ id: 99, label: 'Documentary' },
+	{ id: 18, label: 'Drama' },
+	{ id: 10751, label: 'Family' },
+	{ id: 10762, label: 'Kids' },
+	{ id: 9648, label: 'Mystery' },
+	{ id: 10763, label: 'News' },
+	{ id: 10764, label: 'Reality' },
+	{ id: 10765, label: 'Sci-Fi & Fantasy' },
+	{ id: 10766, label: 'Soap' },
+	{ id: 10767, label: 'Talk' },
+	{ id: 10768, label: 'War & Politics' },
+	{ id: 37, label: 'Western' },
+]
+
+// Media type discriminator, mirrors the backend `media_type` column.
+export const MEDIA_TYPE = {
+	MOVIE: 'movie',
+	SERIES: 'series',
+}
+
+/**
+ * Get the genre option list for a given media type.
+ *
+ * @param {string} mediaType - MEDIA_TYPE.MOVIE or MEDIA_TYPE.SERIES
+ * @return {Array} Genre options for that media type
+ */
+export function getGenreOptions(mediaType) {
+	return mediaType === MEDIA_TYPE.SERIES ? TV_GENRE_OPTIONS : GENRE_OPTIONS
+}
+
 // Keep static versions for backwards compatibility (used for lookups by id)
 export const RATING_OPTIONS = [
 	{ id: 10, label: '10 - Masterpiece' },

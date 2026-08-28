@@ -44,9 +44,57 @@ class TmdbController extends AuthenticatedController {
         $year = $this->request->getParam('year');
         $page = (int)$this->request->getParam('page', 1);
         $language = $this->request->getParam('language', 'en-US');
+        $type = $this->request->getParam('type', 'movie');
 
         try {
-            $results = $this->service->searchMovies(
+            if ($type === 'series') {
+                $results = $this->service->searchSeries(
+                    $query,
+                    $year ? (int)$year : null,
+                    $page,
+                    $this->userId,
+                    $language
+                );
+            } else {
+                $results = $this->service->searchMovies(
+                    $query,
+                    $year ? (int)$year : null,
+                    $page,
+                    $this->userId,
+                    $language
+                );
+            }
+            return new JSONResponse($results);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to search TMDB ' . ($type === 'series' ? 'series' : 'movies'), [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'query' => $query,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to search. Please check your API key and try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
+        }
+    }
+
+    #[NoAdminRequired]
+    public function searchSeries(): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+
+        $query = $this->request->getParam('query');
+        if (empty($query)) {
+            return new JSONResponse(['error' => 'Query parameter is required'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $year = $this->request->getParam('year');
+        $page = (int)$this->request->getParam('page', 1);
+        $language = $this->request->getParam('language', 'en-US');
+
+        try {
+            $results = $this->service->searchSeries(
                 $query,
                 $year ? (int)$year : null,
                 $page,
@@ -55,13 +103,85 @@ class TmdbController extends AuthenticatedController {
             );
             return new JSONResponse($results);
         } catch (\Exception $e) {
-            $this->logger->error('Failed to search TMDB movies', [
+            $this->logger->error('Failed to search TMDB series', [
                 'exception' => $e,
                 'userId' => $this->userId,
                 'query' => $query,
             ]);
             return new JSONResponse(
-                ['error' => 'Failed to search movies. Please check your API key and try again.'],
+                ['error' => 'Failed to search series. Please check your API key and try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
+        }
+    }
+
+    #[NoAdminRequired]
+    public function seriesDetails(int $tmdbId): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+
+        $language = $this->request->getParam('language', 'en-US');
+
+        try {
+            $series = $this->service->getSeriesDetails($tmdbId, $this->userId, $language);
+            return new JSONResponse(['series' => $series]);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to get TMDB series details', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'tmdbId' => $tmdbId,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to load series details. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
+        }
+    }
+
+    #[NoAdminRequired]
+    public function seriesGenres(): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+
+        $language = $this->request->getParam('language', 'en-US');
+
+        try {
+            $genres = $this->service->getSeriesGenres($this->userId, $language);
+            return new JSONResponse($genres);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to get TMDB series genres', [
+                'exception' => $e,
+                'userId' => $this->userId,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to load series genres. Please try again.'],
+                Http::STATUS_BAD_REQUEST
+            );
+        }
+    }
+
+    #[NoAdminRequired]
+    public function seasonDetails(int $tmdbId, int $seasonNumber): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+
+        $language = $this->request->getParam('language', 'en-US');
+
+        try {
+            $season = $this->service->getSeasonDetails($tmdbId, $seasonNumber, $this->userId, $language);
+            return new JSONResponse(['season' => $season]);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to get TMDB season details', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'tmdbId' => $tmdbId,
+                'seasonNumber' => $seasonNumber,
+            ]);
+            return new JSONResponse(
+                ['error' => 'Failed to load season details. Please try again.'],
                 Http::STATUS_BAD_REQUEST
             );
         }

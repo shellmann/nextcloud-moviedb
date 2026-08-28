@@ -23,6 +23,13 @@ class MovieWatchService {
         return $this->mapper->findByMovie($movieId, $userId);
     }
 
+    /**
+     * @return MovieWatch[]
+     */
+    public function findByEpisode(int $episodeId, string $userId): array {
+        return $this->mapper->findByEpisode($episodeId, $userId);
+    }
+
     public function create(int $movieId, string $userId, array $data): MovieWatch {
         if (isset($data['rating']) && $data['rating'] !== null) {
             $rating = (int)$data['rating'];
@@ -34,6 +41,33 @@ class MovieWatchService {
 
         $watch = new MovieWatch();
         $watch->setMovieId($movieId);
+        $watch->setUserId($userId);
+        $watch->setWatchedAt($data['watchedAt'] ?? null);
+        $watch->setRating($data['rating'] ?? null);
+        $watch->setReview($data['review'] ?? null);
+        $watch->setPlatformId($data['platformId'] ?? null);
+        $watch->setLanguageWatched($data['languageWatched'] ?? null);
+        $watch->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
+
+        return $this->mapper->insert($watch);
+    }
+
+    /**
+     * Log a watch of a series episode. Mutually exclusive with a movie watch:
+     * sets episode_id + denormalized series_id, leaves movie_id null.
+     */
+    public function createForEpisode(int $episodeId, int $seriesId, string $userId, array $data): MovieWatch {
+        if (isset($data['rating']) && $data['rating'] !== null) {
+            $rating = (int)$data['rating'];
+            if ($rating < 1 || $rating > 10) {
+                throw new \InvalidArgumentException('Rating must be between 1 and 10');
+            }
+            $data['rating'] = $rating;
+        }
+
+        $watch = new MovieWatch();
+        $watch->setEpisodeId($episodeId);
+        $watch->setSeriesId($seriesId);
         $watch->setUserId($userId);
         $watch->setWatchedAt($data['watchedAt'] ?? null);
         $watch->setRating($data['rating'] ?? null);

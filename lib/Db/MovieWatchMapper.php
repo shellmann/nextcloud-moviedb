@@ -61,6 +61,7 @@ class MovieWatchMapper extends QBMapper {
             ->selectAlias($qb->createFunction('MAX(rating)'), 'rating')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNotNull('movie_id'))
             ->groupBy('movie_id');
 
         $result = $qb->executeQuery();
@@ -104,7 +105,8 @@ class MovieWatchMapper extends QBMapper {
         $qb->selectAlias($qb->createFunction('AVG(rating)'), 'average')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
-            ->andWhere($qb->expr()->isNotNull('rating'));
+            ->andWhere($qb->expr()->isNotNull('rating'))
+            ->andWhere($qb->expr()->isNotNull('movie_id'));
 
         $result = $qb->executeQuery();
         $row = $result->fetch();
@@ -124,6 +126,7 @@ class MovieWatchMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
             ->andWhere($qb->expr()->isNotNull('platform_id'))
+            ->andWhere($qb->expr()->isNotNull('movie_id'))
             ->groupBy('platform_id');
 
         $result = $qb->executeQuery();
@@ -161,5 +164,124 @@ class MovieWatchMapper extends QBMapper {
         $result->closeCursor();
 
         return $data;
+    }
+
+    // ─── Episode watches (v1.3.0) ───────────────────────────────────────────
+
+    /**
+     * @return MovieWatch[]
+     */
+    public function findByEpisode(int $episodeId, string $userId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('episode_id', $qb->createNamedParameter($episodeId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->orderBy('watched_at', 'DESC');
+
+        return $this->findEntities($qb);
+    }
+
+    /**
+     * Distinct episode IDs the user has watched for a series.
+     *
+     * @return int[]
+     */
+    public function findWatchedEpisodeIds(int $seriesId, string $userId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->selectDistinct('episode_id')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('series_id', $qb->createNamedParameter($seriesId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNotNull('episode_id'));
+
+        $result = $qb->executeQuery();
+        $ids = [];
+        while ($row = $result->fetch()) {
+            $ids[] = (int)$row['episode_id'];
+        }
+        $result->closeCursor();
+
+        return $ids;
+    }
+
+    /**
+     * Watch counts per episode for a series: episode_id => number of watches.
+     *
+     * @return array<int, int>
+     */
+    public function countWatchesPerEpisode(int $seriesId, string $userId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('episode_id')
+            ->selectAlias($qb->func()->count('*'), 'count')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('series_id', $qb->createNamedParameter($seriesId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNotNull('episode_id'))
+            ->groupBy('episode_id');
+
+        $result = $qb->executeQuery();
+        $data = [];
+        while ($row = $result->fetch()) {
+            $data[(int)$row['episode_id']] = (int)$row['count'];
+        }
+        $result->closeCursor();
+
+        return $data;
+    }
+
+    /**
+     * Total distinct watched episodes across all series for a user.
+     */
+    public function countWatchedEpisodes(string $userId): int {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->selectAlias($qb->createFunction('COUNT(DISTINCT episode_id)'), 'count')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNotNull('episode_id'));
+
+        $result = $qb->executeQuery();
+        $row = $result->fetch();
+        $result->closeCursor();
+
+        return (int)($row['count'] ?? 0);
+    }
+
+    /**
+     * Total episode runtime across all watches for a user (joins to episodes for
+     * runtime). Counts each rewatch separately, mirroring getTotalRuntime.
+     */
+    public function getTotalEpisodeRuntime(string $userId): int {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->selectAlias($qb->func()->sum('e.runtime'), 'total')
+            ->from($this->getTableName(), 'w')
+            ->innerJoin('w', 'moviedb_episodes', 'e', $qb->expr()->eq('w.episode_id', 'e.id'))
+            ->where($qb->expr()->eq('w.user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNotNull('e.runtime'));
+
+        $result = $qb->executeQuery();
+        $row = $result->fetch();
+        $result->closeCursor();
+
+        return (int)($row['total'] ?? 0);
+    }
+
+    /**
+     * Delete all watch rows for a series (used on cascade delete). Ownership is
+     * verified by the caller before invoking this.
+     */
+    public function deleteBySeries(int $seriesId, string $userId): void {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('series_id', $qb->createNamedParameter($seriesId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+        $qb->executeStatement();
     }
 }

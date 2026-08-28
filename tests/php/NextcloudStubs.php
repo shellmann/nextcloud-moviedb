@@ -105,6 +105,9 @@ namespace OCP {
     interface IDBConnection {
         public function getQueryBuilder(): mixed;
         public function escapeLikeParameter(string $param): string;
+        public function beginTransaction(): void;
+        public function commit(): void;
+        public function rollBack(): void;
     }
 }
 
@@ -220,8 +223,6 @@ namespace OCP\AppFramework\Db {
         protected function findEntities($qb): array {
             return [];
         }
-
-        abstract public function find(int $id, ?string $userId = null);
     }
 }
 
