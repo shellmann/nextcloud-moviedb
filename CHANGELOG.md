@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.1] - 2026-08-29
+
+### Fixed
+- `PlatformService::findAllForUser` now checks `hasDefaults()` before calling
+  `createDefaults()`, avoiding an unnecessary DB write on every PHP process start
+- `SeriesServiceTest`: test mocks corrected from non-existent `findByTmdbId` to
+  `findByTmdbIdAndSeries`; static `$defaultsSeeded` flag reset between test cases
+  so platform-seeding tests run in isolation
+
+### Changed
+- App Store description updated to reflect TV show tracking and rewatch support
+  added in 1.2.0 and 1.3.0
+
 ## [1.3.0] - 2026-08-28
 
 ### Added

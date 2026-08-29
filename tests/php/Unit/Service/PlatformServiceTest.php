@@ -22,6 +22,10 @@ class PlatformServiceTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
+        // Reset the static seed-guard so each test starts fresh.
+        $ref = new \ReflectionProperty(PlatformService::class, 'defaultsSeeded');
+        $ref->setValue(null, false);
+
         $this->mapper = $this->createMock(PlatformMapper::class);
         $this->service = new PlatformService($this->mapper);
     }

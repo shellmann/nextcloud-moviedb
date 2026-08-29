@@ -432,7 +432,7 @@ class SeriesServiceTest extends TestCase {
             ]]);
 
         // Neither episode exists yet.
-        $this->episodeMapper->method('findByTmdbId')->willReturn(null);
+        $this->episodeMapper->method('findByTmdbIdAndSeries')->willReturn(null);
         $this->episodeMapper->expects($this->exactly(2))
             ->method('insert')
             ->willReturnArgument(0);
@@ -505,7 +505,7 @@ class SeriesServiceTest extends TestCase {
             ['id' => 501, 'season_number' => 1, 'episode_number' => 1, 'name' => 'Pilot'],
         ]]);
         // Episode 501 already stored → skip insert.
-        $this->episodeMapper->method('findByTmdbId')->with(501)->willReturn($this->makeEpisode(77, 1, 1, 1, '2000-01-01', false));
+        $this->episodeMapper->method('findByTmdbIdAndSeries')->with(501)->willReturn($this->makeEpisode(77, 1, 1, 1, '2000-01-01', false));
         $this->episodeMapper->expects($this->never())->method('insert');
 
         $this->db->method('beginTransaction');
@@ -548,7 +548,7 @@ class SeriesServiceTest extends TestCase {
                 ]]];
             }
         );
-        $this->episodeMapper->method('findByTmdbId')->willReturn(null);
+        $this->episodeMapper->method('findByTmdbIdAndSeries')->willReturn(null);
 
         $insertedSeasons = [];
         $this->episodeMapper->expects($this->exactly(2))

@@ -3,29 +3,31 @@
       xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
     <id>moviedb</id>
     <name>MovieDB</name>
-    <summary>Personal movie database to track your watched movies</summary>
+    <summary>Personal movie and TV show database to track what you've watched</summary>
     <description><![CDATA[
-# MovieDB - Personal Movie Database
+# MovieDB - Personal Movie & TV Database
 
-Track all the movies you've watched with rich metadata from TMDB.
+Track all the movies and TV shows you've watched with rich metadata from TMDB.
 
 ## Features
 
 - **Movie Tracking**: Log movies with where you watched them (Netflix, Disney+, cinema, etc.)
-- **TMDB Integration**: Automatically fetch movie posters, cast, and plot information
-- **Personal Ratings**: Rate movies 1-10 and write your own reviews
-- **Watch History**: Track when you watched each movie and in what language
-- **Watchlist**: Maintain a list of movies you want to watch, with priorities and a random picker
-- **Filtering & Sorting**: Filter by genre, platform and favorites, and sort in either direction
-- **Statistics**: See your viewing stats by genre, platform, and more
+- **TV Show Tracking**: Track series at the episode level — see progress per season, an "up next" card, and bulk-mark whole seasons or series as watched
+- **Rewatch Support**: Log multiple viewings of the same movie with separate ratings and dates
+- **TMDB Integration**: Automatically fetch posters, cast, plot, and episode data
+- **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews
+- **Watch History**: Full watch history per title, including per-viewing platform, language, and date
+- **Watchlist**: Maintain a mixed movie + TV watchlist with priorities and a random picker
+- **Filtering & Sorting**: Filter by genre, platform, and favorites, and sort in either direction
+- **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime
 
 ## Getting Started
 
 1. Get a free API key from [TMDB](https://www.themoviedb.org/settings/api)
 2. Enter your API key in the app settings
-3. Start adding movies to your collection!
+3. Start adding movies and TV shows to your collection!
     ]]></description>
-    <version>1.3.0</version>
+    <version>1.3.1</version>
     <licence>AGPL-3.0-or-later</licence>
     <author>shellmann</author>
     <namespace>MovieDB</namespace>

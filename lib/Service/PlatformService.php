@@ -28,13 +28,10 @@ class PlatformService {
      * @return Platform[]
      */
     public function findAllForUser(string $userId): array {
-        // Seed defaults lazily once per PHP process. The static flag avoids a
-        // SELECT on every platform read once seeding has run. The DB-level
-        // UNIQUE(user_id, name) constraint (Version000004) ensures a concurrent
-        // racer can't insert duplicates even if two processes both reach here
-        // before either sets the flag.
         if (!self::$defaultsSeeded) {
-            $this->mapper->createDefaults();
+            if (!$this->mapper->hasDefaults()) {
+                $this->mapper->createDefaults();
+            }
             self::$defaultsSeeded = true;
         }
 
