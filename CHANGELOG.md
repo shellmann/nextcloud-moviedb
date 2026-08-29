@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-28
+
+### Added
+- **Episode-level TV show support** (#15): track series, seasons, and
+  individual episodes. Series get their own `/tv` section, list view,
+  and detail page separate from movies
+- New `moviedb_series` and `moviedb_episodes` tables; series metadata and
+  every episode (including specials) are imported from TMDB on add, one
+  API call per season
+- **Derived progress**: season and series completion are computed from each
+  episode's watched flag — never stored as a season/series-level percentage.
+  Unaired episodes (air date in the future or unknown) are excluded from the
+  denominator; specials (season 0) are stored and shown but excluded from progress
+- **"Up next"** card surfaces the first aired, unwatched episode
+- **Mark whole season / whole series watched** fan-out — idempotent, so
+  re-clicking never re-flips; only aired, non-special episodes are affected
+- **Series-owned watch metadata**: a TV show carries its own rating, platform,
+  language watched, and watch date — set on the Add TV Show and Edit TV Show
+  forms, exactly like a movie — stored as a single series-level row in
+  `moviedb_movie_watches` (nullable `series_id`/`episode_id`). Individual
+  episodes are a plain watched/unwatched checkbox with no per-episode metadata
+- TMDB Movies/TV toggle in the search UI; localized TV genre list
+- **Watchlist now supports TV shows** as well as movies: a unified
+  watchlist with a Movies/TV type toggle when adding, a Movie/TV badge on
+  each entry, and an All/Movies/TV Shows type filter. Marking a show as
+  watched imports the whole series (all seasons/episodes) and routes to
+  its `/tv` detail page; marking a movie behaves as before
+- Dashboard tiles for TV shows watched and episodes watched; total
+  runtime now includes episode runtime
+- Translations for all new strings (de, es, fr, it, nl)
+
+### Changed
+- Migration `Version000003Date20260828` adds the series/episode tables
+  (including a `watched` boolean on `moviedb_episodes`), relaxes
+  `moviedb_movie_watches.movie_id` to nullable, and adds a
+  `media_type` column to `moviedb_watchlist` (default `movie`; existing
+  rows backfill to `movie`) — all add-only or NOT-NULL relaxation, safe
+  for the SQLite fresh-install batch; no columns dropped
+- `media_type` is now populated on movies (default `movie`) for
+  forward-compatibility
+- Year and platform charts remain movies-only in this release
+- Dashboard **Avg Rating** and **Top Rated** now include TV shows alongside
+  movies — a show's rating lives on its single series-level watch row, so it
+  counts toward the average and can appear in the Top Rated row. Movie and
+  series cards now carry a small Movie/TV type badge
+
+### Fixed
+- Default streaming platforms are now seeded lazily on first read
+  (`PlatformService::findAllForUser`) instead of relying solely on the
+  migration's `postSchemaChange` hook, which Nextcloud does not reliably fire
+  during `occ app:enable`. Fresh installs no longer show an empty platform
+  picker; the seed is idempotent so it never duplicates existing defaults
+- **Recently watched TV shows** now appear on the dashboard alongside movies
+  (the `recent` stats endpoint returns series with at least one watched
+  episode, most-recently-watched first)
+- **Episode watched state** is stored as a boolean `watched` column on
+  `moviedb_episodes` (toggled by the per-episode checkbox and the season/series
+  "mark all watched" actions), and total runtime counts each watched episode's
+  runtime. This replaces the earlier per-episode "log watch" dialog: episodes no
+  longer carry their own date/platform/language/rating — that metadata belongs to
+  the show as a whole (see Added)
+- Series import no longer fails when a show has a specials season:
+  `moviedb_episodes.season_number`/`episode_number` now carry a DB default of
+  `0` so episodes in season 0 (which match the entity's default and are thus
+  omitted from the QBMapper INSERT) persist instead of hitting a NOT NULL
+  constraint. Affected both direct series add and "mark watched" on a series
+  watchlist item
+
 ## [1.2.0] - 2026-08-25
 
 ### Added

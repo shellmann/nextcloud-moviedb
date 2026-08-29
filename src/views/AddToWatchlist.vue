@@ -38,7 +38,12 @@
 					<img :src="getPosterUrl(selectedMovie.posterPath, 'w200')" :alt="selectedMovie.title">
 				</div>
 				<div class="movie-info">
-					<h4>{{ selectedMovie.title }}</h4>
+					<div class="title-row">
+						<h4>{{ selectedMovie.title }}</h4>
+						<span class="type-badge" :class="isSeries ? 'type-tv' : 'type-movie'">
+							{{ isSeries ? t('moviedb', 'TV') : t('moviedb', 'Movie') }}
+						</span>
+					</div>
 					<p v-if="selectedMovie.releaseDate" class="year">
 						{{ selectedMovie.releaseDate.substring(0, 4) }}
 					</p>
@@ -76,7 +81,7 @@
 		</div>
 
 		<!-- Search Section (shown when no movie is selected) -->
-		<TmdbSearchSection v-else @select="selectMovie" />
+		<TmdbSearchSection v-else :allow-type-toggle="true" @select="selectItem" />
 	</div>
 </template>
 
@@ -86,10 +91,12 @@ import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import PlaylistPlus from 'vue-material-design-icons/PlaylistPlus.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { getPriorityOptions } from '../constants.js'
+import { getPriorityOptions, MEDIA_TYPE } from '../constants.js'
+import api from '../services/api.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { useMoviesStore } from '../stores/movies.js'
+import { showError } from '@nextcloud/dialogs'
 
 export default {
 	name: 'AddToWatchlist',
@@ -110,6 +117,7 @@ export default {
 	data() {
 		return {
 			selectedMovie: null,
+			mediaType: MEDIA_TYPE.MOVIE,
 			alreadyWatched: false,
 			notes: '',
 			selectedPriority: null,
@@ -121,9 +129,23 @@ export default {
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
 		},
+		isSeries() {
+			return this.mediaType === MEDIA_TYPE.SERIES
+		},
+		tmdbLanguage() {
+			return this.settingsStore.defaultLanguage || 'en-US'
+		},
 	},
 	methods: {
 		getPosterUrl,
+		async selectItem(item, mediaType) {
+			this.mediaType = mediaType || MEDIA_TYPE.MOVIE
+			if (this.mediaType === MEDIA_TYPE.SERIES) {
+				await this.selectSeries(item)
+			} else {
+				this.selectMovie(item)
+			}
+		},
 		selectMovie(movie) {
 			this.selectedMovie = {
 				tmdbId: movie.id,
@@ -140,6 +162,32 @@ export default {
 			// Scroll to top to show the form
 			window.scrollTo({ top: 0, behavior: 'smooth' })
 		},
+		async selectSeries(item) {
+			try {
+				// Fetch details so the watchlist row carries a usable first-air year,
+				// full title, poster and overview (search results are sparse).
+				const response = await api.getTmdbSeriesDetails(item.id, this.tmdbLanguage)
+				const details = response.data.series
+				this.selectedMovie = {
+					tmdbId: details.id,
+					title: details.name,
+					posterPath: details.poster_path,
+					overview: details.overview,
+					releaseDate: details.first_air_date,
+					genreIds: details.genres?.map(g => g.id) || [],
+				}
+			} catch (error) {
+				console.error('Failed to fetch series details:', error)
+				showError(t('moviedb', 'Failed to load TV show details.'))
+				return
+			}
+			this.notes = ''
+			this.selectedPriority = this.priorityOptions[0]
+			// Series have no single "watched" flag — never show the rewatch note.
+			this.alreadyWatched = false
+
+			window.scrollTo({ top: 0, behavior: 'smooth' })
+		},
 		async addToWatchlist() {
 			this.saving = true
 			const result = await this.watchlistStore.create({
@@ -151,6 +199,7 @@ export default {
 				genreIds: this.selectedMovie.genreIds,
 				notes: this.notes,
 				priority: this.selectedPriority?.id || 0,
+				mediaType: this.mediaType,
 			})
 			if (result) {
 				this.$router.push({ name: 'watchlist' })
@@ -223,6 +272,31 @@ export default {
 
 .movie-info {
 	flex: 1;
+
+	.title-row {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		margin: 0 0 4px;
+	}
+
+	.type-badge {
+		font-size: 10px;
+		padding: 2px 8px;
+		border-radius: 10px;
+		font-weight: bold;
+		text-transform: uppercase;
+
+		&.type-movie {
+			background: var(--color-primary-element-light);
+			color: var(--color-primary-element-light-text);
+		}
+
+		&.type-tv {
+			background: var(--color-success);
+			color: var(--color-success-text, #fff);
+		}
+	}
 
 	h4 {
 		margin: 0 0 4px;

@@ -36,6 +36,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setCastData(?array $castData)
  * @method string|null getDirector()
  * @method void setDirector(?string $director)
+ * @method string getMediaType()
+ * @method void setMediaType(string $mediaType)
  * @method int|null getLastRating()
  * @method void setLastRating(?int $lastRating)
  * @method string|null getLastWatchedAt()
@@ -61,6 +63,7 @@ class Movie extends Entity implements JsonSerializable {
     protected ?int $runtime = null;
     protected ?array $castData = null;
     protected ?string $director = null;
+    protected string $mediaType = 'movie';
     protected ?int $lastRating = null;
     protected ?string $lastWatchedAt = null;
     protected bool $isFavorite = false;
@@ -94,6 +97,7 @@ class Movie extends Entity implements JsonSerializable {
             'runtime' => $this->runtime,
             'castData' => $this->castData,
             'director' => $this->director,
+            'mediaType' => $this->mediaType,
             'lastRating' => $this->lastRating,
             'lastWatchedAt' => $this->lastWatchedAt,
             'isFavorite' => $this->isFavorite,

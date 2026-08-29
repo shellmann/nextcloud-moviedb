@@ -37,19 +37,28 @@ npm run test:coverage
 
 ### Test Files
 Located in `tests/js/`:
-- `stores/movies.spec.js` - Tests for movies Pinia store (20 tests)
+- `stores/movies.spec.js` - Tests for movies Pinia store (24 tests)
+- `stores/series.spec.js` - Tests for series Pinia store, incl. episode
+  watched-flag toggle + series-owned metadata (20 tests)
+- `stores/watchlist.spec.js` - Tests for watchlist store incl. TV support (30 tests)
+- `stores/watches.spec.js` - Tests for movie-watches (rewatch) store (9 tests)
 - `components/MovieCard.spec.js` - Tests for MovieCard component (9 tests)
+- `components/TmdbSearchSection.spec.js` - Tests for TMDB search + type toggle (8 tests)
 - `utils/formatters.spec.js` - Tests for utility functions (8 tests)
 - `setup.js` - Test environment configuration
 
 ### Example Output
 ```
-✓ tests/js/stores/movies.spec.js (20)
+✓ tests/js/stores/movies.spec.js (24)
+✓ tests/js/stores/series.spec.js (20)
+✓ tests/js/stores/watchlist.spec.js (30)
+✓ tests/js/stores/watches.spec.js (9)
 ✓ tests/js/components/MovieCard.spec.js (9)
+✓ tests/js/components/TmdbSearchSection.spec.js (8)
 ✓ tests/js/utils/formatters.spec.js (8)
 
-Test Files  3 passed (3)
-Tests  37 passed (37)
+Test Files  7 passed (7)
+Tests  108 passed (108)
 ```
 
 ---
@@ -134,15 +143,24 @@ Movie Service (OCA\MovieDB\Tests\Unit\Service\MovieService)
  ✔ Find throws does not exist exception
  ✔ Find all
  ✔ Count
- ... (16 tests total)
+ ... (14 tests total)
 
 Watchlist Service (OCA\MovieDB\Tests\Unit\Service\WatchlistService)
- ... (11 tests)
+ ... (incl. media-type persistence + type-aware existsByTmdbId)
+
+Series Service (OCA\MovieDB\Tests\Unit\Service\SeriesService)
+ ... (createFromTmdb, seasons/episodes import, progress from the episode
+      watched flag, markEpisode/Season/SeriesWatched, series-owned watch
+      metadata via upsertSeriesWatch)
+
+Watchlist Controller (OCA\MovieDB\Tests\Unit\Controller\WatchlistController)
+ ✔ Move series imports show and returns series
+ ✔ Move movie creates movie and returns movie
 
 Platform Service (OCA\MovieDB\Tests\Unit\Service\PlatformService)
- ... (8 tests)
+ ... (11 tests)
 
-Tests: 39, Assertions: 80+
+Tests: 95, Assertions: 243
 ```
 
 ---
@@ -388,7 +406,7 @@ test — only a real fresh enable + a movie-list read triggers it.**
 # clear its appconfig/migrations so app:enable takes the fresh (batched) path:
 docker exec nc-test php -r '
 $db=new PDO("sqlite:/var/www/html/data/owncloud.db");
-foreach(["oc_moviedb_movie_watches","oc_moviedb_movies","oc_moviedb_watchlist","oc_moviedb_platforms"] as $t){ $db->exec("DROP TABLE IF EXISTS $t"); }
+foreach(["oc_moviedb_episodes","oc_moviedb_series","oc_moviedb_movie_watches","oc_moviedb_movies","oc_moviedb_watchlist","oc_moviedb_platforms"] as $t){ $db->exec("DROP TABLE IF EXISTS $t"); }
 $db->exec("DELETE FROM oc_appconfig WHERE appid=\"moviedb\"");
 $db->exec("DELETE FROM oc_migrations WHERE app=\"moviedb\"");
 '
@@ -396,11 +414,18 @@ $db->exec("DELETE FROM oc_migrations WHERE app=\"moviedb\"");
 docker exec -u www-data nc-test php occ app:enable moviedb
 
 # Seed one movie WITH the retained legacy columns populated (worst case for
-# hydration) + a watch row, then exercise every mapper read path in NC context:
+# hydration) + a watch row, one series + episodes (some with watched=1), a
+# series-level watch row (series_id set, episode_id/movie_id NULL), and one
+# watchlist row of each media_type, then exercise every mapper read path in NC
+# context:
 #   MovieMapper::findAll (default + each sort + platform/genre filters), find,
-#   findByTmdbId, and every MovieWatchMapper aggregate (getTotalRuntime,
-#   getAverageRating, getCountByPlatform, getCountByYear, findLatestPerMovie).
-# All must return without throwing BadFunctionCallException / undefined-method.
+#   findByTmdbId, every MovieWatchMapper aggregate (getTotalRuntime,
+#   getAverageRating, getCountByPlatform, getCountByYear, findLatestPerMovie,
+#   getSeriesWatchSummary), SeriesMapper::findAll/find, EpisodeMapper reads
+#   (incl. countWatchedForUser / getWatchedRuntimeForUser over the watched flag),
+#   and WatchlistMapper::findAll (incl. the media_type filter) / findByTmdbId.
+# All must return without throwing BadFunctionCallException — in particular the
+# new moviedb_watchlist.media_type column must hydrate onto WatchlistItem.
 ```
 
 Run the reads inside a bootstrapped script (`require '/var/www/html/lib/base.php'`,
@@ -463,19 +488,24 @@ for App Store users.
 
 The goal: install the **previously released** build, seed realistic data that
 exercises every backfill branch, upgrade to the **new** build, then assert the
-data landed correctly. For v1.2.0 the migration is **additive** — it backfills
-the new `moviedb_movie_watches` table from the legacy per-movie watch columns
-and **retains** those columns (the drop is deferred to a later release; see the
-fresh-install section for why). A backfill count mismatch throws and aborts the
-whole app update, leaving the source columns intact — so a successful upgrade
-already means the verification passed.
+data landed correctly. Upgrading across the **v1.1.1 → 1.3.0** chain runs, in
+order, the V2 rewatch migration (backfills `moviedb_movie_watches` from the
+legacy per-movie watch columns and **retains** those columns) then the V3 series
+migration (adds `moviedb_series` + `moviedb_episodes`, makes the watches table's
+`movie_id` nullable + adds `episode_id`/`series_id`, and adds
+`moviedb_watchlist.media_type` defaulting existing rows to `'movie'`). A backfill
+count mismatch throws and aborts the whole app update, leaving the source columns
+intact — so a successful upgrade already means the verification passed.
 
 ### 1. Install the OLD released version
 
-Build the old tag in a throwaway git worktree so the branch stays untouched:
+Build the old tag in a throwaway git worktree so the branch stays untouched.
+Use the **last release before the change under test** — for the 1.3.0 chain that
+is **v1.1.1** (the core migration ask), though **v1.2.0** is also a valid start
+if you only want to exercise the V3 step:
 
 ```bash
-git worktree add /tmp/moviedb-old v1.1.2   # the last released tag
+git worktree add /tmp/moviedb-old v1.1.1   # oldest supported upgrade origin
 (cd /tmp/moviedb-old && npm ci && npm run build)
 ```
 
@@ -500,11 +530,12 @@ docker exec -u www-data nc-upgrade-test php occ app:enable moviedb
 ### 2. Seed data covering every backfill branch
 
 Confirm the OLD schema first (`PRAGMA table_info(oc_moviedb_movies)`), then
-insert rows that hit each path. For the v1.2.0 rewatch migration the branches
+insert rows that hit each path. For the V2 rewatch migration the branches
 were: **full** watch data, **partial** (some fields null), and **none** (no
-watch data → must produce no watch row). The table prefix is `oc_`, the SQLite
-DB is `owncloud.db`, and **`sqlite3` CLI is not installed in the container** —
-use PHP PDO via `docker exec`:
+watch data → must produce no watch row). Also seed **watchlist** rows so the V3
+`media_type` add is proven to backfill existing rows to `'movie'`. The table
+prefix is `oc_`, the SQLite DB is `owncloud.db`, and **`sqlite3` CLI is not
+installed in the container** — use PHP PDO via `docker exec`:
 
 ```bash
 docker exec nc-upgrade-test php -r '
@@ -516,12 +547,14 @@ $db->exec("INSERT INTO oc_moviedb_movies
   (user_id,tmdb_id,title,rating,review) VALUES (\"admin\",2,\"Partial\",8,\"Layered\")");
 $db->exec("INSERT INTO oc_moviedb_movies
   (user_id,tmdb_id,title) VALUES (\"admin\",3,\"None\")");
+$db->exec("INSERT INTO oc_moviedb_watchlist
+  (user_id,tmdb_id,title,priority,added_at) VALUES (\"admin\",100,\"Wishlist Movie\",5,\"2024-02-01 10:00:00\")");
 echo "seeded\n";
 '
 ```
 
-Note the **expected backfill count** (here: 2 movies have watch data → 2 watch
-rows; the third must produce none).
+Note the **expected counts**: 2 movies have watch data → 2 watch rows (the third
+produces none), and 1 watchlist row that must survive and gain `media_type='movie'`.
 
 ### 3. Deploy the NEW build and upgrade
 
@@ -542,21 +575,37 @@ so a successful upgrade already means the backfill count matched.
 
 ### 4. Assert the result (PDO, not sqlite3)
 
-Verify, in one script: the new table exists; new columns added (`media_type`);
-the legacy columns are **retained** (v1.2.0 does not drop them); backfill row
-count matches the expected number; each seeded value is preserved (including
-nulls staying null); the "no data" row produced no watch row; and no source rows
-were lost. Example for v1.2.0:
+Verify, in one script: the watches table exists with the expected backfill count;
+`moviedb_movies.media_type` added; the legacy movie columns are **retained**
+(never dropped in this chain); the V3 tables (`moviedb_series`,
+`moviedb_episodes`) exist; the watches table gained `episode_id`/`series_id` and
+`movie_id` is nullable; **`moviedb_watchlist.media_type` exists and every migrated
+row = `'movie'`**; each seeded value is preserved (nulls stay null); the "no data"
+row produced no watch row; and no source rows were lost. Example for the
+v1.1.1 → 1.3.0 chain:
 
 ```bash
 docker exec nc-upgrade-test php -r '
 $db = new PDO("sqlite:/var/www/html/data/owncloud.db");
-$cols = $db->query("PRAGMA table_info(oc_moviedb_movies)")->fetchAll(PDO::FETCH_COLUMN,1);
-echo (in_array("media_type",$cols)?"PASS":"FAIL")." media_type added\n";
-$legacy = array_intersect(["date_watched","rating","review","platform_id","language_watched"],$cols);
-echo (count($legacy)===5?"PASS":"FAIL")." legacy columns retained (".count($legacy)."/5)\n";
+$mcols = $db->query("PRAGMA table_info(oc_moviedb_movies)")->fetchAll(PDO::FETCH_COLUMN,1);
+echo (in_array("media_type",$mcols)?"PASS":"FAIL")." movies.media_type added\n";
+$legacy = array_intersect(["date_watched","rating","review","platform_id","language_watched"],$mcols);
+echo (count($legacy)===5?"PASS":"FAIL")." legacy movie columns retained (".count($legacy)."/5)\n";
 $wc = $db->query("SELECT COUNT(*) FROM oc_moviedb_movie_watches")->fetchColumn();
 echo ($wc==2?"PASS":"FAIL")." watch rows == 2 (got $wc)\n";
+$tables = $db->query("SELECT name FROM sqlite_master WHERE type=\"table\"")->fetchAll(PDO::FETCH_COLUMN);
+echo (in_array("oc_moviedb_series",$tables)?"PASS":"FAIL")." series table exists\n";
+echo (in_array("oc_moviedb_episodes",$tables)?"PASS":"FAIL")." episodes table exists\n";
+$wcols = $db->query("PRAGMA table_info(oc_moviedb_movie_watches)")->fetchAll(PDO::FETCH_ASSOC);
+$names = array_column($wcols,"name");
+echo (in_array("episode_id",$names)&&in_array("series_id",$names)?"PASS":"FAIL")." watches has episode_id+series_id\n";
+$movieIdCol = array_values(array_filter($wcols,fn($c)=>$c["name"]==="movie_id"))[0];
+echo ($movieIdCol["notnull"]==0?"PASS":"FAIL")." watches.movie_id nullable\n";
+$plcols = $db->query("PRAGMA table_info(oc_moviedb_watchlist)")->fetchAll(PDO::FETCH_COLUMN,1);
+echo (in_array("media_type",$plcols)?"PASS":"FAIL")." watchlist.media_type added\n";
+$bad = $db->query("SELECT COUNT(*) FROM oc_moviedb_watchlist WHERE media_type != \"movie\"")->fetchColumn();
+$wl = $db->query("SELECT COUNT(*) FROM oc_moviedb_watchlist")->fetchColumn();
+echo ($wl==1 && $bad==0?"PASS":"FAIL")." watchlist rows survived + all media_type=movie ($wl row, $bad wrong)\n";
 foreach($db->query("SELECT * FROM oc_moviedb_movie_watches ORDER BY movie_id") as $r){
   echo "  ".json_encode(array_intersect_key($r,array_flip([\"movie_id\",\"rating\",\"review\",\"platform_id\",\"watched_at\",\"language_watched\"])))."\n";
 }
@@ -643,15 +692,15 @@ composer test                     # PHP tests (in Nextcloud)
 
 | Component | Current | Target | Status |
 |-----------|---------|--------|--------|
-| **Frontend (JS/Vue)** | ~30% | 70% | 🟡 In Progress |
+| **Frontend (JS/Vue)** | ~45% | 70% | 🟡 In Progress |
 | **Backend - Services** | 100% | 100% | ✅ Complete |
-| **Backend - Controllers** | 10% | 80% | 🟡 Planned |
-| **Backend - Mappers** | 0% | 50% | ⚪ Not Started |
+| **Backend - Controllers** | ~40% | 80% | 🟡 In Progress |
+| **Backend - Mappers** | ~15% | 50% | 🟡 In Progress |
 
 ### Test File Count
-- **JavaScript**: 3 files, 37 tests ✅
-- **PHP**: 4 files, 39 tests ✅
-- **Total**: 7 files, 76 tests
+- **JavaScript**: 7 files, 108 tests ✅
+- **PHP**: 10 files, 95 tests (243 assertions) ✅
+- **Total**: 17 files, 203 tests
 
 ---
 
@@ -769,3 +818,42 @@ before calling a release good. They cover the two bugs that slipped into v1.2.0.
 These checks complement, not replace, the automated test suite — the unit tests
 verify logic; this checklist verifies the deployed integration with a real DB and
 real Nextcloud middleware.
+
+---
+
+## TV Show / Series Smoke Check (v1.3.0)
+
+Series live in `oc_moviedb_series` + `oc_moviedb_episodes`. Each episode carries a
+**`watched` boolean** — its watched state is a plain checkbox, with no per-episode
+rating/platform/language/date. The **show itself** owns that metadata (rating,
+platform, language, watch date), stored as a **single series-level row** in
+`oc_moviedb_movie_watches` (`series_id` set, `episode_id` NULL, `movie_id` NULL).
+Work through this after the movie checks.
+
+| # | Check | What to look for |
+|---|-------|-----------------|
+| 1 | **Add a show** | Go to `/tv/add`, use the Movies/TV toggle, search a multi-season show (e.g. *Game of Thrones*). It imports with all seasons + episodes, **including specials** (season 0). On the confirm screen set rating / platform / language / date — these belong to the show. No 500. |
+| 2 | **Series-owned metadata persists** | Open the show at `/tv/:id`. The header shows the rating / "Watched on" platform / language / date set on add. In the DB there is exactly **one** series-level row in `oc_moviedb_movie_watches` (`series_id` set, `episode_id` NULL) carrying them. |
+| 3 | **Derived progress + "Up next"** | Progress shows 0% right after import (episodes all unwatched); the "Up next" hint points at the first aired, non-special episode. Specials (S0) and unaired episodes are excluded from the denominator. |
+| 4 | **Mark episode watched (checkbox toggle)** | Tick an episode's **Watched** checkbox — progress ticks up, "Up next" advances, `oc_moviedb_episodes.watched` flips to 1. **Untick** it — progress reverses and the flag flips back to 0. No metadata dialog appears; no watch row is created per episode. |
+| 5 | **Mark season / whole series watched** | "Mark season watched" flips all **aired, non-special** episodes in that season; "Mark series watched" does the same across the show — progress reaches 100% over aired non-specials, and the buttons are idempotent (re-clicking a fully-watched season is a no-op). |
+| 6 | **Edit show metadata** | Edit the show — the rating / platform / language / date fields pre-fill from the series-level watch row; changing and saving them **updates that same row** (no duplicate), and the header reflects the change. |
+| 7 | **Delete series cascade** | Delete the show — its episodes and the series-level watch row are removed (no orphans in `oc_moviedb_episodes` / watches). |
+| 8 | **Dashboard TV tiles** | Dashboard shows non-zero *TV shows* and *episodes watched* tiles (episodes watched counts the `watched` flag), and the show appears under *Recently Watched* once it has ≥1 watched episode. No 500 on `/api/stats`. |
+
+---
+
+## Watchlist (Movies + TV) Smoke Check (v1.3.0)
+
+The watchlist is unified: `oc_moviedb_watchlist.media_type` is `'movie'` or
+`'series'`. A show entry represents the whole show; marking it watched **imports**
+the series and removes the watchlist row.
+
+| # | Check | What to look for |
+|---|-------|-----------------|
+| 1 | **Add a movie to the watchlist** | From the watchlist Add screen, keep the toggle on Movies, add a film. It appears with a **"Movie"** badge. |
+| 2 | **Add a show to the watchlist** | Flip the toggle to TV, add a show. It appears with a **"TV"** badge. |
+| 3 | **Type filter** | The type filter (All / Movies / TV Shows) narrows the list correctly; count drops when filtered. |
+| 4 | **Mark a movie watched** | "Mark as Watched" on the movie opens the platform/date/rating dialog, then moves it to watched movies; the watchlist row is gone. |
+| 5 | **Mark a show watched** | "Add to TV Shows" on the show **imports the series** (no rating/date dialog), routes to `/tv/:id` at 0% progress, and the watchlist row is gone. |
+| 6 | **Counts stay type-agnostic** | The Dashboard "In Watchlist" tile and the nav counter bubble count movies + shows **together** and don't error before/after either mark-watched. |

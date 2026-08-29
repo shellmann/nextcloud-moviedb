@@ -47,6 +47,11 @@ class WatchlistMapper extends QBMapper {
                 $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search']) . '%')));
         }
 
+        if (!empty($filters['mediaType'])) {
+            $qb->andWhere($qb->expr()->eq('media_type',
+                $qb->createNamedParameter($filters['mediaType'])));
+        }
+
         // Sorting
         $sortField = $filters['sort'] ?? 'priority';
         $sortDir = strtoupper($filters['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
@@ -74,13 +79,18 @@ class WatchlistMapper extends QBMapper {
         return (int)($row['count'] ?? 0);
     }
 
-    public function findByTmdbId(string $userId, int $tmdbId): ?WatchlistItem {
+    public function findByTmdbId(string $userId, int $tmdbId, ?string $mediaType = null): ?WatchlistItem {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
             ->andWhere($qb->expr()->eq('tmdb_id', $qb->createNamedParameter($tmdbId, IQueryBuilder::PARAM_INT)));
+
+        // A movie and a TV show can share a TMDB id; disambiguate when a type is given.
+        if ($mediaType !== null) {
+            $qb->andWhere($qb->expr()->eq('media_type', $qb->createNamedParameter($mediaType)));
+        }
 
         try {
             return $this->findEntity($qb);

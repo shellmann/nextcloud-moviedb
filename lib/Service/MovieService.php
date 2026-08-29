@@ -97,6 +97,7 @@ class MovieService {
         $movie->setRuntime($data['runtime'] ?? null);
         $movie->setCastData($data['castData'] ?? null);
         $movie->setDirector($data['director'] ?? null);
+        $movie->setMediaType($data['mediaType'] ?? 'movie');
         $movie->setIsFavorite($data['isFavorite'] ?? false);
         $movie->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
 

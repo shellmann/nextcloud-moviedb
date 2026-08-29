@@ -1,18 +1,40 @@
 <template>
 	<div class="tmdb-search-section">
 		<h3>{{ t('moviedb', 'Search TMDB') }}</h3>
+
+		<div v-if="allowTypeToggle" class="media-type-toggle">
+			<NcCheckboxRadioSwitch :model-value="mediaType"
+				value="movie"
+				name="media-type"
+				type="radio"
+				button-variant
+				button-variant-grouped="horizontal"
+				@update:model-value="switchMediaType">
+				{{ t('moviedb', 'Movies') }}
+			</NcCheckboxRadioSwitch>
+			<NcCheckboxRadioSwitch :model-value="mediaType"
+				value="series"
+				name="media-type"
+				type="radio"
+				button-variant
+				button-variant-grouped="horizontal"
+				@update:model-value="switchMediaType">
+				{{ t('moviedb', 'TV Shows') }}
+			</NcCheckboxRadioSwitch>
+		</div>
+
 		<div class="search-form">
 			<NcTextField v-model="searchQuery"
-				:label="t('moviedb', 'Movie title')"
-				:placeholder="t('moviedb', 'Enter movie title...')"
-				@keyup.enter="searchMovies" />
+				:label="searchLabel"
+				:placeholder="searchPlaceholder"
+				@keyup.enter="search" />
 			<NcTextField v-model="searchYear"
 				:label="t('moviedb', 'Year (optional)')"
 				type="number"
 				:placeholder="t('moviedb', 'Year')" />
 			<NcButton type="primary"
 				:disabled="!searchQuery || searching"
-				@click="searchMovies">
+				@click="search">
 				<template #icon>
 					<Magnify :size="20" />
 				</template>
@@ -27,46 +49,52 @@
 		<div v-else-if="searchResults.length" class="search-results">
 			<h4>{{ t('moviedb', 'Search Results - Click to select') }}</h4>
 			<div class="results-grid">
-				<div v-for="movie in searchResults"
-					:key="movie.id"
+				<div v-for="item in searchResults"
+					:key="item.id"
 					class="result-item"
 					role="button"
 					tabindex="0"
-					:aria-label="movie.title"
-					@click="$emit('select', movie)"
-					@keydown.enter="$emit('select', movie)"
-					@keydown.space.prevent="$emit('select', movie)">
-					<img v-if="movie.poster_path"
-						:src="getImageUrl(movie.poster_path)"
-						:alt="movie.title">
+					:aria-label="getResultTitle(item)"
+					@click="$emit('select', item, mediaType)"
+					@keydown.enter="$emit('select', item, mediaType)"
+					@keydown.space.prevent="$emit('select', item, mediaType)">
+					<img v-if="item.poster_path"
+						:src="getImageUrl(item.poster_path)"
+						:alt="getResultTitle(item)">
 					<div v-else class="no-poster">
 						{{ t('moviedb', 'No poster') }}
 					</div>
 					<div class="result-info">
-						<strong>{{ movie.title }}</strong>
-						<span v-if="movie.release_date">{{ movie.release_date.substring(0, 4) }}</span>
+						<strong>{{ getResultTitle(item) }}</strong>
+						<span v-if="getResultYear(item)">{{ getResultYear(item) }}</span>
 					</div>
 				</div>
 			</div>
 		</div>
 
 		<div v-else-if="searched && !searchResults.length" class="no-results">
-			<p>{{ t('moviedb', 'No movies found. Try a different search term.') }}</p>
+			<p v-if="mediaType === 'series'">
+				{{ t('moviedb', 'No TV shows found. Try a different search term.') }}
+			</p>
+			<p v-else>
+				{{ t('moviedb', 'No movies found. Try a different search term.') }}
+			</p>
 		</div>
 	</div>
 </template>
 
 <script>
-import { NcTextField, NcButton, NcLoadingIcon } from '@nextcloud/vue'
+import { NcTextField, NcButton, NcLoadingIcon, NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
 import Magnify from 'vue-material-design-icons/Magnify.vue'
 import api from '../services/api.js'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { MEDIA_TYPE } from '../constants.js'
 
 /**
- * TmdbSearchSection component - Search interface for finding movies on TMDB.
- * Allows users to search by title and optional year filter.
+ * TmdbSearchSection component - Search interface for finding movies or TV shows on TMDB.
+ * Emits `select(item, mediaType)`; defaults to movie so existing movie flows are unchanged.
  */
 export default {
 	name: 'TmdbSearchSection',
@@ -74,12 +102,31 @@ export default {
 		NcTextField,
 		NcButton,
 		NcLoadingIcon,
+		NcCheckboxRadioSwitch,
 		Magnify,
+	},
+	props: {
+		/**
+		 * Whether to show the Movies/TV toggle. Off by default so AddMovie /
+		 * AddToWatchlist keep a movie-only search.
+		 */
+		allowTypeToggle: {
+			type: Boolean,
+			default: false,
+		},
+		/**
+		 * Initial media type, one of MEDIA_TYPE values.
+		 */
+		initialMediaType: {
+			type: String,
+			default: MEDIA_TYPE.MOVIE,
+		},
 	},
 	emits: [
 		/**
 		 * Emitted when a search result is selected
-		 * @param {object} movie - The selected TMDB movie object
+		 * @param {object} item - The selected TMDB movie or series object
+		 * @param {string} mediaType - 'movie' or 'series'
 		 */
 		'select',
 	],
@@ -89,6 +136,7 @@ export default {
 	},
 	data() {
 		return {
+			mediaType: this.initialMediaType,
 			searchQuery: '',
 			searchYear: '',
 			searchResults: [],
@@ -99,6 +147,16 @@ export default {
 	computed: {
 		tmdbLanguage() {
 			return this.settingsStore.defaultLanguage || 'en-US'
+		},
+		searchLabel() {
+			return this.mediaType === MEDIA_TYPE.SERIES
+				? t('moviedb', 'TV show title')
+				: t('moviedb', 'Movie title')
+		},
+		searchPlaceholder() {
+			return this.mediaType === MEDIA_TYPE.SERIES
+				? t('moviedb', 'Enter TV show title...')
+				: t('moviedb', 'Enter movie title...')
 		},
 	},
 	mounted() {
@@ -112,7 +170,21 @@ export default {
 		getImageUrl(path) {
 			return getPosterUrl(path, 'w200')
 		},
-		async searchMovies() {
+		getResultTitle(item) {
+			// Movies use `title`, TV shows use `name`.
+			return item.title || item.name || ''
+		},
+		getResultYear(item) {
+			const date = item.release_date || item.first_air_date
+			return date ? date.substring(0, 4) : ''
+		},
+		switchMediaType(value) {
+			if (value === this.mediaType) return
+			this.mediaType = value
+			this.searchResults = []
+			this.searched = false
+		},
+		async search() {
 			if (!this.searchQuery) return
 
 			this.searching = true
@@ -120,12 +192,9 @@ export default {
 			this.searchResults = []
 
 			try {
-				const response = await api.searchTmdb(
-					this.searchQuery,
-					this.searchYear || null,
-					1,
-					this.tmdbLanguage,
-				)
+				const response = this.mediaType === MEDIA_TYPE.SERIES
+					? await api.searchTmdbSeries(this.searchQuery, this.searchYear || null, 1, this.tmdbLanguage)
+					: await api.searchTmdb(this.searchQuery, this.searchYear || null, 1, this.tmdbLanguage)
 				this.searchResults = response.data.results || []
 				this.searched = true
 			} catch (error) {
@@ -149,6 +218,12 @@ export default {
 	h3 {
 		margin: 0 0 16px;
 	}
+}
+
+.media-type-toggle {
+	display: flex;
+	gap: 0;
+	margin-bottom: 16px;
 }
 
 .search-form {

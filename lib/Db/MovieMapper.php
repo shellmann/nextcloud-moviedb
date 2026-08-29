@@ -20,15 +20,16 @@ class MovieMapper extends QBMapper {
      * We deliberately do NOT `SELECT *` here: v1.2.0 retains the legacy watch
      * columns (date_watched/rating/review/platform_id/language_watched) in the
      * table — they could not be dropped without breaking SQLite fresh installs
-     * (see Version000002 comment) — and also adds `media_type`, which has no
-     * entity property yet. QBMapper hydration (Entity::fromRow) calls a setter
-     * for every selected column and throws BadFunctionCallException on any
-     * column lacking a property, so we select only the entity-backed columns.
+     * (see Version000002 comment). QBMapper hydration (Entity::fromRow) calls a
+     * setter for every selected column and throws BadFunctionCallException on
+     * any column lacking a property, so we select only the entity-backed
+     * columns. `media_type` is included here (wired to Movie::$mediaType in
+     * v1.3.0); the legacy watch columns remain excluded.
      */
     private const COLUMNS = [
         'id', 'user_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
         'backdrop_path', 'overview', 'genre_ids', 'release_date', 'release_year',
-        'runtime', 'cast_data', 'director', 'is_favorite', 'created_at', 'updated_at',
+        'runtime', 'cast_data', 'director', 'media_type', 'is_favorite', 'created_at', 'updated_at',
     ];
 
     public function __construct(IDBConnection $db) {

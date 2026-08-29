@@ -46,6 +46,7 @@ class WatchlistService {
         $item->setAddedAt((new DateTime())->format('Y-m-d H:i:s'));
         $item->setPriority($data['priority'] ?? 0);
         $item->setNotes($data['notes'] ?? null);
+        $item->setMediaType($data['mediaType'] ?? 'movie');
 
         return $this->mapper->insert($item);
     }
@@ -77,7 +78,7 @@ class WatchlistService {
         $this->mapper->delete($item);
     }
 
-    public function existsByTmdbId(string $userId, int $tmdbId): bool {
-        return $this->mapper->findByTmdbId($userId, $tmdbId) !== null;
+    public function existsByTmdbId(string $userId, int $tmdbId, ?string $mediaType = null): bool {
+        return $this->mapper->findByTmdbId($userId, $tmdbId, $mediaType) !== null;
     }
 }

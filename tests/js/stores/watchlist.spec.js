@@ -41,6 +41,10 @@ describe('Watchlist Store', () => {
 		it('should have total set to 0', () => {
 			expect(store.total).toBe(0)
 		})
+
+		it('should have typeFilter defaulting to "all"', () => {
+			expect(store.typeFilter).toBe('all')
+		})
 	})
 
 	describe('getters', () => {
@@ -51,6 +55,35 @@ describe('Watchlist Store', () => {
 		it('hasItems should return true when items exist', () => {
 			store.items = [{ id: 1, title: 'Test' }]
 			expect(store.hasItems).toBe(true)
+		})
+
+		it('filteredItems returns all items when typeFilter is "all"', () => {
+			store.items = [
+				{ id: 1, mediaType: 'movie' },
+				{ id: 2, mediaType: 'series' },
+			]
+			store.typeFilter = 'all'
+			expect(store.filteredItems).toHaveLength(2)
+		})
+
+		it('filteredItems returns only movies when typeFilter is "movie"', () => {
+			store.items = [
+				{ id: 1, mediaType: 'movie' },
+				{ id: 2, mediaType: 'series' },
+				{ id: 3 }, // legacy row without mediaType → treated as movie
+			]
+			store.typeFilter = 'movie'
+			const ids = store.filteredItems.map(i => i.id)
+			expect(ids).toEqual([1, 3])
+		})
+
+		it('filteredItems returns only series when typeFilter is "series"', () => {
+			store.items = [
+				{ id: 1, mediaType: 'movie' },
+				{ id: 2, mediaType: 'series' },
+			]
+			store.typeFilter = 'series'
+			expect(store.filteredItems.map(i => i.id)).toEqual([2])
 		})
 	})
 
@@ -171,6 +204,16 @@ describe('Watchlist Store', () => {
 
 			expect(result).toBeNull()
 		})
+
+		it('should pass mediaType through to the API', async () => {
+			api.addToWatchlist.mockResolvedValue({ data: { item: { id: 3 }, alreadyWatched: false } })
+
+			await store.create({ title: 'Show', mediaType: 'series' })
+
+			expect(api.addToWatchlist).toHaveBeenCalledWith(
+				expect.objectContaining({ mediaType: 'series' }),
+			)
+		})
 	})
 
 	describe('update action', () => {
@@ -223,8 +266,15 @@ describe('Watchlist Store', () => {
 		})
 	})
 
+	describe('setTypeFilter action', () => {
+		it('should set the type filter', () => {
+			store.setTypeFilter('series')
+			expect(store.typeFilter).toBe('series')
+		})
+	})
+
 	describe('moveToWatched action', () => {
-		it('should remove item from list and return the movie', async () => {
+		it('should remove item from list and return the movie payload', async () => {
 			store.items = [{ id: 1, title: 'Test' }, { id: 2, title: 'Other' }]
 			store.total = 2
 			const movie = { id: 10, title: 'Test', rating: 8 }
@@ -232,10 +282,24 @@ describe('Watchlist Store', () => {
 
 			const result = await store.moveToWatched(1, { rating: 8 })
 
-			expect(result).toEqual(movie)
+			expect(result).toEqual({ movie })
 			expect(store.items).toHaveLength(1)
 			expect(store.items[0].id).toBe(2)
 			expect(store.total).toBe(1)
+		})
+
+		it('should return the series payload when a series is imported', async () => {
+			store.items = [{ id: 1, title: 'Show', mediaType: 'series' }]
+			store.total = 1
+			const series = { id: 42, title: 'Show' }
+			api.moveToWatched.mockResolvedValue({ data: { series } })
+
+			const result = await store.moveToWatched(1, { language: 'en-US' })
+
+			expect(result).toEqual({ series })
+			expect(result.series.id).toBe(42)
+			expect(store.items).toHaveLength(0)
+			expect(store.total).toBe(0)
 		})
 
 		it('should return null on error', async () => {

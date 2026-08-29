@@ -61,6 +61,7 @@ class MovieWatchMapper extends QBMapper {
             ->selectAlias($qb->createFunction('MAX(rating)'), 'rating')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNotNull('movie_id'))
             ->groupBy('movie_id');
 
         $result = $qb->executeQuery();
@@ -101,6 +102,10 @@ class MovieWatchMapper extends QBMapper {
 
         // NC's IFunctionBuilder has no avg(); a plain unquoted AVG() is portable
         // across SQLite/MySQL/Postgres (same approach as the MAX() calls above).
+        // Averages every rated watch row: movie watches AND the single series-level
+        // watch row per TV show (series_id set, movie_id/episode_id NULL). Episodes
+        // carry no rating (their watched-state is a boolean on moviedb_episodes), so
+        // there are no per-episode rows to skew this.
         $qb->selectAlias($qb->createFunction('AVG(rating)'), 'average')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
@@ -124,6 +129,7 @@ class MovieWatchMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
             ->andWhere($qb->expr()->isNotNull('platform_id'))
+            ->andWhere($qb->expr()->isNotNull('movie_id'))
             ->groupBy('platform_id');
 
         $result = $qb->executeQuery();
@@ -161,5 +167,79 @@ class MovieWatchMapper extends QBMapper {
         $result->closeCursor();
 
         return $data;
+    }
+
+    // ─── Series-level watch metadata (v1.3.0) ───────────────────────────────
+
+    /**
+     * Read the single series-level watch row (the TV show's own rating, platform,
+     * language, and watch date). By convention a series carries at most one such
+     * row: series_id set, episode_id NULL. Returns nulls when none exists.
+     *
+     * @return array{watchedAt: ?string, rating: ?int, platformId: ?int, languageWatched: ?string, review: ?string}
+     */
+    public function getSeriesWatchSummary(int $seriesId, string $userId): array {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('watched_at', 'rating', 'platform_id', 'language_watched', 'review')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('series_id', $qb->createNamedParameter($seriesId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNull('episode_id'))
+            ->setMaxResults(1);
+
+        $result = $qb->executeQuery();
+        $row = $result->fetch();
+        $result->closeCursor();
+
+        if ($row === false) {
+            return [
+                'watchedAt' => null,
+                'rating' => null,
+                'platformId' => null,
+                'languageWatched' => null,
+                'review' => null,
+            ];
+        }
+
+        return [
+            'watchedAt' => $row['watched_at'] ?? null,
+            'rating' => $row['rating'] !== null ? (int)$row['rating'] : null,
+            'platformId' => $row['platform_id'] !== null ? (int)$row['platform_id'] : null,
+            'languageWatched' => $row['language_watched'] ?? null,
+            'review' => $row['review'] ?? null,
+        ];
+    }
+
+    /**
+     * Find the single series-level watch row, or null if the series has none.
+     */
+    public function findSeriesWatch(int $seriesId, string $userId): ?MovieWatch {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('series_id', $qb->createNamedParameter($seriesId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNull('episode_id'))
+            ->setMaxResults(1);
+
+        try {
+            return $this->findEntity($qb);
+        } catch (DoesNotExistException $e) {
+            return null;
+        }
+    }
+
+    /**
+     * Delete all watch rows for a series (used on cascade delete). Ownership is
+     * verified by the caller before invoking this.
+     */
+    public function deleteBySeries(int $seriesId, string $userId): void {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('series_id', $qb->createNamedParameter($seriesId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+        $qb->executeStatement();
     }
 }

@@ -42,8 +42,8 @@ export default {
 	},
 
 	// TMDB
-	searchTmdb(query, year = null, page = 1, language = null) {
-		const params = { query, page }
+	searchTmdb(query, year = null, page = 1, language = null, type = 'movie') {
+		const params = { query, page, type }
 		if (year) {
 			params.year = year
 		}
@@ -65,6 +65,38 @@ export default {
 			params.language = language
 		}
 		return axios.get(`${baseUrl}/tmdb/genres`, { params })
+	},
+	// TMDB — TV series
+	searchTmdbSeries(query, year = null, page = 1, language = null) {
+		const params = { query, page }
+		if (year) {
+			params.year = year
+		}
+		if (language) {
+			params.language = language
+		}
+		return axios.get(`${baseUrl}/tmdb/series/search`, { params })
+	},
+	getTmdbSeriesDetails(tmdbId, language = null) {
+		const params = {}
+		if (language) {
+			params.language = language
+		}
+		return axios.get(`${baseUrl}/tmdb/series/${tmdbId}`, { params })
+	},
+	getTmdbSeriesGenres(language = null) {
+		const params = {}
+		if (language) {
+			params.language = language
+		}
+		return axios.get(`${baseUrl}/tmdb/series/genres`, { params })
+	},
+	getTmdbSeasonDetails(tmdbId, seasonNumber, language = null) {
+		const params = {}
+		if (language) {
+			params.language = language
+		}
+		return axios.get(`${baseUrl}/tmdb/series/${tmdbId}/season/${seasonNumber}`, { params })
 	},
 	checkTmdbApiKey() {
 		return axios.get(`${baseUrl}/tmdb/check`)
@@ -96,6 +128,35 @@ export default {
 	},
 	deleteWatch(movieId, watchId) {
 		return axios.delete(`${baseUrl}/movies/${movieId}/watches/${watchId}`)
+	},
+
+	// Series
+	getSeries(params) {
+		return axios.get(`${baseUrl}/series`, { params })
+	},
+	getSeriesItem(id) {
+		return axios.get(`${baseUrl}/series/${id}`)
+	},
+	createSeries(data) {
+		return axios.post(`${baseUrl}/series`, data)
+	},
+	updateSeries(id, data) {
+		return axios.put(`${baseUrl}/series/${id}`, data)
+	},
+	deleteSeries(id) {
+		return axios.delete(`${baseUrl}/series/${id}`)
+	},
+	getSeriesEpisodes(id) {
+		return axios.get(`${baseUrl}/series/${id}/episodes`)
+	},
+	markSeriesWatched(id, watched = true) {
+		return axios.post(`${baseUrl}/series/${id}/watched`, { watched })
+	},
+	markEpisodeWatched(id, episodeId, watched = true) {
+		return axios.post(`${baseUrl}/series/${id}/watched`, { episodeId, watched })
+	},
+	markSeasonWatched(id, seasonNumber, watched = true) {
+		return axios.post(`${baseUrl}/series/${id}/seasons/${seasonNumber}/watched`, { watched })
 	},
 
 	// Statistics
