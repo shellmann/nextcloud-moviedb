@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Db;
 
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\QBMapper;
+use OCP\DB\Exception as DBException;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
@@ -95,10 +96,19 @@ class PlatformMapper extends QBMapper {
     }
 
     /**
+     * Sentinel stored in user_id for global default platforms.
+     * Using an empty string instead of NULL so the UNIQUE(user_id, name) index
+     * actually covers default rows — SQL NULL semantics treat (NULL, x) as
+     * distinct from (NULL, x), bypassing the constraint.
+     */
+    public const DEFAULT_USER_ID = '';
+
+    /**
      * Create the default platforms. The UNIQUE(user_id, name) constraint
      * (added in Version000004) makes this truly idempotent: a concurrent racer
-     * that slips through the $existing snapshot will hit a constraint violation
-     * on insert, which we catch and swallow — the winning racer's row stands.
+     * that slips through the $existing snapshot hits a unique-constraint
+     * violation on insert, which we catch and swallow — the winning racer's row
+     * stands. Non-unique-constraint errors are re-thrown.
      */
     public function createDefaults(): void {
         $defaults = [
@@ -128,16 +138,18 @@ class PlatformMapper extends QBMapper {
                 continue;
             }
             $platform = new Platform();
-            $platform->setUserId(null);
+            $platform->setUserId(self::DEFAULT_USER_ID);
             $platform->setName($default['name']);
             $platform->setIcon($default['icon']);
             $platform->setIsDefault(true);
             $platform->setCreatedAt($now);
             try {
                 $this->insert($platform);
-            } catch (\Exception $e) {
-                // Concurrent racer already inserted this row — unique constraint
-                // violation is expected and harmless; skip silently.
+            } catch (DBException $e) {
+                if ($e->getReason() !== DBException::REASON_UNIQUE_CONSTRAINT_VIOLATION) {
+                    throw $e;
+                }
+                // Concurrent racer already inserted this row — expected, harmless.
             }
         }
     }
