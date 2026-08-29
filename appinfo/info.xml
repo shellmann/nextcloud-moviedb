@@ -40,7 +40,7 @@ Track all the movies you've watched with rich metadata from TMDB.
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/search_add-movie2.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/settings.png</screenshot>
     <dependencies>
-        <nextcloud min-version="32" max-version="34"/>
+        <nextcloud min-version="32" max-version="35"/>
     </dependencies>
     <navigations>
         <navigation>
