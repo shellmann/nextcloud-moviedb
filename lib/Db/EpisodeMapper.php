@@ -61,12 +61,13 @@ class EpisodeMapper extends QBMapper {
         return $this->findEntities($qb);
     }
 
-    public function findByTmdbId(int $tmdbId): ?Episode {
+    public function findByTmdbIdAndSeries(int $tmdbId, int $seriesId): ?Episode {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('tmdb_id', $qb->createNamedParameter($tmdbId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('series_id', $qb->createNamedParameter($seriesId, IQueryBuilder::PARAM_INT)))
             ->setMaxResults(1);
 
         try {

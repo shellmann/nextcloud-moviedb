@@ -74,11 +74,36 @@ class SeriesService {
      *                    per-season episode fetch. $language selects TMDB locale.
      */
     public function createFromTmdb(string $userId, array $data, string $language = 'en-US'): Series {
+        // Pre-fetch all season payloads from TMDB before opening a transaction so
+        // slow/failing HTTP calls never hold DB row locks.
+        $tmdbId = isset($data['tmdbId']) ? (int)$data['tmdbId'] : null;
+        $seasonPayloads = [];
+        if ($tmdbId !== null) {
+            $seasonNumbers = [];
+            foreach (($data['seasons'] ?? []) as $s) {
+                if (isset($s['season_number'])) {
+                    $seasonNumbers[] = (int)$s['season_number'];
+                }
+            }
+            if (empty($seasonNumbers)) {
+                $numSeasons = (int)($data['numberOfSeasons'] ?? 0);
+                for ($n = 1; $n <= $numSeasons; $n++) {
+                    $seasonNumbers[] = $n;
+                }
+            }
+            $seasonNumbers = array_values(array_unique($seasonNumbers));
+            sort($seasonNumbers);
+
+            foreach ($seasonNumbers as $seasonNumber) {
+                $seasonPayloads[$seasonNumber] = $this->tmdbService->getSeasonDetails($tmdbId, $seasonNumber, $userId, $language);
+            }
+        }
+
         $this->db->beginTransaction();
         try {
             $series = new Series();
             $series->setUserId($userId);
-            $series->setTmdbId(isset($data['tmdbId']) ? (int)$data['tmdbId'] : null);
+            $series->setTmdbId($tmdbId);
             $series->setTitle($data['title']);
             $series->setOriginalTitle($data['originalTitle'] ?? null);
             $series->setPosterPath($data['posterPath'] ?? null);
@@ -97,29 +122,8 @@ class SeriesService {
 
             $series = $this->mapper->insert($series);
 
-            // Eagerly fetch episodes per season if we have a TMDB id.
-            $tmdbId = $series->getTmdbId();
-            if ($tmdbId !== null) {
-                $numSeasons = (int)($data['numberOfSeasons'] ?? 0);
-                // Season 0 (specials) if TMDB reports it in the seasons list.
-                $seasonNumbers = [];
-                foreach (($data['seasons'] ?? []) as $s) {
-                    if (isset($s['season_number'])) {
-                        $seasonNumbers[] = (int)$s['season_number'];
-                    }
-                }
-                if (empty($seasonNumbers)) {
-                    // Fallback: 1..numberOfSeasons
-                    for ($n = 1; $n <= $numSeasons; $n++) {
-                        $seasonNumbers[] = $n;
-                    }
-                }
-                $seasonNumbers = array_values(array_unique($seasonNumbers));
-                sort($seasonNumbers);
-
-                foreach ($seasonNumbers as $seasonNumber) {
-                    $this->fetchAndStoreSeason($series->getId(), $tmdbId, $seasonNumber, $userId, $language);
-                }
+            foreach ($seasonPayloads as $seasonNumber => $season) {
+                $this->storeSeasonEpisodes($series->getId(), $seasonNumber, $season);
             }
 
             // If the Add form supplied series-level watch metadata (rating,
@@ -137,12 +141,12 @@ class SeriesService {
         }
     }
 
-    private function fetchAndStoreSeason(int $seriesId, int $tmdbId, int $seasonNumber, string $userId, string $language): void {
-        $season = $this->tmdbService->getSeasonDetails($tmdbId, $seasonNumber, $userId, $language);
+    private function storeSeasonEpisodes(int $seriesId, int $seasonNumber, array $season): void {
         foreach (($season['episodes'] ?? []) as $ep) {
             $epTmdbId = isset($ep['id']) ? (int)$ep['id'] : null;
-            // Skip episodes we already have (idempotent re-fetch).
-            if ($epTmdbId !== null && $this->episodeMapper->findByTmdbId($epTmdbId) !== null) {
+            // Skip episodes already stored for this series (idempotent re-fetch).
+            // Scoped to seriesId so one user's episodes never block another user's.
+            if ($epTmdbId !== null && $this->episodeMapper->findByTmdbIdAndSeries($epTmdbId, $seriesId) !== null) {
                 continue;
             }
             $episode = new Episode();
