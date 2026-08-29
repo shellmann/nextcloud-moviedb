@@ -11,6 +11,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 
 class PlatformService {
     private PlatformMapper $mapper;
+    private static bool $defaultsSeeded = false;
 
     public function __construct(PlatformMapper $mapper) {
         $this->mapper = $mapper;
@@ -27,10 +28,15 @@ class PlatformService {
      * @return Platform[]
      */
     public function findAllForUser(string $userId): array {
-        // Seed defaults lazily — createDefaults() is idempotent (skips existing
-        // names), so calling it unconditionally avoids a TOCTOU race between
-        // hasDefaults() and the insert loop that could duplicate rows.
-        $this->mapper->createDefaults();
+        // Seed defaults lazily once per PHP process. The static flag avoids a
+        // SELECT on every platform read once seeding has run. The DB-level
+        // UNIQUE(user_id, name) constraint (Version000004) ensures a concurrent
+        // racer can't insert duplicates even if two processes both reach here
+        // before either sets the flag.
+        if (!self::$defaultsSeeded) {
+            $this->mapper->createDefaults();
+            self::$defaultsSeeded = true;
+        }
 
         return $this->mapper->findAllForUser($userId);
     }

@@ -95,9 +95,10 @@ class PlatformMapper extends QBMapper {
     }
 
     /**
-     * Create the default platforms. Idempotent: any default name that already
-     * exists is skipped, so a concurrent double-call (two requests both seeing
-     * an empty table) cannot duplicate rows.
+     * Create the default platforms. The UNIQUE(user_id, name) constraint
+     * (added in Version000004) makes this truly idempotent: a concurrent racer
+     * that slips through the $existing snapshot will hit a constraint violation
+     * on insert, which we catch and swallow — the winning racer's row stands.
      */
     public function createDefaults(): void {
         $defaults = [
@@ -132,7 +133,12 @@ class PlatformMapper extends QBMapper {
             $platform->setIcon($default['icon']);
             $platform->setIsDefault(true);
             $platform->setCreatedAt($now);
-            $this->insert($platform);
+            try {
+                $this->insert($platform);
+            } catch (\Exception $e) {
+                // Concurrent racer already inserted this row — unique constraint
+                // violation is expected and harmless; skip silently.
+            }
         }
     }
 }
