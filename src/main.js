@@ -1,6 +1,7 @@
 import { createApp } from 'vue'
 import { createPinia } from 'pinia'
 import { translate, translatePlural } from '@nextcloud/l10n'
+import '@nextcloud/dialogs/style.css'
 import App from './App.vue'
 import router from './router.js'
 

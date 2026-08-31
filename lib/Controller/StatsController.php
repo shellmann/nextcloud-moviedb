@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
+use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\StatsService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -15,16 +16,19 @@ use Psr\Log\LoggerInterface;
 
 class StatsController extends AuthenticatedController {
     private StatsService $service;
+    private LibraryService $libraryService;
     private LoggerInterface $logger;
 
     public function __construct(
         IRequest $request,
         StatsService $service,
+        LibraryService $libraryService,
         IUserSession $userSession,
         LoggerInterface $logger
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
+        $this->libraryService = $libraryService;
         $this->logger = $logger;
     }
 
@@ -34,8 +38,10 @@ class StatsController extends AuthenticatedController {
             return $error;
         }
 
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+
         try {
-            $stats = $this->service->getOverview($this->userId);
+            $stats = $this->service->getOverview($this->userId, $libraryId);
             return new JSONResponse($stats);
         } catch (\Exception $e) {
             // Log the full error with stack trace for debugging
@@ -58,7 +64,8 @@ class StatsController extends AuthenticatedController {
             return $error;
         }
 
-        $stats = $this->service->getStatsByYear($this->userId);
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+        $stats = $this->service->getStatsByYear($this->userId, $libraryId);
 
         return new JSONResponse(['years' => $stats]);
     }
@@ -69,7 +76,8 @@ class StatsController extends AuthenticatedController {
             return $error;
         }
 
-        $stats = $this->service->getStatsByPlatform($this->userId);
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+        $stats = $this->service->getStatsByPlatform($this->userId, $libraryId);
 
         return new JSONResponse(['platforms' => $stats]);
     }
@@ -80,7 +88,8 @@ class StatsController extends AuthenticatedController {
             return $error;
         }
 
-        $stats = $this->service->getStatsByGenre($this->userId);
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+        $stats = $this->service->getStatsByGenre($this->userId, $libraryId);
 
         return new JSONResponse(['genres' => $stats]);
     }
@@ -91,9 +100,10 @@ class StatsController extends AuthenticatedController {
             return $error;
         }
 
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
         $limit = min((int)$this->request->getParam('limit', 5), 20);
-        $movies = $this->service->getRecentMovies($this->userId, $limit);
-        $series = $this->service->getRecentSeries($this->userId, $limit);
+        $movies = $this->service->getRecentMovies($this->userId, $libraryId, $limit);
+        $series = $this->service->getRecentSeries($this->userId, $libraryId, $limit);
 
         return new JSONResponse([
             'movies' => $movies,
@@ -107,9 +117,10 @@ class StatsController extends AuthenticatedController {
             return $error;
         }
 
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
         $limit = min((int)$this->request->getParam('limit', 5), 20);
-        $movies = $this->service->getTopRated($this->userId, $limit);
-        $series = $this->service->getTopRatedSeries($this->userId, $limit);
+        $movies = $this->service->getTopRated($this->userId, $libraryId, $limit);
+        $series = $this->service->getTopRatedSeries($this->userId, $libraryId, $limit);
 
         return new JSONResponse([
             'movies' => $movies,

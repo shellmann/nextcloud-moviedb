@@ -18,6 +18,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setSeriesId(?int $seriesId)
  * @method string getUserId()
  * @method void setUserId(string $userId)
+ * @method int|null getLibraryId()
+ * @method void setLibraryId(?int $libraryId)
  * @method string|null getWatchedAt()
  * @method void setWatchedAt(?string $watchedAt)
  * @method int|null getRating()
@@ -38,6 +40,7 @@ class MovieWatch extends Entity implements JsonSerializable {
     protected ?int $episodeId = null;
     protected ?int $seriesId = null;
     protected string $userId = '';
+    protected ?int $libraryId = null;
     protected ?string $watchedAt = null;
     protected ?int $rating = null;
     protected ?string $review = null;
@@ -51,6 +54,7 @@ class MovieWatch extends Entity implements JsonSerializable {
         $this->addType('movieId', 'integer');
         $this->addType('episodeId', 'integer');
         $this->addType('seriesId', 'integer');
+        $this->addType('libraryId', 'integer');
         $this->addType('rating', 'integer');
         $this->addType('platformId', 'integer');
     }
@@ -62,6 +66,7 @@ class MovieWatch extends Entity implements JsonSerializable {
             'episodeId'        => $this->episodeId,
             'seriesId'         => $this->seriesId,
             'userId'           => $this->userId,
+            'libraryId'        => $this->libraryId,
             'watchedAt'        => $this->watchedAt,
             'rating'           => $this->rating,
             'review'           => $this->review,

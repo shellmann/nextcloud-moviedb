@@ -27,7 +27,7 @@ class MovieMapper extends QBMapper {
      * v1.3.0); the legacy watch columns remain excluded.
      */
     private const COLUMNS = [
-        'id', 'user_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
+        'id', 'user_id', 'library_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
         'backdrop_path', 'overview', 'genre_ids', 'release_date', 'release_year',
         'runtime', 'cast_data', 'director', 'media_type', 'is_favorite', 'created_at', 'updated_at',
     ];
@@ -39,13 +39,16 @@ class MovieMapper extends QBMapper {
     /**
      * @throws DoesNotExistException
      */
-    public function find(int $id, ?string $userId = null): Movie {
+    public function find(int $id, ?int $libraryId = null): Movie {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select(...self::COLUMNS)
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+
+        if ($libraryId !== null) {
+            $qb->andWhere($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
+        }
 
         return $this->findEntity($qb);
     }
@@ -53,25 +56,25 @@ class MovieMapper extends QBMapper {
     /**
      * @return Movie[]
      */
-    public function findAll(string $userId, array $filters = [], int $limit = 50, int $offset = 0): array {
+    public function findAll(int $libraryId, array $filters = [], int $limit = 50, int $offset = 0): array {
         $qb = $this->db->getQueryBuilder();
 
-        // Bind user_id once on the OUTER builder; the placeholder is reused both
+        // Bind library_id once on the OUTER builder; the placeholder is reused both
         // in the aggregate subquery text and in the outer WHERE. Parameters live
         // on the executing builder, and createFunction() carries none of its own,
         // so a subquery built on a throwaway builder must reference an outer param.
-        $userParam = $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR, ':lw_user_id');
+        $libraryParam = $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT, ':lw_library_id');
 
         // Latest-watch-per-movie aggregate. Built on a nested builder only to emit
         // correctly *PREFIX*-ed, per-platform-quoted SQL (no getTablePrefix(), no
         // hand-written backticks — both break on non-MySQL). It references the
-        // outer :lw_user_id placeholder literally.
+        // outer :lw_library_id placeholder literally.
         $sub = $this->db->getQueryBuilder();
         $sub->select('w.movie_id')
             ->selectAlias($sub->func()->max('w.watched_at'), 'watched_at')
             ->selectAlias($sub->func()->max('w.rating'), 'rating')
             ->from('moviedb_movie_watches', 'w')
-            ->where('w.user_id = :lw_user_id')
+            ->where('w.library_id = :lw_library_id')
             ->groupBy('w.movie_id');
 
         $qb->select(array_map(static fn (string $c): string => 'm.' . $c, self::COLUMNS))
@@ -84,7 +87,7 @@ class MovieMapper extends QBMapper {
                 'lw',
                 $qb->expr()->eq('m.id', 'lw.movie_id')
             )
-            ->where($qb->expr()->eq('m.user_id', $userParam));
+            ->where($qb->expr()->eq('m.library_id', $libraryParam));
 
         $this->applyFilters($qb, $filters);
 
@@ -108,12 +111,12 @@ class MovieMapper extends QBMapper {
         return $this->findEntities($qb);
     }
 
-    public function countAll(string $userId, array $filters = []): int {
+    public function countAll(int $libraryId, array $filters = []): int {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select($qb->func()->count('*', 'count'))
             ->from($this->getTableName(), 'm')
-            ->where($qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)));
+            ->where($qb->expr()->eq('m.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
 
         $this->applyFilters($qb, $filters);
 
@@ -171,12 +174,12 @@ class MovieMapper extends QBMapper {
         }
     }
 
-    public function findByTmdbId(string $userId, int $tmdbId): ?Movie {
+    public function findByTmdbId(int $libraryId, int $tmdbId): ?Movie {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select(...self::COLUMNS)
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->eq('tmdb_id', $qb->createNamedParameter($tmdbId, IQueryBuilder::PARAM_INT)))
             ->setMaxResults(1);
 
@@ -185,6 +188,18 @@ class MovieMapper extends QBMapper {
         } catch (DoesNotExistException $e) {
             return null;
         }
+    }
+
+    /**
+     * Delete all movie rows belonging to a library (used on library cascade delete).
+     */
+    public function deleteByLibrary(int $libraryId): void {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
+
+        $qb->executeStatement();
     }
 }
 

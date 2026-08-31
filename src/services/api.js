@@ -8,8 +8,9 @@ export default {
 	getMovies(params) {
 		return axios.get(`${baseUrl}/movies`, { params })
 	},
-	getMovie(id) {
-		return axios.get(`${baseUrl}/movies/${id}`)
+	getMovie(id, libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/movies/${id}`, { params })
 	},
 	createMovie(data) {
 		return axios.post(`${baseUrl}/movies`, data)
@@ -17,16 +18,18 @@ export default {
 	updateMovie(id, data) {
 		return axios.put(`${baseUrl}/movies/${id}`, data)
 	},
-	deleteMovie(id) {
-		return axios.delete(`${baseUrl}/movies/${id}`)
+	deleteMovie(id, libraryId = undefined) {
+		const data = libraryId !== undefined ? { libraryId } : {}
+		return axios.delete(`${baseUrl}/movies/${id}`, { data })
 	},
 
 	// Watchlist
 	getWatchlist(params) {
 		return axios.get(`${baseUrl}/watchlist`, { params })
 	},
-	getWatchlistItem(id) {
-		return axios.get(`${baseUrl}/watchlist/${id}`)
+	getWatchlistItem(id, libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/watchlist/${id}`, { params })
 	},
 	addToWatchlist(data) {
 		return axios.post(`${baseUrl}/watchlist`, data)
@@ -34,8 +37,9 @@ export default {
 	updateWatchlistItem(id, data) {
 		return axios.put(`${baseUrl}/watchlist/${id}`, data)
 	},
-	removeFromWatchlist(id) {
-		return axios.delete(`${baseUrl}/watchlist/${id}`)
+	removeFromWatchlist(id, libraryId = undefined) {
+		const data = libraryId !== undefined ? { libraryId } : {}
+		return axios.delete(`${baseUrl}/watchlist/${id}`, { data })
 	},
 	moveToWatched(id, watchData) {
 		return axios.post(`${baseUrl}/watchlist/${id}/watched`, watchData)
@@ -117,8 +121,9 @@ export default {
 	},
 
 	// Watch history
-	getWatches(movieId) {
-		return axios.get(`${baseUrl}/movies/${movieId}/watches`)
+	getWatches(movieId, libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/movies/${movieId}/watches`, { params })
 	},
 	createWatch(movieId, data) {
 		return axios.post(`${baseUrl}/movies/${movieId}/watches`, data)
@@ -126,16 +131,18 @@ export default {
 	updateWatch(movieId, watchId, data) {
 		return axios.put(`${baseUrl}/movies/${movieId}/watches/${watchId}`, data)
 	},
-	deleteWatch(movieId, watchId) {
-		return axios.delete(`${baseUrl}/movies/${movieId}/watches/${watchId}`)
+	deleteWatch(movieId, watchId, libraryId = undefined) {
+		const data = libraryId !== undefined ? { libraryId } : {}
+		return axios.delete(`${baseUrl}/movies/${movieId}/watches/${watchId}`, { data })
 	},
 
 	// Series
 	getSeries(params) {
 		return axios.get(`${baseUrl}/series`, { params })
 	},
-	getSeriesItem(id) {
-		return axios.get(`${baseUrl}/series/${id}`)
+	getSeriesItem(id, libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/series/${id}`, { params })
 	},
 	createSeries(data) {
 		return axios.post(`${baseUrl}/series`, data)
@@ -143,40 +150,52 @@ export default {
 	updateSeries(id, data) {
 		return axios.put(`${baseUrl}/series/${id}`, data)
 	},
-	deleteSeries(id) {
-		return axios.delete(`${baseUrl}/series/${id}`)
+	deleteSeries(id, libraryId = undefined) {
+		const data = libraryId !== undefined ? { libraryId } : {}
+		return axios.delete(`${baseUrl}/series/${id}`, { data })
 	},
-	getSeriesEpisodes(id) {
-		return axios.get(`${baseUrl}/series/${id}/episodes`)
+	markSeriesWatched(id, watched = true, libraryId = undefined) {
+		const body = { watched }
+		if (libraryId !== undefined) body.libraryId = libraryId
+		return axios.post(`${baseUrl}/series/${id}/watched`, body)
 	},
-	markSeriesWatched(id, watched = true) {
-		return axios.post(`${baseUrl}/series/${id}/watched`, { watched })
+	markEpisodeWatched(id, episodeId, watched = true, libraryId = undefined) {
+		const body = { episodeId, watched }
+		if (libraryId !== undefined) body.libraryId = libraryId
+		return axios.post(`${baseUrl}/series/${id}/watched`, body)
 	},
-	markEpisodeWatched(id, episodeId, watched = true) {
-		return axios.post(`${baseUrl}/series/${id}/watched`, { episodeId, watched })
-	},
-	markSeasonWatched(id, seasonNumber, watched = true) {
-		return axios.post(`${baseUrl}/series/${id}/seasons/${seasonNumber}/watched`, { watched })
+	markSeasonWatched(id, seasonNumber, watched = true, libraryId = undefined) {
+		const body = { watched }
+		if (libraryId !== undefined) body.libraryId = libraryId
+		return axios.post(`${baseUrl}/series/${id}/seasons/${seasonNumber}/watched`, body)
 	},
 
 	// Statistics
-	getStats() {
-		return axios.get(`${baseUrl}/stats`)
+	getStats(libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/stats`, { params })
 	},
-	getStatsByYear() {
-		return axios.get(`${baseUrl}/stats/years`)
+	getStatsByYear(libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/stats/years`, { params })
 	},
-	getStatsByPlatform() {
-		return axios.get(`${baseUrl}/stats/platforms`)
+	getStatsByPlatform(libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/stats/platforms`, { params })
 	},
-	getStatsByGenre() {
-		return axios.get(`${baseUrl}/stats/genres`)
+	getStatsByGenre(libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/stats/genres`, { params })
 	},
-	getRecentMovies(limit = 5) {
-		return axios.get(`${baseUrl}/stats/recent`, { params: { limit } })
+	getRecentMovies(limit = 5, libraryId = undefined) {
+		const params = { limit }
+		if (libraryId !== undefined) params.libraryId = libraryId
+		return axios.get(`${baseUrl}/stats/recent`, { params })
 	},
-	getTopRatedMovies(limit = 5) {
-		return axios.get(`${baseUrl}/stats/top-rated`, { params: { limit } })
+	getTopRatedMovies(limit = 5, libraryId = undefined) {
+		const params = { limit }
+		if (libraryId !== undefined) params.libraryId = libraryId
+		return axios.get(`${baseUrl}/stats/top-rated`, { params })
 	},
 
 	// Settings
@@ -185,5 +204,38 @@ export default {
 	},
 	updateSettings(data) {
 		return axios.put(`${baseUrl}/settings`, data)
+	},
+
+	// Libraries
+	getLibraries() {
+		return axios.get(`${baseUrl}/libraries`)
+	},
+	createLibrary(data) {
+		return axios.post(`${baseUrl}/libraries`, data)
+	},
+	updateLibrary(id, data) {
+		return axios.put(`${baseUrl}/libraries/${id}`, data)
+	},
+	deleteLibrary(id) {
+		return axios.delete(`${baseUrl}/libraries/${id}`)
+	},
+
+	// Library members
+	getLibraryMembers(id) {
+		return axios.get(`${baseUrl}/libraries/${id}/members`)
+	},
+	addLibraryMember(id, data) {
+		return axios.post(`${baseUrl}/libraries/${id}/members`, data)
+	},
+	removeLibraryMember(id, userId) {
+		return axios.delete(`${baseUrl}/libraries/${id}/members/${userId}`)
+	},
+	leaveLibrary(id) {
+		return axios.delete(`${baseUrl}/libraries/${id}/leave`)
+	},
+
+	// Sharee search
+	searchSharees(query) {
+		return axios.get(`${baseUrl}/libraries/sharees`, { params: { search: query } })
 	},
 }

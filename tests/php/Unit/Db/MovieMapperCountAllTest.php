@@ -37,45 +37,45 @@ class MovieMapperCountAllTest extends TestCase {
     }
 
     public function testCountAllNoFiltersCallsExecuteQuery(): void {
-        $count = $this->mapper->countAll('user1');
+        $count = $this->mapper->countAll(1);
         $this->assertEquals(7, $count);
     }
 
     public function testCountAllUsesTableAliasM(): void {
         // The FROM clause must include the 'm' alias so applyFilters' m.* refs resolve
-        $this->mapper->countAll('user1');
+        $this->mapper->countAll(1);
         $fromArgs = $this->qbStub->fromCalls[0] ?? [];
         $this->assertEquals('m', $fromArgs[1] ?? null,
             'countAll must alias the table as "m" so applyFilters can reference m.genre_ids etc.');
     }
 
     public function testCountAllWithGenreFilterDoesNotThrow(): void {
-        $count = $this->mapper->countAll('user1', ['genre' => 28]);
+        $count = $this->mapper->countAll(1, ['genre' => 28]);
         $this->assertEquals(7, $count);
     }
 
     public function testCountAllWithYearFilterDoesNotThrow(): void {
-        $count = $this->mapper->countAll('user1', ['year' => 2024]);
+        $count = $this->mapper->countAll(1, ['year' => 2024]);
         $this->assertEquals(7, $count);
     }
 
     public function testCountAllWithSearchFilterDoesNotThrow(): void {
-        $count = $this->mapper->countAll('user1', ['search' => 'matrix']);
+        $count = $this->mapper->countAll(1, ['search' => 'matrix']);
         $this->assertEquals(7, $count);
     }
 
     public function testCountAllWithFavoriteFilterDoesNotThrow(): void {
-        $count = $this->mapper->countAll('user1', ['favorite' => true]);
+        $count = $this->mapper->countAll(1, ['favorite' => true]);
         $this->assertEquals(7, $count);
     }
 
     public function testCountAllWithPlatformFilterDoesNotThrow(): void {
-        $count = $this->mapper->countAll('user1', ['platform' => 3]);
+        $count = $this->mapper->countAll(1, ['platform' => 3]);
         $this->assertEquals(7, $count);
     }
 
     public function testCountAllWithAllFiltersDoesNotThrow(): void {
-        $count = $this->mapper->countAll('user1', [
+        $count = $this->mapper->countAll(1, [
             'genre'    => 28,
             'year'     => 2024,
             'search'   => 'matrix',

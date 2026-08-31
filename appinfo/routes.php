@@ -67,6 +67,18 @@ return [
         ['name' => 'stats#recent', 'url' => '/api/stats/recent', 'verb' => 'GET'],
         ['name' => 'stats#topRated', 'url' => '/api/stats/top-rated', 'verb' => 'GET'],
 
+        // Libraries — declare the literal 'sharees' route BEFORE the {id}
+        // catch-all so the string 'sharees' is not captured as a numeric id.
+        ['name' => 'library#sharees',      'url' => '/api/libraries/sharees',                  'verb' => 'GET'],
+        ['name' => 'library#index',        'url' => '/api/libraries',                          'verb' => 'GET'],
+        ['name' => 'library#create',       'url' => '/api/libraries',                          'verb' => 'POST'],
+        ['name' => 'library#update',       'url' => '/api/libraries/{id}',                     'verb' => 'PUT',    'requirements' => ['id' => '\d+']],
+        ['name' => 'library#destroy',      'url' => '/api/libraries/{id}',                     'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
+        ['name' => 'library#members',      'url' => '/api/libraries/{id}/members',             'verb' => 'GET',    'requirements' => ['id' => '\d+']],
+        ['name' => 'library#addMember',    'url' => '/api/libraries/{id}/members',             'verb' => 'POST',   'requirements' => ['id' => '\d+']],
+        ['name' => 'library#removeMember', 'url' => '/api/libraries/{id}/members/{userId}',    'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
+        ['name' => 'library#leave',        'url' => '/api/libraries/{id}/leave',               'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
+
         // Settings
         ['name' => 'settings#get', 'url' => '/api/settings', 'verb' => 'GET'],
         ['name' => 'settings#update', 'url' => '/api/settings', 'verb' => 'PUT'],

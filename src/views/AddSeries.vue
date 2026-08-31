@@ -4,7 +4,13 @@
 			<h2>{{ t('moviedb', 'Add TV Show') }}</h2>
 		</div>
 
-		<div v-if="!hasApiKey" class="api-key-warning">
+		<div v-if="!activeCanEdit" class="viewer-notice">
+			<NcNoteCard type="info">
+				<p>{{ t('moviedb', 'You have view-only access to this library and cannot add items.') }}</p>
+			</NcNoteCard>
+		</div>
+
+		<div v-else-if="!hasApiKey" class="api-key-warning">
 			<NcNoteCard type="warning">
 				<p>
 					<strong>{{ t('moviedb', 'TMDB API Key Required') }}</strong><br>
@@ -131,6 +137,7 @@ import { LANGUAGE_OPTIONS, getRatingOptions } from '../constants.js'
 import { useSeriesStore } from '../stores/series.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { usePlatformsStore } from '../stores/platforms.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 
 export default {
 	name: 'AddSeries',
@@ -148,7 +155,8 @@ export default {
 		const seriesStore = useSeriesStore()
 		const settingsStore = useSettingsStore()
 		const platformsStore = usePlatformsStore()
-		return { seriesStore, settingsStore, platformsStore }
+		const librariesStore = useLibrariesStore()
+		return { seriesStore, settingsStore, platformsStore, librariesStore }
 	},
 	data() {
 		return {
@@ -166,6 +174,9 @@ export default {
 		}
 	},
 	computed: {
+		activeCanEdit() {
+			return this.librariesStore.activeCanEdit
+		},
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
 		},

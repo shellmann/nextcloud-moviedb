@@ -32,9 +32,12 @@ use OCP\AppFramework\Db\Entity;
  * @method void setNotes(?string $notes)
  * @method string getMediaType()
  * @method void setMediaType(string $mediaType)
+ * @method int|null getLibraryId()
+ * @method void setLibraryId(?int $libraryId)
  */
 class WatchlistItem extends Entity implements JsonSerializable {
     protected string $userId = '';
+    protected ?int $libraryId = null;
     protected ?int $tmdbId = null;
     protected string $title = '';
     protected ?string $posterPath = null;
@@ -48,6 +51,7 @@ class WatchlistItem extends Entity implements JsonSerializable {
 
     public function __construct() {
         $this->addType('id', 'integer');
+        $this->addType('libraryId', 'integer');
         $this->addType('tmdbId', 'integer');
         $this->addType('genreIds', 'json');
         $this->addType('priority', 'integer');
@@ -57,6 +61,7 @@ class WatchlistItem extends Entity implements JsonSerializable {
         return [
             'id' => $this->id,
             'userId' => $this->userId,
+            'libraryId' => $this->libraryId,
             'tmdbId' => $this->tmdbId,
             'title' => $this->title,
             'posterPath' => $this->posterPath,

@@ -111,16 +111,16 @@ class EpisodeMapper extends QBMapper {
     }
 
     /**
-     * Total watched episodes across all of a user's series. Episodes have no
-     * user_id, so join through moviedb_series.
+     * Total watched episodes across all of a library's series. Episodes have no
+     * library_id, so join through moviedb_series.
      */
-    public function countWatchedForUser(string $userId): int {
+    public function countWatchedForUser(int $libraryId): int {
         $qb = $this->db->getQueryBuilder();
 
         $qb->selectAlias($qb->func()->count('*'), 'count')
             ->from($this->getTableName(), 'e')
             ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
-            ->where($qb->expr()->eq('s.user_id', $qb->createNamedParameter($userId)))
+            ->where($qb->expr()->eq('s.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->eq('e.watched', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));
 
         $result = $qb->executeQuery();
@@ -131,15 +131,15 @@ class EpisodeMapper extends QBMapper {
     }
 
     /**
-     * Total runtime of all watched episodes across a user's series.
+     * Total runtime of all watched episodes across a library's series.
      */
-    public function getWatchedRuntimeForUser(string $userId): int {
+    public function getWatchedRuntimeForUser(int $libraryId): int {
         $qb = $this->db->getQueryBuilder();
 
         $qb->selectAlias($qb->func()->sum('e.runtime'), 'total')
             ->from($this->getTableName(), 'e')
             ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
-            ->where($qb->expr()->eq('s.user_id', $qb->createNamedParameter($userId)))
+            ->where($qb->expr()->eq('s.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->eq('e.watched', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)))
             ->andWhere($qb->expr()->isNotNull('e.runtime'));
 
@@ -148,5 +148,29 @@ class EpisodeMapper extends QBMapper {
         $result->closeCursor();
 
         return (int)($row['total'] ?? 0);
+    }
+
+    /**
+     * Delete all episodes belonging to a library (via their parent series).
+     * Used on library cascade delete — deletes episodes whose series_id is in
+     * the set of series owned by that library.
+     */
+    public function deleteByLibrary(int $libraryId): void {
+        $qb = $this->db->getQueryBuilder();
+
+        // Subquery: SELECT id FROM moviedb_series WHERE library_id = :lib_id
+        $sub = $this->db->getQueryBuilder();
+        $sub->select('id')
+            ->from('moviedb_series')
+            ->where('library_id = :ep_lib_id');
+
+        $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT, ':ep_lib_id');
+
+        $qb->delete($this->getTableName())
+            ->where(
+                $qb->expr()->in('series_id', $qb->createFunction('(' . $sub->getSQL() . ')'))
+            );
+
+        $qb->executeStatement();
     }
 }

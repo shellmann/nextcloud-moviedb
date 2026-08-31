@@ -46,7 +46,7 @@ describe('Watches Store', () => {
 
 			await store.fetchForMovie(42)
 
-			expect(api.getWatches).toHaveBeenCalledWith(42)
+			expect(api.getWatches).toHaveBeenCalledWith(42, undefined)
 			expect(store.watches).toEqual(watches)
 			expect(store.movieId).toBe(42)
 			expect(store.loading).toBe(false)

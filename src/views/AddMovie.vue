@@ -4,15 +4,24 @@
 			<h2>{{ t('moviedb', 'Add Movie') }}</h2>
 		</div>
 
-		<div v-if="!hasApiKey" class="api-key-warning">
+		<div v-if="!activeCanEdit" class="viewer-notice">
+			<NcNoteCard type="info">
+				<p>{{ t('moviedb', 'You have view-only access to this library and cannot add items.') }}</p>
+			</NcNoteCard>
+		</div>
+
+		<div v-else-if="!hasApiKey" class="api-key-warning">
 			<NcNoteCard type="warning">
 				<p>
 					<strong>{{ t('moviedb', 'TMDB API Key Required') }}</strong><br>
 					{{ t('moviedb', 'To search for movies and fetch metadata, you need a free TMDB API key.') }}
-					<router-link :to="{ name: 'settings' }">
-						{{ t('moviedb', 'Settings') }}
-					</router-link>
 				</p>
+				<NcButton type="primary" @click="$router.push({ name: 'settings' })">
+					<template #icon>
+						<Cog :size="20" />
+					</template>
+					{{ t('moviedb', 'Open Settings') }}
+				</NcButton>
 			</NcNoteCard>
 		</div>
 
@@ -60,12 +69,14 @@
 import { NcNoteCard, NcButton, NcDialog } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
+import Cog from 'vue-material-design-icons/Cog.vue'
 import MovieForm from '../components/MovieForm.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
 import api from '../services/api.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 
 export default {
 	name: 'AddMovie',
@@ -74,6 +85,7 @@ export default {
 		NcButton,
 		NcDialog,
 		ArrowLeft,
+		Cog,
 		MovieForm,
 		TmdbSearchSection,
 	},
@@ -81,7 +93,8 @@ export default {
 		const moviesStore = useMoviesStore()
 		const platformsStore = usePlatformsStore()
 		const settingsStore = useSettingsStore()
-		return { moviesStore, platformsStore, settingsStore }
+		const librariesStore = useLibrariesStore()
+		return { moviesStore, platformsStore, settingsStore, librariesStore }
 	},
 	data() {
 		return {
@@ -92,6 +105,9 @@ export default {
 		}
 	},
 	computed: {
+		activeCanEdit() {
+			return this.librariesStore.activeCanEdit
+		},
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
 		},

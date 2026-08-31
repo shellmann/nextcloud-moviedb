@@ -19,11 +19,11 @@ class MovieWatchService {
     /**
      * @return MovieWatch[]
      */
-    public function findByMovie(int $movieId, string $userId): array {
-        return $this->mapper->findByMovie($movieId, $userId);
+    public function findByMovie(int $movieId, int $libraryId): array {
+        return $this->mapper->findByMovie($movieId, $libraryId);
     }
 
-    public function create(int $movieId, string $userId, array $data): MovieWatch {
+    public function create(int $movieId, string $userId, int $libraryId, array $data): MovieWatch {
         if (isset($data['rating']) && $data['rating'] !== null) {
             $rating = (int)$data['rating'];
             if ($rating < 1 || $rating > 10) {
@@ -35,6 +35,7 @@ class MovieWatchService {
         $watch = new MovieWatch();
         $watch->setMovieId($movieId);
         $watch->setUserId($userId);
+        $watch->setLibraryId($libraryId);
         $watch->setWatchedAt($data['watchedAt'] ?? null);
         $watch->setRating($data['rating'] ?? null);
         $watch->setReview($data['review'] ?? null);
@@ -48,8 +49,8 @@ class MovieWatchService {
     /**
      * @throws DoesNotExistException
      */
-    public function update(int $id, string $userId, array $data): MovieWatch {
-        $watch = $this->mapper->find($id, $userId);
+    public function update(int $id, int $libraryId, array $data): MovieWatch {
+        $watch = $this->mapper->find($id, $libraryId);
 
         if (array_key_exists('rating', $data) && $data['rating'] !== null) {
             $rating = (int)$data['rating'];
@@ -83,8 +84,8 @@ class MovieWatchService {
     /**
      * @throws DoesNotExistException
      */
-    public function delete(int $id, string $userId): void {
-        $watch = $this->mapper->find($id, $userId);
+    public function delete(int $id, int $libraryId): void {
+        $watch = $this->mapper->find($id, $libraryId);
         $this->mapper->delete($watch);
     }
 }

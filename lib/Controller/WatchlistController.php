@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
+use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\WatchlistService;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Service\MovieWatchService;
@@ -25,6 +26,7 @@ class WatchlistController extends AuthenticatedController {
     private MovieWatchService $watchService;
     private SeriesService $seriesService;
     private TmdbService $tmdbService;
+    private LibraryService $libraryService;
     private IDBConnection $db;
     private LoggerInterface $logger;
 
@@ -35,6 +37,7 @@ class WatchlistController extends AuthenticatedController {
         MovieWatchService $watchService,
         SeriesService $seriesService,
         TmdbService $tmdbService,
+        LibraryService $libraryService,
         IDBConnection $db,
         IUserSession $userSession,
         LoggerInterface $logger
@@ -45,6 +48,7 @@ class WatchlistController extends AuthenticatedController {
         $this->watchService = $watchService;
         $this->seriesService = $seriesService;
         $this->tmdbService = $tmdbService;
+        $this->libraryService = $libraryService;
         $this->db = $db;
         $this->logger = $logger;
     }
@@ -55,14 +59,16 @@ class WatchlistController extends AuthenticatedController {
             return $error;
         }
 
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+
         $filters = [
             'search' => $this->request->getParam('search'),
             'sort' => $this->request->getParam('sort', 'priority'),
             'dir' => $this->request->getParam('dir', 'DESC'),
         ];
 
-        $items = $this->service->findAll($this->userId, $filters);
-        $total = $this->service->count($this->userId);
+        $items = $this->service->findAll($libraryId, $filters);
+        $total = $this->service->count($libraryId);
 
         return new JSONResponse([
             'items' => $items,
@@ -76,8 +82,10 @@ class WatchlistController extends AuthenticatedController {
             return $error;
         }
 
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+
         try {
-            $item = $this->service->find($id, $this->userId);
+            $item = $this->service->find($id, $libraryId);
             return new JSONResponse(['item' => $item]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Item not found'], Http::STATUS_NOT_FOUND);
@@ -90,6 +98,16 @@ class WatchlistController extends AuthenticatedController {
             return $error;
         }
 
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
         $data = $this->request->getParams();
 
         if (empty($data['title'])) {
@@ -99,7 +117,7 @@ class WatchlistController extends AuthenticatedController {
         $mediaType = $data['mediaType'] ?? 'movie';
 
         // Check if already in watchlist (a movie and show may share a TMDB id → key on type too)
-        if (!empty($data['tmdbId']) && $this->service->existsByTmdbId($this->userId, (int)$data['tmdbId'], $mediaType)) {
+        if (!empty($data['tmdbId']) && $this->service->existsByTmdbId($libraryId, (int)$data['tmdbId'], $mediaType)) {
             return new JSONResponse(['error' => 'Already in watchlist'], Http::STATUS_CONFLICT);
         }
 
@@ -107,10 +125,10 @@ class WatchlistController extends AuthenticatedController {
         // (movies only; series have no equivalent single "watched" flag)
         $alreadyWatched = $mediaType === 'movie'
             && !empty($data['tmdbId'])
-            && $this->movieService->findByTmdbId($this->userId, (int)$data['tmdbId']) !== null;
+            && $this->movieService->findByTmdbId($libraryId, (int)$data['tmdbId']) !== null;
 
         try {
-            $item = $this->service->create($this->userId, $data);
+            $item = $this->service->create($this->userId, $libraryId, $data);
             return new JSONResponse(['item' => $item, 'alreadyWatched' => $alreadyWatched], Http::STATUS_CREATED);
         } catch (\Exception $e) {
             $this->logger->error('Failed to create watchlist item', [
@@ -131,10 +149,20 @@ class WatchlistController extends AuthenticatedController {
             return $error;
         }
 
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
         $data = $this->request->getParams();
 
         try {
-            $item = $this->service->update($id, $this->userId, $data);
+            $item = $this->service->update($id, $libraryId, $data);
             return new JSONResponse(['item' => $item]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Item not found'], Http::STATUS_NOT_FOUND);
@@ -159,7 +187,17 @@ class WatchlistController extends AuthenticatedController {
         }
 
         try {
-            $this->service->delete($id, $this->userId);
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
+        try {
+            $this->service->delete($id, $libraryId);
             return new JSONResponse(['success' => true]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Item not found'], Http::STATUS_NOT_FOUND);
@@ -176,14 +214,24 @@ class WatchlistController extends AuthenticatedController {
         }
 
         try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
+        try {
             // Get the watchlist item
-            $item = $this->service->find($id, $this->userId);
+            $item = $this->service->find($id, $libraryId);
 
             // Series items import the whole show (all seasons/episodes) rather than
             // logging a single watch. No episodes are auto-marked watched — the user
             // tracks progress per-episode/season afterward on the /tv detail page.
             if ($item->getMediaType() === 'series') {
-                return $this->moveSeriesToWatched($id, $item);
+                return $this->moveSeriesToWatched($id, $item, $libraryId);
             }
 
             // Get additional watch data from request
@@ -224,7 +272,7 @@ class WatchlistController extends AuthenticatedController {
             $this->db->beginTransaction();
             try {
                 $existingMovie = $item->getTmdbId()
-                    ? $this->movieService->findByTmdbId($this->userId, $item->getTmdbId())
+                    ? $this->movieService->findByTmdbId($libraryId, $item->getTmdbId())
                     : null;
 
                 if ($existingMovie !== null) {
@@ -236,12 +284,12 @@ class WatchlistController extends AuthenticatedController {
                         'platformId' => $watchData['platformId'] ?? null,
                         'languageWatched' => $watchData['languageWatched'] ?? null,
                     ];
-                    $this->watchService->create($existingMovie->getId(), $this->userId, $newWatch);
+                    $this->watchService->create($existingMovie->getId(), $this->userId, $libraryId, $newWatch);
                     $movie = $existingMovie;
                 } else {
-                    $movie = $this->movieService->create($this->userId, $movieData);
+                    $movie = $this->movieService->create($this->userId, $libraryId, $movieData);
                 }
-                $this->service->delete($id, $this->userId);
+                $this->service->delete($id, $libraryId);
                 $this->db->commit();
             } catch (\Exception $e) {
                 $this->db->rollBack();
@@ -271,7 +319,7 @@ class WatchlistController extends AuthenticatedController {
      * SeriesService::createFromTmdb. Deletes the watchlist row in the same transaction.
      * Does NOT mark any episodes watched — the show starts at 0% progress.
      */
-    private function moveSeriesToWatched(int $id, \OCA\MovieDB\Db\WatchlistItem $item): JSONResponse {
+    private function moveSeriesToWatched(int $id, \OCA\MovieDB\Db\WatchlistItem $item, int $libraryId): JSONResponse {
         $seriesData = [
             'tmdbId' => $item->getTmdbId(),
             'title' => $item->getTitle(),
@@ -312,8 +360,8 @@ class WatchlistController extends AuthenticatedController {
 
         $this->db->beginTransaction();
         try {
-            $series = $this->seriesService->createFromTmdb($this->userId, $seriesData, $language);
-            $this->service->delete($id, $this->userId);
+            $series = $this->seriesService->createFromTmdb($this->userId, $libraryId, $seriesData, $language);
+            $this->service->delete($id, $libraryId);
             $this->db->commit();
         } catch (\Exception $e) {
             $this->db->rollBack();

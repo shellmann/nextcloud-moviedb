@@ -17,6 +17,8 @@ class MovieWatchServiceTest extends TestCase {
     private MovieWatchMapper $mapper;
     private MovieWatchService $service;
 
+    private const LIBRARY_ID = 1;
+
     protected function setUp(): void {
         parent::setUp();
 
@@ -26,7 +28,6 @@ class MovieWatchServiceTest extends TestCase {
 
     public function testFindByMovie(): void {
         $movieId = 7;
-        $userId = 'testuser';
         $watches = [
             $this->createWatch(1, $movieId),
             $this->createWatch(2, $movieId),
@@ -34,10 +35,10 @@ class MovieWatchServiceTest extends TestCase {
 
         $this->mapper->expects($this->once())
             ->method('findByMovie')
-            ->with($movieId, $userId)
+            ->with($movieId, self::LIBRARY_ID)
             ->willReturn($watches);
 
-        $result = $this->service->findByMovie($movieId, $userId);
+        $result = $this->service->findByMovie($movieId, self::LIBRARY_ID);
 
         $this->assertCount(2, $result);
         $this->assertInstanceOf(MovieWatch::class, $result[0]);
@@ -68,7 +69,7 @@ class MovieWatchServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->create($movieId, $userId, $data);
+        $result = $this->service->create($movieId, $userId, self::LIBRARY_ID, $data);
 
         $this->assertInstanceOf(MovieWatch::class, $result);
         $this->assertEquals(8, $result->getRating());
@@ -84,7 +85,7 @@ class MovieWatchServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->create(5, 'testuser', []);
+        $result = $this->service->create(5, 'testuser', self::LIBRARY_ID, []);
 
         $this->assertInstanceOf(MovieWatch::class, $result);
     }
@@ -92,24 +93,23 @@ class MovieWatchServiceTest extends TestCase {
     public function testCreateRejectsRatingBelowRange(): void {
         $this->mapper->expects($this->never())->method('insert');
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->create(1, 'testuser', ['rating' => 0]);
+        $this->service->create(1, 'testuser', self::LIBRARY_ID, ['rating' => 0]);
     }
 
     public function testCreateRejectsRatingAboveRange(): void {
         $this->mapper->expects($this->never())->method('insert');
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->create(1, 'testuser', ['rating' => 11]);
+        $this->service->create(1, 'testuser', self::LIBRARY_ID, ['rating' => 11]);
     }
 
     public function testUpdateAppliesOnlyProvidedFields(): void {
-        $userId = 'testuser';
         $watch = $this->createWatch(1, 7);
         $watch->setRating(5);
         $watch->setReview('old');
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with(1, $userId)
+            ->with(1, self::LIBRARY_ID)
             ->willReturn($watch);
 
         $this->mapper->expects($this->once())
@@ -122,13 +122,12 @@ class MovieWatchServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->update(1, $userId, ['rating' => 9]);
+        $result = $this->service->update(1, self::LIBRARY_ID, ['rating' => 9]);
 
         $this->assertEquals(9, $result->getRating());
     }
 
     public function testUpdateCanNullField(): void {
-        $userId = 'testuser';
         $watch = $this->createWatch(1, 7);
         $watch->setRating(5);
 
@@ -142,13 +141,12 @@ class MovieWatchServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->update(1, $userId, ['rating' => null]);
+        $result = $this->service->update(1, self::LIBRARY_ID, ['rating' => null]);
 
         $this->assertNull($result->getRating());
     }
 
     public function testUpdateRejectsInvalidRating(): void {
-        $userId = 'testuser';
         $watch = $this->createWatch(1, 7);
 
         $this->mapper->expects($this->once())
@@ -158,7 +156,7 @@ class MovieWatchServiceTest extends TestCase {
             ->method('update');
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->update(1, $userId, ['rating' => 99]);
+        $this->service->update(1, self::LIBRARY_ID, ['rating' => 99]);
     }
 
     public function testUpdateThrowsWhenNotFound(): void {
@@ -167,22 +165,21 @@ class MovieWatchServiceTest extends TestCase {
             ->willThrowException(new DoesNotExistException('nope'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->update(999, 'testuser', ['rating' => 5]);
+        $this->service->update(999, self::LIBRARY_ID, ['rating' => 5]);
     }
 
     public function testDelete(): void {
-        $userId = 'testuser';
         $watch = $this->createWatch(1, 7);
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with(1, $userId)
+            ->with(1, self::LIBRARY_ID)
             ->willReturn($watch);
         $this->mapper->expects($this->once())
             ->method('delete')
             ->with($watch);
 
-        $this->service->delete(1, $userId);
+        $this->service->delete(1, self::LIBRARY_ID);
     }
 
     public function testDeleteThrowsWhenNotFound(): void {
@@ -191,7 +188,7 @@ class MovieWatchServiceTest extends TestCase {
             ->willThrowException(new DoesNotExistException('nope'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->delete(999, 'testuser');
+        $this->service->delete(999, self::LIBRARY_ID);
     }
 
     private function createWatch(int $id, int $movieId): MovieWatch {

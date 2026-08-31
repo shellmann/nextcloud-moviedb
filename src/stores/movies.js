@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import api from '../services/api.js'
+import { useLibrariesStore } from './libraries.js'
 
 /**
  * Movies store - Manages movie collection state and CRUD operations.
@@ -59,6 +60,8 @@ export const useMoviesStore = defineStore('movies', {
 				if (this.filters.sort) params.sort = this.filters.sort
 				if (this.filters.dir) params.dir = this.filters.dir
 				if (this.filters.favorite) params.favorite = 1
+				const libraryId = useLibrariesStore().activeLibraryId
+				if (libraryId !== null) params.libraryId = libraryId
 
 				const response = await api.getMovies(params)
 				this.movies = response.data.movies
@@ -81,7 +84,8 @@ export const useMoviesStore = defineStore('movies', {
 		async fetchOne(id) {
 			this.loading = true
 			try {
-				const response = await api.getMovie(id)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const response = await api.getMovie(id, libraryId !== null ? libraryId : undefined)
 				this.currentMovie = response.data.movie
 				return response.data.movie
 			} catch (error) {
@@ -100,7 +104,9 @@ export const useMoviesStore = defineStore('movies', {
 		 */
 		async create(movieData) {
 			try {
-				const response = await api.createMovie(movieData)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = libraryId !== null ? { ...movieData, libraryId } : movieData
+				const response = await api.createMovie(payload)
 				this.movies.unshift(response.data.movie)
 				this.total++
 				showSuccess(t('moviedb', 'Movie added successfully.'))
@@ -128,7 +134,9 @@ export const useMoviesStore = defineStore('movies', {
 		 */
 		async update(id, data) {
 			try {
-				const response = await api.updateMovie(id, data)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = libraryId !== null ? { ...data, libraryId } : data
+				const response = await api.updateMovie(id, payload)
 				const updatedMovie = response.data.movie
 				const index = this.movies.findIndex(m => m.id === updatedMovie.id)
 				if (index !== -1) {
@@ -153,7 +161,8 @@ export const useMoviesStore = defineStore('movies', {
 		 */
 		async delete(id) {
 			try {
-				await api.deleteMovie(id)
+				const libraryId = useLibrariesStore().activeLibraryId
+				await api.deleteMovie(id, libraryId !== null ? libraryId : undefined)
 				this.movies = this.movies.filter(m => m.id !== id)
 				this.total--
 				showSuccess(t('moviedb', 'Movie deleted successfully.'))

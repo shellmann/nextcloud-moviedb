@@ -20,6 +20,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Watchlist**: Maintain a mixed movie + TV watchlist with priorities and a random picker
 - **Filtering & Sorting**: Filter by genre, platform, and favorites, and sort in either direction
 - **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime
+- **Shared Libraries**: Create named libraries and share your collection with other Nextcloud users — assign viewer or editor roles, manage members, and switch between libraries from one account
 
 ## Getting Started
 
@@ -27,7 +28,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 2. Enter your API key in the app settings
 3. Start adding movies and TV shows to your collection!
     ]]></description>
-    <version>1.3.1</version>
+    <version>1.4.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author>shellmann</author>
     <namespace>MovieDB</namespace>

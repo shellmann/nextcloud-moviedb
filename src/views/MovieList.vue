@@ -2,7 +2,7 @@
 	<div class="movie-list">
 		<div class="list-header">
 			<h2>
-				{{ t('moviedb', 'My Movies') }}
+				{{ t('moviedb', 'Movies') }}
 				<span v-if="!loading" class="movie-count">({{ total }})</span>
 			</h2>
 			<div class="header-actions">
@@ -10,7 +10,8 @@
 					:label="t('moviedb', 'Search')"
 					:placeholder="t('moviedb', 'Search movies...')"
 					@update:modelValue="debouncedSearch" />
-				<NcButton :aria-label="t('moviedb', 'Add Movie')"
+				<NcButton v-if="activeCanEdit"
+					:aria-label="t('moviedb', 'Add Movie')"
 					:title="t('moviedb', 'Add Movie')"
 					@click="$router.push({ name: 'add-movie' })">
 					<template #icon>
@@ -75,7 +76,7 @@
 				</p>
 			</template>
 			<template #action>
-				<NcButton v-if="!showFavoritesOnly" @click="$router.push({ name: 'add-movie' })">
+				<NcButton v-if="!showFavoritesOnly && activeCanEdit" @click="$router.push({ name: 'add-movie' })">
 					{{ t('moviedb', 'Add your first movie') }}
 				</NcButton>
 			</template>
@@ -106,6 +107,7 @@ import MovieCard from '../components/MovieCard.vue'
 import { debounce } from '../utils/debounce.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 import { GENRE_OPTIONS } from '../constants.js'
 
 export default {
@@ -126,7 +128,8 @@ export default {
 	setup() {
 		const moviesStore = useMoviesStore()
 		const platformsStore = usePlatformsStore()
-		return { moviesStore, platformsStore }
+		const librariesStore = useLibrariesStore()
+		return { moviesStore, platformsStore, librariesStore }
 	},
 	data() {
 		return {
@@ -177,11 +180,18 @@ export default {
 			}
 			return t('moviedb', 'No movies found')
 		},
+		activeCanEdit() {
+			return this.librariesStore.activeCanEdit
+		},
 	},
-	created() {
+	async created() {
 		this.sortBy = this.sortOptions[0]
 		this.debouncedSearch = debounce(this.applyFilters, 300)
 		this.moviesStore.resetFilters()
+		// Wait until libraries have loaded so the active library id is known;
+		// otherwise this first fetch races App.vue's initial load and falls
+		// back to the personal library instead of the active one.
+		await this.librariesStore.whenReady()
 		this.moviesStore.fetchAll()
 	},
 	methods: {

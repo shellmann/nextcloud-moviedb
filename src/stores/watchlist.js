@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import api from '../services/api.js'
+import { useLibrariesStore } from './libraries.js'
 
 /**
  * Watchlist store - Manages the user's movie watchlist.
@@ -46,7 +47,10 @@ export const useWatchlistStore = defineStore('watchlist', {
 		async fetchAll() {
 			this.loading = true
 			try {
-				const response = await api.getWatchlist({ sort: this.sort, dir: this.dir })
+				const libraryId = useLibrariesStore().activeLibraryId
+				const params = { sort: this.sort, dir: this.dir }
+				if (libraryId !== null) params.libraryId = libraryId
+				const response = await api.getWatchlist(params)
 				this.items = response.data.items
 				this.total = response.data.total
 			} catch (error) {
@@ -92,7 +96,9 @@ export const useWatchlistStore = defineStore('watchlist', {
 		 */
 		async create(itemData) {
 			try {
-				const response = await api.addToWatchlist(itemData)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = libraryId !== null ? { ...itemData, libraryId } : itemData
+				const response = await api.addToWatchlist(payload)
 				this.items.unshift(response.data.item)
 				this.total++
 				if (response.data.alreadyWatched) {
@@ -120,7 +126,9 @@ export const useWatchlistStore = defineStore('watchlist', {
 		 */
 		async update(id, data) {
 			try {
-				const response = await api.updateWatchlistItem(id, data)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = libraryId !== null ? { ...data, libraryId } : data
+				const response = await api.updateWatchlistItem(id, payload)
 				const updatedItem = response.data.item
 				const index = this.items.findIndex(i => i.id === updatedItem.id)
 				if (index !== -1) {
@@ -142,7 +150,8 @@ export const useWatchlistStore = defineStore('watchlist', {
 		 */
 		async delete(id) {
 			try {
-				await api.removeFromWatchlist(id)
+				const libraryId = useLibrariesStore().activeLibraryId
+				await api.removeFromWatchlist(id, libraryId !== null ? libraryId : undefined)
 				this.items = this.items.filter(i => i.id !== id)
 				this.total--
 				showSuccess(t('moviedb', 'Removed from watchlist.'))
@@ -163,7 +172,9 @@ export const useWatchlistStore = defineStore('watchlist', {
 		 */
 		async moveToWatched(id, watchData) {
 			try {
-				const response = await api.moveToWatched(id, watchData)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = libraryId !== null ? { ...watchData, libraryId } : watchData
+				const response = await api.moveToWatched(id, payload)
 				this.items = this.items.filter(i => i.id !== id)
 				this.total--
 				if (response.data.series) {

@@ -22,6 +22,8 @@ class MovieServiceTest extends TestCase {
     private MovieWatchMapper $watchMapper;
     private MovieService $service;
 
+    private const LIBRARY_ID = 1;
+
     protected function setUp(): void {
         parent::setUp();
 
@@ -31,19 +33,17 @@ class MovieServiceTest extends TestCase {
     }
 
     public function testFind(): void {
-        $userId = 'testuser';
         $movieId = 1;
         $movie = new Movie();
         $movie->setId($movieId);
-        $movie->setUserId($userId);
         $movie->setTitle('Inception');
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with($movieId, $userId)
+            ->with($movieId, self::LIBRARY_ID)
             ->willReturn($movie);
 
-        $result = $this->service->find($movieId, $userId);
+        $result = $this->service->find($movieId, self::LIBRARY_ID);
 
         $this->assertInstanceOf(Movie::class, $result);
         $this->assertEquals($movieId, $result->getId());
@@ -51,20 +51,18 @@ class MovieServiceTest extends TestCase {
     }
 
     public function testFindThrowsDoesNotExistException(): void {
-        $userId = 'testuser';
         $movieId = 999;
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with($movieId, $userId)
+            ->with($movieId, self::LIBRARY_ID)
             ->willThrowException(new DoesNotExistException('Movie not found'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->find($movieId, $userId);
+        $this->service->find($movieId, self::LIBRARY_ID);
     }
 
     public function testFindAll(): void {
-        $userId = 'testuser';
         $filters = ['genre' => 28, 'year' => 2020];
         $limit = 25;
         $offset = 0;
@@ -76,10 +74,10 @@ class MovieServiceTest extends TestCase {
 
         $this->mapper->expects($this->once())
             ->method('findAll')
-            ->with($userId, $filters, $limit, $offset)
+            ->with(self::LIBRARY_ID, $filters, $limit, $offset)
             ->willReturn($movies);
 
-        $result = $this->service->findAll($userId, $filters, $limit, $offset);
+        $result = $this->service->findAll(self::LIBRARY_ID, $filters, $limit, $offset);
 
         $this->assertIsArray($result);
         $this->assertCount(2, $result);
@@ -87,16 +85,15 @@ class MovieServiceTest extends TestCase {
     }
 
     public function testCount(): void {
-        $userId = 'testuser';
         $filters = ['favorite' => true];
         $expectedCount = 42;
 
         $this->mapper->expects($this->once())
             ->method('countAll')
-            ->with($userId, $filters)
+            ->with(self::LIBRARY_ID, $filters)
             ->willReturn($expectedCount);
 
-        $result = $this->service->count($userId, $filters);
+        $result = $this->service->count(self::LIBRARY_ID, $filters);
 
         $this->assertEquals($expectedCount, $result);
     }
@@ -124,7 +121,7 @@ class MovieServiceTest extends TestCase {
         $this->watchMapper->expects($this->never())
             ->method('insert');
 
-        $result = $this->service->create($userId, $data);
+        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertInstanceOf(Movie::class, $result);
         $this->assertEquals('The Matrix', $result->getTitle());
@@ -174,7 +171,7 @@ class MovieServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->create($userId, $data);
+        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertEquals(603, $result->getTmdbId());
         $this->assertEquals('The Matrix', $result->getTitle());
@@ -199,16 +196,14 @@ class MovieServiceTest extends TestCase {
                 return $movie;
             });
 
-        $result = $this->service->create($userId, $data);
+        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertEquals(2010, $result->getReleaseYear());
     }
 
     public function testUpdate(): void {
-        $userId = 'testuser';
         $movieId = 1;
         $existingMovie = $this->createMovieEntity($movieId, 'Old Title');
-        $existingMovie->setUserId($userId);
 
         $updateData = [
             'title' => 'New Title',
@@ -217,7 +212,7 @@ class MovieServiceTest extends TestCase {
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with($movieId, $userId)
+            ->with($movieId, self::LIBRARY_ID)
             ->willReturn($existingMovie);
 
         $this->mapper->expects($this->once())
@@ -229,7 +224,7 @@ class MovieServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->update($movieId, $userId, $updateData);
+        $result = $this->service->update($movieId, self::LIBRARY_ID, $updateData);
 
         $this->assertEquals('New Title', $result->getTitle());
         $this->assertTrue($result->getIsFavorite());
@@ -238,10 +233,8 @@ class MovieServiceTest extends TestCase {
     public function testUpdateIgnoresWatchFields(): void {
         // Watch data (rating/review/etc.) is owned by MovieWatch now; update must
         // not touch the movie row with it and must not create a watch row.
-        $userId = 'testuser';
         $movieId = 1;
         $existingMovie = $this->createMovieEntity($movieId, 'Title');
-        $existingMovie->setUserId($userId);
 
         $updateData = [
             'title' => 'Renamed',
@@ -258,81 +251,75 @@ class MovieServiceTest extends TestCase {
         $this->watchMapper->expects($this->never())
             ->method('insert');
 
-        $result = $this->service->update($movieId, $userId, $updateData);
+        $result = $this->service->update($movieId, self::LIBRARY_ID, $updateData);
 
         $this->assertEquals('Renamed', $result->getTitle());
     }
 
     public function testUpdateThrowsDoesNotExistException(): void {
-        $userId = 'testuser';
         $movieId = 999;
         $updateData = ['title' => 'New Title'];
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with($movieId, $userId)
+            ->with($movieId, self::LIBRARY_ID)
             ->willThrowException(new DoesNotExistException('Movie not found'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->update($movieId, $userId, $updateData);
+        $this->service->update($movieId, self::LIBRARY_ID, $updateData);
     }
 
     public function testDelete(): void {
-        $userId = 'testuser';
         $movieId = 1;
         $movie = $this->createMovieEntity($movieId, 'To Delete');
-        $movie->setUserId($userId);
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with($movieId, $userId)
+            ->with($movieId, self::LIBRARY_ID)
             ->willReturn($movie);
 
         $this->mapper->expects($this->once())
             ->method('delete')
             ->with($movie);
 
-        $this->service->delete($movieId, $userId);
+        $this->service->delete($movieId, self::LIBRARY_ID);
     }
 
     public function testDeleteThrowsDoesNotExistException(): void {
-        $userId = 'testuser';
         $movieId = 999;
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with($movieId, $userId)
+            ->with($movieId, self::LIBRARY_ID)
             ->willThrowException(new DoesNotExistException('Movie not found'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->delete($movieId, $userId);
+        $this->service->delete($movieId, self::LIBRARY_ID);
     }
 
     public function testExistsByTmdbIdReturnsTrueWhenExists(): void {
-        $userId = 'testuser';
         $tmdbId = 603;
         $movie = $this->createMovieEntity(1, 'The Matrix');
 
         $this->mapper->expects($this->once())
             ->method('findByTmdbId')
-            ->with($userId, $tmdbId)
+            ->with(self::LIBRARY_ID, $tmdbId)
             ->willReturn($movie);
 
-        $result = $this->service->existsByTmdbId($userId, $tmdbId);
+        $result = $this->service->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
 
         $this->assertTrue($result);
     }
 
     public function testExistsByTmdbIdReturnsFalseWhenNotExists(): void {
-        $userId = 'testuser';
         $tmdbId = 999;
 
         $this->mapper->expects($this->once())
             ->method('findByTmdbId')
-            ->with($userId, $tmdbId)
+            ->with(self::LIBRARY_ID, $tmdbId)
             ->willReturn(null);
 
-        $result = $this->service->existsByTmdbId($userId, $tmdbId);
+        $result = $this->service->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
 
         $this->assertFalse($result);
     }

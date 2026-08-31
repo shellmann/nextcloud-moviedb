@@ -35,18 +35,18 @@ class StatsService {
         $this->episodeMapper = $episodeMapper;
     }
 
-    public function getOverview(string $userId): array {
-        $totalMovies = $this->movieMapper->countAll($userId);
-        $movieRuntime = $this->watchMapper->getTotalRuntime($userId);
-        $episodeRuntime = $this->episodeMapper->getWatchedRuntimeForUser($userId);
+    public function getOverview(string $userId, int $libraryId): array {
+        $totalMovies = $this->movieMapper->countAll($libraryId);
+        $movieRuntime = $this->watchMapper->getTotalRuntime($libraryId);
+        $episodeRuntime = $this->episodeMapper->getWatchedRuntimeForUser($libraryId);
         $totalRuntime = $movieRuntime + $episodeRuntime;
-        $avgRating = $this->watchMapper->getAverageRating($userId);
-        $watchlistCount = $this->watchlistMapper->countAll($userId);
-        $totalSeries = $this->seriesMapper->countAll($userId);
-        $totalEpisodesWatched = $this->episodeMapper->countWatchedForUser($userId);
+        $avgRating = $this->watchMapper->getAverageRating($libraryId);
+        $watchlistCount = $this->watchlistMapper->countAll($libraryId);
+        $totalSeries = $this->seriesMapper->countAll($libraryId);
+        $totalEpisodesWatched = $this->episodeMapper->countWatchedForUser($libraryId);
 
         $currentYear = (int)date('Y');
-        $thisYearMovies = $this->movieMapper->countAll($userId, [
+        $thisYearMovies = $this->movieMapper->countAll($libraryId, [
             'year' => $currentYear
         ]);
 
@@ -62,12 +62,12 @@ class StatsService {
         ];
     }
 
-    public function getStatsByYear(string $userId): array {
-        return $this->watchMapper->getCountByYear($userId);
+    public function getStatsByYear(string $userId, int $libraryId): array {
+        return $this->watchMapper->getCountByYear($libraryId);
     }
 
-    public function getStatsByPlatform(string $userId): array {
-        $countByPlatform = $this->watchMapper->getCountByPlatform($userId);
+    public function getStatsByPlatform(string $userId, int $libraryId): array {
+        $countByPlatform = $this->watchMapper->getCountByPlatform($libraryId);
         $platforms = $this->platformMapper->findAllForUser($userId);
 
         $result = [];
@@ -88,12 +88,12 @@ class StatsService {
         return $result;
     }
 
-    public function getStatsByGenre(string $userId): array {
+    public function getStatsByGenre(string $userId, int $libraryId): array {
         return [];
     }
 
-    public function getRecentMovies(string $userId, int $limit = 5): array {
-        return $this->movieMapper->findAll($userId, [
+    public function getRecentMovies(string $userId, int $libraryId, int $limit = 5): array {
+        return $this->movieMapper->findAll($libraryId, [
             'sort' => 'date_watched',
             'dir' => 'DESC'
         ], $limit, 0);
@@ -107,8 +107,8 @@ class StatsService {
      *
      * @return Series[]
      */
-    public function getRecentSeries(string $userId, int $limit = 5): array {
-        $series = $this->seriesMapper->findAll($userId, [
+    public function getRecentSeries(string $userId, int $libraryId, int $limit = 5): array {
+        $series = $this->seriesMapper->findAll($libraryId, [
             'sort' => 'date_watched',
             'dir' => 'DESC'
         ], $limit * 4, 0);
@@ -118,8 +118,8 @@ class StatsService {
         return array_slice(array_values($watched), 0, $limit);
     }
 
-    public function getTopRated(string $userId, int $limit = 5): array {
-        return $this->movieMapper->findAll($userId, [
+    public function getTopRated(string $userId, int $libraryId, int $limit = 5): array {
+        return $this->movieMapper->findAll($libraryId, [
             'sort' => 'rating',
             'dir' => 'DESC'
         ], $limit, 0);
@@ -133,8 +133,8 @@ class StatsService {
      *
      * @return Series[]
      */
-    public function getTopRatedSeries(string $userId, int $limit = 5): array {
-        $series = $this->seriesMapper->findAll($userId, [
+    public function getTopRatedSeries(string $userId, int $libraryId, int $limit = 5): array {
+        $series = $this->seriesMapper->findAll($libraryId, [
             'sort' => 'rating',
             'dir' => 'DESC'
         ], $limit * 4, 0);

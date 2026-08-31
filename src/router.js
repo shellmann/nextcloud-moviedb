@@ -11,6 +11,7 @@ import EditSeries from './views/EditSeries.vue'
 import Watchlist from './views/Watchlist.vue'
 import AddToWatchlist from './views/AddToWatchlist.vue'
 import Settings from './views/Settings.vue'
+import Libraries from './views/Libraries.vue'
 
 const routes = [
 	{
@@ -76,6 +77,11 @@ const routes = [
 		path: '/settings',
 		name: 'settings',
 		component: Settings,
+	},
+	{
+		path: '/libraries',
+		name: 'libraries',
+		component: Libraries,
 	},
 ]
 
