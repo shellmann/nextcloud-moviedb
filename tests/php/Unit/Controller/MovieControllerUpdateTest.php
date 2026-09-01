@@ -89,7 +89,7 @@ class MovieControllerUpdateTest extends TestCase {
         ]);
 
         $this->movieService->method('update')->willReturn($this->makeMovie());
-        $this->watchService->method('findByMovie')->willReturn([$this->makeWatch()]);
+        $this->watchService->method('findRawByMovie')->willReturn([$this->makeWatch()]);
 
         $this->watchService->expects($this->once())
             ->method('update')
@@ -106,7 +106,7 @@ class MovieControllerUpdateTest extends TestCase {
         ]);
 
         $this->movieService->method('update')->willReturn($this->makeMovie());
-        $this->watchService->method('findByMovie')->willReturn([$this->makeWatch()]);
+        $this->watchService->method('findRawByMovie')->willReturn([$this->makeWatch()]);
 
         $this->watchService->expects($this->once())
             ->method('update')
@@ -122,7 +122,7 @@ class MovieControllerUpdateTest extends TestCase {
         ]);
 
         $this->movieService->method('update')->willReturn($this->makeMovie());
-        $this->watchService->method('findByMovie')->willReturn([$this->makeWatch()]);
+        $this->watchService->method('findRawByMovie')->willReturn([$this->makeWatch()]);
 
         $this->watchService->expects($this->once())
             ->method('update')
@@ -152,7 +152,7 @@ class MovieControllerUpdateTest extends TestCase {
         ]);
 
         $this->movieService->method('update')->willReturn($this->makeMovie());
-        $this->watchService->method('findByMovie')->willReturn([]);
+        $this->watchService->method('findRawByMovie')->willReturn([]);
 
         $this->watchService->expects($this->never())->method('update');
         $this->watchService->expects($this->once())
@@ -173,7 +173,7 @@ class MovieControllerUpdateTest extends TestCase {
 
         $this->movieService->method('update')->willReturn($this->makeMovie());
         // findByMovie returns DESC order (latest first)
-        $this->watchService->method('findByMovie')->willReturn([$latest, $older]);
+        $this->watchService->method('findRawByMovie')->willReturn([$latest, $older]);
 
         $this->watchService->expects($this->once())
             ->method('update')

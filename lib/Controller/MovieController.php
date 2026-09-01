@@ -208,7 +208,7 @@ class MovieController extends AuthenticatedController {
             $watchFields = ['rating', 'review', 'dateWatched', 'platformId', 'languageWatched'];
             $watchData = array_intersect_key($data, array_flip($watchFields));
             if (!empty($watchData)) {
-                $watches = $this->watchService->findByMovie($id, $libraryId);
+                $watches = $this->watchService->findRawByMovie($id, $libraryId);
                 // Only pass keys that were actually present in the request
                 $mappedWatch = [];
                 if (array_key_exists('rating', $watchData)) $mappedWatch['rating'] = $watchData['rating'];

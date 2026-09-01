@@ -7,19 +7,48 @@ namespace OCA\MovieDB\Service;
 use DateTime;
 use OCA\MovieDB\Db\MovieWatch;
 use OCA\MovieDB\Db\MovieWatchMapper;
+use OCA\MovieDB\Db\PlatformMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 
 class MovieWatchService {
     private MovieWatchMapper $mapper;
+    private PlatformMapper $platformMapper;
 
-    public function __construct(MovieWatchMapper $mapper) {
+    public function __construct(MovieWatchMapper $mapper, PlatformMapper $platformMapper) {
         $this->mapper = $mapper;
+        $this->platformMapper = $platformMapper;
     }
 
     /**
-     * @return MovieWatch[]
+     * Returns watch entries enriched with platformName so the frontend can
+     * display the name even when the platform belongs to another library member.
+     *
+     * @return array[]
      */
     public function findByMovie(int $movieId, int $libraryId): array {
+        $watches = $this->mapper->findByMovie($movieId, $libraryId);
+        return array_map(function (MovieWatch $w) {
+            $data = $w->jsonSerialize();
+            $platformId = $w->getPlatformId();
+            if ($platformId !== null) {
+                try {
+                    $data['platformName'] = $this->platformMapper->find($platformId)->getName();
+                } catch (DoesNotExistException $e) {
+                    $data['platformName'] = null;
+                }
+            } else {
+                $data['platformName'] = null;
+            }
+            return $data;
+        }, $watches);
+    }
+
+    /**
+     * Returns raw MovieWatch entities (for internal mutation, e.g. update-on-edit).
+     *
+     * @return MovieWatch[]
+     */
+    public function findRawByMovie(int $movieId, int $libraryId): array {
         return $this->mapper->findByMovie($movieId, $libraryId);
     }
 

@@ -104,7 +104,7 @@
 							<li v-for="watch in watchesStore.watches" :key="watch.id" class="watch-entry">
 								<span class="watch-date">{{ watch.watchedAt ? formatDate(watch.watchedAt) : t('moviedb', 'Unknown date') }}</span>
 								<span v-if="watch.rating" class="watch-rating">★ {{ watch.rating }}/10</span>
-								<span v-if="getPlatformName(watch.platformId)" class="watch-platform">{{ getPlatformName(watch.platformId) }}</span>
+								<span v-if="watch.platformName || getPlatformName(watch.platformId)" class="watch-platform">{{ watch.platformName || getPlatformName(watch.platformId) }}</span>
 								<span v-if="watch.review" class="watch-review-indicator" :title="watch.review">💬</span>
 								<NcActions v-if="activeCanEdit && watchesStore.watches.length > 1">
 									<NcActionButton @click="deleteWatch(watch.id)">

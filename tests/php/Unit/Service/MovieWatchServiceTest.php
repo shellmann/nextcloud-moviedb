@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Tests\Unit\Service;
 
 use OCA\MovieDB\Db\MovieWatch;
 use OCA\MovieDB\Db\MovieWatchMapper;
+use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Service\MovieWatchService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -15,6 +16,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
  */
 class MovieWatchServiceTest extends TestCase {
     private MovieWatchMapper $mapper;
+    private PlatformMapper $platformMapper;
     private MovieWatchService $service;
 
     private const LIBRARY_ID = 1;
@@ -23,7 +25,8 @@ class MovieWatchServiceTest extends TestCase {
         parent::setUp();
 
         $this->mapper = $this->createMock(MovieWatchMapper::class);
-        $this->service = new MovieWatchService($this->mapper);
+        $this->platformMapper = $this->createMock(PlatformMapper::class);
+        $this->service = new MovieWatchService($this->mapper, $this->platformMapper);
     }
 
     public function testFindByMovie(): void {
@@ -38,10 +41,15 @@ class MovieWatchServiceTest extends TestCase {
             ->with($movieId, self::LIBRARY_ID)
             ->willReturn($watches);
 
+        $this->platformMapper->expects($this->any())
+            ->method('find')
+            ->willThrowException(new DoesNotExistException('not found'));
+
         $result = $this->service->findByMovie($movieId, self::LIBRARY_ID);
 
         $this->assertCount(2, $result);
-        $this->assertInstanceOf(MovieWatch::class, $result[0]);
+        $this->assertIsArray($result[0]);
+        $this->assertArrayHasKey('platformName', $result[0]);
     }
 
     public function testCreatePopulatesWatch(): void {
