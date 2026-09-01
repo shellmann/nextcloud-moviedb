@@ -68,18 +68,19 @@ class StatsService {
 
     public function getStatsByPlatform(string $userId, int $libraryId): array {
         $countByPlatform = $this->watchMapper->getCountByPlatform($libraryId);
-        $platforms = $this->platformMapper->findAllForUser($userId);
 
         $result = [];
-        foreach ($platforms as $platform) {
-            $count = $countByPlatform[$platform->getId()] ?? 0;
-            if ($count > 0) {
+        foreach ($countByPlatform as $platformId => $count) {
+            try {
+                $platform = $this->platformMapper->find((int)$platformId);
                 $result[] = [
                     'id' => $platform->getId(),
                     'name' => $platform->getName(),
                     'icon' => $platform->getIcon(),
                     'count' => $count,
                 ];
+            } catch (\OCP\AppFramework\Db\DoesNotExistException $e) {
+                // platform was deleted; skip
             }
         }
 
