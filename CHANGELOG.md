@@ -46,7 +46,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   watch date instead of showing movies-only followed by TV-only
 
 ### Fixed
-- Toast CSS z-index: success/error toasts now appear above all dialogs and modals
 - Library rename bug: editing the name field immediately after saving no longer
   reverts to the pre-save name due to a stale local binding
 
