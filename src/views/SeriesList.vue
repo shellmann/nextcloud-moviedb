@@ -2,7 +2,7 @@
 	<div class="series-list">
 		<div class="list-header">
 			<h2>
-				{{ t('moviedb', 'My TV Shows') }}
+				{{ t('moviedb', 'TV Shows') }}
 				<span v-if="!loading" class="series-count">({{ total }})</span>
 			</h2>
 			<div class="header-actions">
@@ -10,7 +10,8 @@
 					:label="t('moviedb', 'Search')"
 					:placeholder="t('moviedb', 'Search TV shows...')"
 					@update:modelValue="debouncedSearch" />
-				<NcButton :aria-label="t('moviedb', 'Add TV Show')"
+				<NcButton v-if="activeCanEdit"
+					:aria-label="t('moviedb', 'Add TV Show')"
 					:title="t('moviedb', 'Add TV Show')"
 					@click="$router.push({ name: 'add-series' })">
 					<template #icon>
@@ -70,7 +71,7 @@
 				</p>
 			</template>
 			<template #action>
-				<NcButton v-if="!showFavoritesOnly" @click="$router.push({ name: 'add-series' })">
+				<NcButton v-if="!showFavoritesOnly && activeCanEdit" @click="$router.push({ name: 'add-series' })">
 					{{ t('moviedb', 'Add your first TV show') }}
 				</NcButton>
 			</template>
@@ -100,6 +101,7 @@ import SortDescending from 'vue-material-design-icons/SortDescending.vue'
 import SeriesCard from '../components/SeriesCard.vue'
 import { debounce } from '../utils/debounce.js'
 import { useSeriesStore } from '../stores/series.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 import { TV_GENRE_OPTIONS } from '../constants.js'
 
 export default {
@@ -119,7 +121,8 @@ export default {
 	},
 	setup() {
 		const seriesStore = useSeriesStore()
-		return { seriesStore }
+		const librariesStore = useLibrariesStore()
+		return { seriesStore, librariesStore }
 	},
 	data() {
 		return {
@@ -163,11 +166,18 @@ export default {
 			}
 			return t('moviedb', 'No TV shows found')
 		},
+		activeCanEdit() {
+			return this.librariesStore.activeCanEdit
+		},
 	},
-	created() {
+	async created() {
 		this.sortBy = this.sortOptions[0]
 		this.debouncedSearch = debounce(this.applyFilters, 300)
 		this.seriesStore.resetFilters()
+		// Wait until libraries have loaded so the active library id is known;
+		// otherwise this first fetch races App.vue's initial load and falls
+		// back to the personal library instead of the active one.
+		await this.librariesStore.whenReady()
 		this.seriesStore.fetchAll()
 	},
 	methods: {

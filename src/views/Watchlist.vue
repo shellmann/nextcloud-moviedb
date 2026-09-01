@@ -3,7 +3,9 @@
 		<div class="list-header">
 			<h2>{{ t('moviedb', 'Watchlist') }}</h2>
 			<div class="header-actions">
-				<NcButton type="primary" @click="$router.push({ name: 'add-to-watchlist' })">
+				<NcButton v-if="activeCanEdit"
+					type="primary"
+					@click="$router.push({ name: 'add-to-watchlist' })">
 					<template #icon>
 						<Plus :size="20" />
 					</template>
@@ -71,19 +73,23 @@
 						{{ item.notes }}
 					</p>
 					<div class="item-actions">
-						<NcButton type="primary" @click="openWatchedModal(item)">
+						<NcButton v-if="activeCanEdit"
+							type="primary"
+							@click="openWatchedModal(item)">
 							<template #icon>
 								<Check :size="20" />
 							</template>
 							{{ isSeries(item) ? t('moviedb', 'Add to TV Shows') : t('moviedb', 'Mark as Watched') }}
 						</NcButton>
-						<NcButton :aria-label="t('moviedb', 'Edit')"
+						<NcButton v-if="activeCanEdit"
+							:aria-label="t('moviedb', 'Edit')"
 							@click="openEditModal(item)">
 							<template #icon>
 								<Pencil :size="20" />
 							</template>
 						</NcButton>
-						<NcButton :aria-label="t('moviedb', 'Delete')"
+						<NcButton v-if="activeCanEdit"
+							:aria-label="t('moviedb', 'Delete')"
 							type="error"
 							@click="removeFromWatchlist(item.id)">
 							<template #icon>
@@ -100,7 +106,7 @@
 				<PlaylistPlay :size="64" />
 			</template>
 			<template #action>
-				<NcButton @click="$router.push({ name: 'add-to-watchlist' })">
+				<NcButton v-if="activeCanEdit" @click="$router.push({ name: 'add-to-watchlist' })">
 					{{ t('moviedb', 'Search for something to add') }}
 				</NcButton>
 			</template>
@@ -200,6 +206,7 @@ import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 
 export default {
 	name: 'Watchlist',
@@ -222,7 +229,8 @@ export default {
 		const watchlistStore = useWatchlistStore()
 		const platformsStore = usePlatformsStore()
 		const settingsStore = useSettingsStore()
-		return { watchlistStore, platformsStore, settingsStore }
+		const librariesStore = useLibrariesStore()
+		return { watchlistStore, platformsStore, settingsStore, librariesStore }
 	},
 	data() {
 		return {
@@ -273,12 +281,17 @@ export default {
 		platformOptions() {
 			return this.platforms.map(p => ({ id: p.id, label: p.name }))
 		},
+		activeCanEdit() {
+			return this.librariesStore.activeCanEdit
+		},
 	},
-	created() {
+	async created() {
 		this.selectedSort = this.sortOptions[0]
 		this.selectedType = this.typeOptions[0]
 		this.watchlistStore.resetSort()
 		this.watchlistStore.setTypeFilter('all')
+		// Wait for libraries so the active library id is known before fetching.
+		await this.librariesStore.whenReady()
 		this.watchlistStore.fetchAll()
 	},
 	methods: {

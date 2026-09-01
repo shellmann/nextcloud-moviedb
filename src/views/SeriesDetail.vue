@@ -33,13 +33,15 @@
 							</p>
 						</div>
 						<div class="series-actions">
-							<NcButton @click="editSeries">
+							<NcButton v-if="activeCanEdit" @click="editSeries">
 								<template #icon>
 									<Pencil :size="20" />
 								</template>
 								{{ t('moviedb', 'Edit') }}
 							</NcButton>
-							<NcButton type="error" @click="showDeleteDialog = true">
+							<NcButton v-if="activeCanEdit"
+								type="error"
+								@click="showDeleteDialog = true">
 								<template #icon>
 									<Delete :size="20" />
 								</template>
@@ -81,7 +83,7 @@
 							</span>
 						</div>
 						<NcProgressBar :value="series.progress" size="medium" />
-						<div class="progress-actions">
+						<div v-if="activeCanEdit" class="progress-actions">
 							<NcButton :disabled="series.caughtUp || marking"
 								@click="markSeriesWatched(true)">
 								<template #icon>
@@ -106,7 +108,8 @@
 								<span>{{ series.nextEpisode.name }}</span>
 								<span v-if="series.nextEpisode.airDate" class="next-episode-date">{{ formatDate(series.nextEpisode.airDate) }}</span>
 							</div>
-							<NcButton type="primary"
+							<NcButton v-if="activeCanEdit"
+								type="primary"
 								:disabled="marking"
 								@click="toggleEpisode(series.nextEpisode, true)">
 								<template #icon>
@@ -133,7 +136,7 @@
 								<span v-if="season.seasonNumber !== 0" class="season-progress">
 									{{ season.watchedCount }} / {{ season.airedCount }} ({{ season.progress }}%)
 								</span>
-								<NcButton v-if="season.seasonNumber !== 0"
+								<NcButton v-if="season.seasonNumber !== 0 && activeCanEdit"
 									:disabled="marking || season.watchedCount >= season.airedCount"
 									@click.stop="markSeasonWatched(season.seasonNumber, true)">
 									{{ t('moviedb', 'Mark season watched') }}
@@ -147,7 +150,7 @@
 									:class="{ watched: ep.watched, unaired: !ep.aired }">
 									<span class="episode-check">
 										<NcCheckboxRadioSwitch :model-value="ep.watched"
-											:disabled="!ep.aired || marking"
+											:disabled="!ep.aired || marking || !activeCanEdit"
 											:aria-label="t('moviedb', 'Watched')"
 											@update:model-value="toggleEpisode(ep, $event)" />
 									</span>
@@ -201,6 +204,7 @@ import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { formatDate, formatRuntime } from '../utils/formatters.js'
 import { LANGUAGE_OPTIONS } from '../constants.js'
 import { useSeriesStore } from '../stores/series.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 
 export default {
 	name: 'SeriesDetail',
@@ -228,7 +232,8 @@ export default {
 	},
 	setup() {
 		const seriesStore = useSeriesStore()
-		return { seriesStore }
+		const librariesStore = useLibrariesStore()
+		return { seriesStore, librariesStore }
 	},
 	data() {
 		return {
@@ -259,8 +264,13 @@ export default {
 				&& (this.series.rating || this.series.platformName
 					|| this.series.languageWatched || this.series.watchedAt))
 		},
+		activeCanEdit() {
+			return this.librariesStore.activeCanEdit
+		},
 	},
 	async created() {
+		// Wait for libraries so the active library id is known before fetching.
+		await this.librariesStore.whenReady()
 		await this.seriesStore.fetchOne(this.id)
 		// Expand the first non-special season by default.
 		const first = this.series?.seasons?.find(s => s.seasonNumber !== 0)

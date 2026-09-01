@@ -129,7 +129,7 @@ describe('Series Store', () => {
 
 			const result = await store.fetchOne(3)
 
-			expect(api.getSeriesItem).toHaveBeenCalledWith(3)
+			expect(api.getSeriesItem).toHaveBeenCalledWith(3, undefined)
 			expect(store.currentSeries).toEqual(series)
 			expect(result).toEqual(series)
 		})
@@ -169,7 +169,7 @@ describe('Series Store', () => {
 
 			const result = await store.markEpisodeWatched(5, 101, true)
 
-			expect(api.markEpisodeWatched).toHaveBeenCalledWith(5, 101, true)
+			expect(api.markEpisodeWatched).toHaveBeenCalledWith(5, 101, true, undefined)
 			expect(store.currentSeries).toEqual(refreshed)
 			expect(result).toEqual(refreshed)
 		})
@@ -180,7 +180,7 @@ describe('Series Store', () => {
 
 			await store.markEpisodeWatched(5, 101, false)
 
-			expect(api.markEpisodeWatched).toHaveBeenCalledWith(5, 101, false)
+			expect(api.markEpisodeWatched).toHaveBeenCalledWith(5, 101, false, undefined)
 			expect(store.currentSeries).toEqual(refreshed)
 		})
 
@@ -190,7 +190,7 @@ describe('Series Store', () => {
 
 			await store.markSeasonWatched(5, 2)
 
-			expect(api.markSeasonWatched).toHaveBeenCalledWith(5, 2, true)
+			expect(api.markSeasonWatched).toHaveBeenCalledWith(5, 2, true, undefined)
 			expect(store.currentSeries).toEqual(refreshed)
 		})
 

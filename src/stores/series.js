@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import api from '../services/api.js'
+import { useLibrariesStore } from './libraries.js'
 
 /**
  * Series store - Manages TV series collection state and CRUD operations.
@@ -57,6 +58,8 @@ export const useSeriesStore = defineStore('series', {
 				if (this.filters.sort) params.sort = this.filters.sort
 				if (this.filters.dir) params.dir = this.filters.dir
 				if (this.filters.favorite) params.favorite = 1
+				const libraryId = useLibrariesStore().activeLibraryId
+				if (libraryId !== null) params.libraryId = libraryId
 
 				const response = await api.getSeries(params)
 				this.series = response.data.series
@@ -79,7 +82,8 @@ export const useSeriesStore = defineStore('series', {
 		async fetchOne(id) {
 			this.loading = true
 			try {
-				const response = await api.getSeriesItem(id)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const response = await api.getSeriesItem(id, libraryId !== null ? libraryId : undefined)
 				this.currentSeries = response.data.series
 				return response.data.series
 			} catch (error) {
@@ -98,7 +102,9 @@ export const useSeriesStore = defineStore('series', {
 		 */
 		async create(seriesData) {
 			try {
-				const response = await api.createSeries(seriesData)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = libraryId !== null ? { ...seriesData, libraryId } : seriesData
+				const response = await api.createSeries(payload)
 				this.series.unshift(response.data.series)
 				this.total++
 				showSuccess(t('moviedb', 'Series added successfully.'))
@@ -124,7 +130,9 @@ export const useSeriesStore = defineStore('series', {
 		 */
 		async update(id, data) {
 			try {
-				const response = await api.updateSeries(id, data)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = libraryId !== null ? { ...data, libraryId } : data
+				const response = await api.updateSeries(id, payload)
 				const updated = response.data.series
 				const index = this.series.findIndex(s => s.id === updated.id)
 				if (index !== -1) {
@@ -149,7 +157,8 @@ export const useSeriesStore = defineStore('series', {
 		 */
 		async delete(id) {
 			try {
-				await api.deleteSeries(id)
+				const libraryId = useLibrariesStore().activeLibraryId
+				await api.deleteSeries(id, libraryId !== null ? libraryId : undefined)
 				this.series = this.series.filter(s => s.id !== id)
 				this.total--
 				showSuccess(t('moviedb', 'Series deleted successfully.'))
@@ -170,7 +179,8 @@ export const useSeriesStore = defineStore('series', {
 		 */
 		async markEpisodeWatched(id, episodeId, watched = true) {
 			try {
-				const response = await api.markEpisodeWatched(id, episodeId, watched)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const response = await api.markEpisodeWatched(id, episodeId, watched, libraryId !== null ? libraryId : undefined)
 				this.currentSeries = response.data.series
 				return response.data.series
 			} catch (error) {
@@ -189,7 +199,8 @@ export const useSeriesStore = defineStore('series', {
 		 */
 		async markSeasonWatched(id, seasonNumber, watched = true) {
 			try {
-				const response = await api.markSeasonWatched(id, seasonNumber, watched)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const response = await api.markSeasonWatched(id, seasonNumber, watched, libraryId !== null ? libraryId : undefined)
 				this.currentSeries = response.data.series
 				showSuccess(watched
 					? t('moviedb', 'Season marked as watched.')
@@ -210,7 +221,8 @@ export const useSeriesStore = defineStore('series', {
 		 */
 		async markSeriesWatched(id, watched = true) {
 			try {
-				const response = await api.markSeriesWatched(id, watched)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const response = await api.markSeriesWatched(id, watched, libraryId !== null ? libraryId : undefined)
 				this.currentSeries = response.data.series
 				showSuccess(watched
 					? t('moviedb', 'Series marked as watched.')

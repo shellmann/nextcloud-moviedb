@@ -55,4 +55,15 @@ abstract class AuthenticatedController extends Controller {
         }
         return null;
     }
+
+    /**
+     * Parse the optional libraryId request param.
+     *
+     * Returns the integer value when the param is present, or null when absent
+     * (callers must then fall back to the personal library via LibraryService).
+     */
+    protected function requestedLibraryId(): ?int {
+        $p = $this->request->getParam('libraryId');
+        return $p !== null ? (int)$p : null;
+    }
 }

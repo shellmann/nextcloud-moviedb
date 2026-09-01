@@ -1,19 +1,22 @@
-# MovieDB - Personal Movie Database for Nextcloud
+# MovieDB - Personal Movie & TV Database for Nextcloud
 
-Track all the movies you've watched with rich metadata from TMDB.
+Track all the movies and TV shows you've watched with rich metadata from TMDB.
 
 ## Features
 
 - **Movie Tracking**: Log movies with platform (Netflix, Disney+, etc.), language, and date watched
-- **TMDB Integration**: Automatically fetch movie posters, cast, and plot information
-- **Personal Ratings**: Rate movies 1-10 and write your own reviews
-- **Watchlist**: Maintain a list of movies you want to watch
-- **Statistics**: See your viewing stats by genre, platform, and more
+- **TV Show Tracking**: Track series at the episode level — season progress, "up next" card, and bulk-mark seasons as watched
+- **Rewatch Support**: Log multiple viewings with separate ratings, platforms, and dates
+- **TMDB Integration**: Automatically fetch movie and TV posters, cast, plot, and episode data
+- **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews
+- **Shared Libraries**: Create named libraries and share your collection with other Nextcloud users — assign viewer or editor roles, manage members, and switch between libraries
+- **Watchlist**: Mixed movie + TV watchlist with priorities and a random picker
+- **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime
 - **Multilingual**: Full internationalization support (German, Spanish, French, Italian, Dutch)
 
 ## Requirements
 
-- Nextcloud 32-34
+- Nextcloud 32-35
 - PHP 8.0 or higher
 - A free TMDB API key ([Get one here](https://www.themoviedb.org/settings/api))
 

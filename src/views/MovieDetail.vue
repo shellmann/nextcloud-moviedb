@@ -33,13 +33,15 @@
 							</p>
 						</div>
 						<div class="movie-actions">
-							<NcButton @click="editMovie">
+							<NcButton v-if="activeCanEdit" @click="editMovie">
 								<template #icon>
 									<Pencil :size="20" />
 								</template>
 								{{ t('moviedb', 'Edit') }}
 							</NcButton>
-							<NcButton type="error" @click="confirmDelete">
+							<NcButton v-if="activeCanEdit"
+								type="error"
+								@click="confirmDelete">
 								<template #icon>
 									<Delete :size="20" />
 								</template>
@@ -64,7 +66,7 @@
 					</p>
 
 					<div v-if="latestWatch && latestWatch.review" class="movie-review">
-						<h3>{{ t('moviedb', 'My Review') }}</h3>
+						<h3>{{ t('moviedb', 'Review') }}</h3>
 						<p>{{ latestWatch.review }}</p>
 					</div>
 
@@ -82,7 +84,7 @@
 					<div class="watch-history">
 						<div class="watch-history-header">
 							<h3>{{ t('moviedb', 'Watch history') }}</h3>
-							<NcButton @click="showLogDialog = true">
+							<NcButton v-if="activeCanEdit" @click="showLogDialog = true">
 								<template #icon>
 									<Plus :size="20" />
 								</template>
@@ -102,9 +104,9 @@
 							<li v-for="watch in watchesStore.watches" :key="watch.id" class="watch-entry">
 								<span class="watch-date">{{ watch.watchedAt ? formatDate(watch.watchedAt) : t('moviedb', 'Unknown date') }}</span>
 								<span v-if="watch.rating" class="watch-rating">★ {{ watch.rating }}/10</span>
-								<span v-if="getPlatformName(watch.platformId)" class="watch-platform">{{ getPlatformName(watch.platformId) }}</span>
+								<span v-if="watch.platformName || getPlatformName(watch.platformId)" class="watch-platform">{{ watch.platformName || getPlatformName(watch.platformId) }}</span>
 								<span v-if="watch.review" class="watch-review-indicator" :title="watch.review">💬</span>
-								<NcActions v-if="watchesStore.watches.length > 1">
+								<NcActions v-if="activeCanEdit && watchesStore.watches.length > 1">
 									<NcActionButton @click="deleteWatch(watch.id)">
 										<template #icon>
 											<Delete :size="20" />
@@ -188,6 +190,7 @@ import { formatDate, formatRuntime } from '../utils/formatters.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useWatchesStore } from '../stores/watches.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 
 export default {
 	name: 'MovieDetail',
@@ -215,7 +218,8 @@ export default {
 		const moviesStore = useMoviesStore()
 		const platformsStore = usePlatformsStore()
 		const watchesStore = useWatchesStore()
-		return { moviesStore, platformsStore, watchesStore }
+		const librariesStore = useLibrariesStore()
+		return { moviesStore, platformsStore, watchesStore, librariesStore }
 	},
 	data() {
 		return {
@@ -252,12 +256,17 @@ export default {
 				backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.7), var(--color-main-background)), url(${url})`,
 			}
 		},
+		activeCanEdit() {
+			return this.librariesStore.activeCanEdit
+		},
 	},
 	created() {
 		this.loadMovie()
 	},
 	methods: {
 		async loadMovie() {
+			// Wait for libraries so the active library id is known before fetching.
+			await this.librariesStore.whenReady()
 			await this.moviesStore.fetchOne(this.id)
 			await this.watchesStore.fetchForMovie(this.id)
 		},

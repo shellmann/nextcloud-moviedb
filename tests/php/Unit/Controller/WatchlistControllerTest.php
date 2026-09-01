@@ -7,6 +7,7 @@ namespace OCA\MovieDB\Tests\Unit\Controller;
 use OCA\MovieDB\Controller\WatchlistController;
 use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\WatchlistItem;
+use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Service\MovieWatchService;
 use OCA\MovieDB\Service\SeriesService;
@@ -35,10 +36,13 @@ class WatchlistControllerTest extends TestCase {
     private MovieWatchService $watchService;
     private SeriesService $seriesService;
     private TmdbService $tmdbService;
+    private LibraryService $libraryService;
     private IDBConnection $db;
     private IUserSession $userSession;
     private LoggerInterface $logger;
     private WatchlistController $controller;
+
+    private const LIBRARY_ID = 1;
 
     protected function setUp(): void {
         parent::setUp();
@@ -49,6 +53,7 @@ class WatchlistControllerTest extends TestCase {
         $this->watchService = $this->createMock(MovieWatchService::class);
         $this->seriesService = $this->createMock(SeriesService::class);
         $this->tmdbService = $this->createMock(TmdbService::class);
+        $this->libraryService = $this->createMock(LibraryService::class);
         $this->db = $this->createMock(IDBConnection::class);
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->userSession = $this->createMock(IUserSession::class);
@@ -57,6 +62,12 @@ class WatchlistControllerTest extends TestCase {
         $user->method('getUID')->willReturn('testuser');
         $this->userSession->method('getUser')->willReturn($user);
 
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->libraryService->method('canEdit')->willReturn(true);
+
+        $this->db->method('beginTransaction');
+        $this->db->method('commit');
+
         $this->controller = new WatchlistController(
             $this->request,
             $this->service,
@@ -64,6 +75,7 @@ class WatchlistControllerTest extends TestCase {
             $this->watchService,
             $this->seriesService,
             $this->tmdbService,
+            $this->libraryService,
             $this->db,
             $this->userSession,
             $this->logger
@@ -83,7 +95,7 @@ class WatchlistControllerTest extends TestCase {
     public function testMoveSeriesImportsShowAndReturnsSeries(): void {
         $item = $this->makeItem(5, 'series', 1399);
 
-        $this->service->method('find')->with(5, 'testuser')->willReturn($item);
+        $this->service->method('find')->with(5, self::LIBRARY_ID)->willReturn($item);
         $this->request->method('getParam')->willReturnCallback(
             fn($k, $d = null) => $k === 'language' ? 'en-US' : $d
         );
@@ -100,13 +112,13 @@ class WatchlistControllerTest extends TestCase {
         // Series import path must be taken; movie creation must NOT happen.
         $this->seriesService->expects($this->once())
             ->method('createFromTmdb')
-            ->with('testuser', $this->callback(fn($d) => ($d['tmdbId'] ?? null) === 1399), 'en-US')
+            ->with('testuser', self::LIBRARY_ID, $this->callback(fn($d) => ($d['tmdbId'] ?? null) === 1399), 'en-US')
             ->willReturn($series);
         $this->movieService->expects($this->never())->method('create');
         $this->watchService->expects($this->never())->method('create');
 
         // Watchlist row removed in the same flow.
-        $this->service->expects($this->once())->method('delete')->with(5, 'testuser');
+        $this->service->expects($this->once())->method('delete')->with(5, self::LIBRARY_ID);
 
         $response = $this->controller->moveToWatched(5);
 
@@ -120,7 +132,7 @@ class WatchlistControllerTest extends TestCase {
     public function testMoveMovieCreatesMovieAndReturnsMovie(): void {
         $item = $this->makeItem(7, 'movie', 27205);
 
-        $this->service->method('find')->with(7, 'testuser')->willReturn($item);
+        $this->service->method('find')->with(7, self::LIBRARY_ID)->willReturn($item);
         $this->request->method('getParams')->willReturn([]);
         $this->request->method('getParam')->willReturnCallback(fn($k, $d = null) => $d);
         $this->tmdbService->method('getMovieDetails')->willReturn(['runtime' => 148]);
@@ -134,7 +146,7 @@ class WatchlistControllerTest extends TestCase {
             ->method('create')
             ->willReturn($movie);
         $this->seriesService->expects($this->never())->method('createFromTmdb');
-        $this->service->expects($this->once())->method('delete')->with(7, 'testuser');
+        $this->service->expects($this->once())->method('delete')->with(7, self::LIBRARY_ID);
 
         $response = $this->controller->moveToWatched(7);
 

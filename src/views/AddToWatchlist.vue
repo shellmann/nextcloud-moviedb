@@ -4,7 +4,13 @@
 			<h2>{{ t('moviedb', 'Add to Watchlist') }}</h2>
 		</div>
 
-		<div v-if="!hasApiKey" class="api-key-warning">
+		<div v-if="!activeCanEdit" class="viewer-notice">
+			<NcNoteCard type="info">
+				<p>{{ t('moviedb', 'You have view-only access to this library and cannot add items.') }}</p>
+			</NcNoteCard>
+		</div>
+
+		<div v-else-if="!hasApiKey" class="api-key-warning">
 			<NcNoteCard type="warning">
 				<p>
 					<strong>{{ t('moviedb', 'TMDB API Key Required') }}</strong><br>
@@ -96,6 +102,7 @@ import api from '../services/api.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { useMoviesStore } from '../stores/movies.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 import { showError } from '@nextcloud/dialogs'
 
 export default {
@@ -112,7 +119,8 @@ export default {
 		const watchlistStore = useWatchlistStore()
 		const settingsStore = useSettingsStore()
 		const moviesStore = useMoviesStore()
-		return { watchlistStore, settingsStore, moviesStore }
+		const librariesStore = useLibrariesStore()
+		return { watchlistStore, settingsStore, moviesStore, librariesStore }
 	},
 	data() {
 		return {
@@ -126,6 +134,9 @@ export default {
 		}
 	},
 	computed: {
+		activeCanEdit() {
+			return this.librariesStore.activeCanEdit
+		},
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
 		},

@@ -5,6 +5,59 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.0] - 2026-08-31
+
+### Added
+- **Shared Libraries**: create named libraries and share your movie/TV collection
+  with other Nextcloud users — assign viewer or editor roles, manage members,
+  and switch between libraries from a single account. Everything about a title
+  (catalog, watchlist, episode progress, ratings, platform, review) is shared
+  across all library members; `user_id` on catalog rows becomes legacy attribution
+  only — library membership is the sole access gate
+- New DB tables `moviedb_libraries` and `moviedb_library_members`; all catalog
+  tables gain a `library_id NOT NULL` column (Migrations V5 → V7)
+- V5 backfills every user's existing data into an auto-created personal library;
+  V6 enforces the NOT NULL constraint; V7 heals any duplicate-membership edge cases
+  left by a check-then-insert race in V5
+- **Self-leave**: members added to a shared library can leave it without needing
+  the owner to remove them (Leave button + confirmation dialog in the Libraries view)
+- `GET /api/libraries/sharees?search=...` — user-search endpoint backed by
+  `OCP\Collaboration\Collaborators\ISearch`, respecting Nextcloud's
+  `shareapi_restrict_user_enumeration` and group-restriction admin settings
+- Viewer notice banners on Add Movie, Add TV Show, and Add to Watchlist pages
+  when the active library is view-only
+
+### Changed
+- All catalog endpoints (`/api/movies`, `/api/series`, `/api/watchlist`, watches,
+  stats) now accept an optional `libraryId` query/body param and scope reads/writes
+  to that library; omitting it falls back to the user's personal library
+- `LibraryService.resolveLibraryId` (writes) throws on a denied explicit ID
+  instead of silently falling back to personal, preventing cross-library write
+  confusion
+- Member management restricted to owner only (editors can no longer add/remove
+  members); viewers see the members list read-only
+- Library delete cascade wrapped in a DB transaction (episodes → watches →
+  watchlist → series → movies → members → library)
+- Rename preserves the caller's owner role in the response (annotate() helper
+  centralises role annotation for all library-returning endpoints)
+- `GET /api/libraries/sharees` requires at least 1 character to prevent
+  zero-query full user enumeration
+- Dashboard "Recently Watched" now interleaves movies and TV shows sorted by
+  watch date instead of showing movies-only followed by TV-only
+
+### Fixed
+- Library rename bug: editing the name field immediately after saving no longer
+  reverts to the pre-save name due to a stale local binding
+
+### Tests
+- 121 PHP tests, 136 JS tests, 0 lint errors
+- New: `LibraryServiceTest` (21 PHP tests covering create, rename, member CRUD,
+  self-leave, canAccess/canEdit, annotate)
+- New: `libraries.spec.js` (28 JS tests covering store state, getters, fetch,
+  create/rename/remove, leaveLibrary, member actions)
+- All pre-existing tests updated for v1.4 API signatures (`libraryId` param added
+  to MovieService, WatchlistService, SeriesService, MovieWatchService, StatsService)
+
 ## [1.3.1] - 2026-08-29
 
 ### Fixed

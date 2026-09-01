@@ -42,27 +42,27 @@ class SeriesService {
     /**
      * @throws DoesNotExistException
      */
-    public function find(int $id, string $userId): Series {
-        return $this->mapper->find($id, $userId);
+    public function find(int $id, int $libraryId): Series {
+        return $this->mapper->find($id, $libraryId);
     }
 
     /**
      * @return Series[]
      */
-    public function findAll(string $userId, array $filters = [], int $limit = 50, int $offset = 0): array {
-        return $this->mapper->findAll($userId, $filters, $limit, $offset);
+    public function findAll(int $libraryId, array $filters = [], int $limit = 50, int $offset = 0): array {
+        return $this->mapper->findAll($libraryId, $filters, $limit, $offset);
     }
 
-    public function count(string $userId, array $filters = []): int {
-        return $this->mapper->countAll($userId, $filters);
+    public function count(int $libraryId, array $filters = []): int {
+        return $this->mapper->countAll($libraryId, $filters);
     }
 
-    public function existsByTmdbId(string $userId, int $tmdbId): bool {
-        return $this->mapper->findByTmdbId($userId, $tmdbId) !== null;
+    public function existsByTmdbId(int $libraryId, int $tmdbId): bool {
+        return $this->mapper->findByTmdbId($libraryId, $tmdbId) !== null;
     }
 
-    public function findByTmdbId(string $userId, int $tmdbId): ?Series {
-        return $this->mapper->findByTmdbId($userId, $tmdbId);
+    public function findByTmdbId(int $libraryId, int $tmdbId): ?Series {
+        return $this->mapper->findByTmdbId($libraryId, $tmdbId);
     }
 
     /**
@@ -73,7 +73,7 @@ class SeriesService {
      * @param array $data Series metadata (title required) + tmdbId to drive the
      *                    per-season episode fetch. $language selects TMDB locale.
      */
-    public function createFromTmdb(string $userId, array $data, string $language = 'en-US'): Series {
+    public function createFromTmdb(string $userId, int $libraryId, array $data, string $language = 'en-US'): Series {
         // Pre-fetch all season payloads from TMDB before opening a transaction so
         // slow/failing HTTP calls never hold DB row locks.
         $tmdbId = isset($data['tmdbId']) ? (int)$data['tmdbId'] : null;
@@ -103,6 +103,7 @@ class SeriesService {
         try {
             $series = new Series();
             $series->setUserId($userId);
+            $series->setLibraryId($libraryId);
             $series->setTmdbId($tmdbId);
             $series->setTitle($data['title']);
             $series->setOriginalTitle($data['originalTitle'] ?? null);
@@ -130,7 +131,7 @@ class SeriesService {
             // platform, language, date), persist it as the single series-level
             // watch row. The TV show owns this metadata, not individual episodes.
             if ($this->hasWatchMetadata($data)) {
-                $this->upsertSeriesWatch($series->getId(), $userId, $data);
+                $this->upsertSeriesWatch($series->getId(), $userId, $libraryId, $data);
             }
 
             $this->db->commit();
@@ -169,8 +170,8 @@ class SeriesService {
      *
      * @throws DoesNotExistException
      */
-    public function findWithProgress(int $id, string $userId): array {
-        $series = $this->mapper->find($id, $userId);
+    public function findWithProgress(int $id, int $libraryId): array {
+        $series = $this->mapper->find($id, $libraryId);
         $data = $series->jsonSerialize();
 
         $episodes = $this->episodeMapper->findBySeries($id);
@@ -237,7 +238,7 @@ class SeriesService {
 
         // Series-level watch metadata (the TV show's own rating/platform/
         // language/date), read from the single series-level watch row.
-        $summary = $this->watchMapper->getSeriesWatchSummary($id, $userId);
+        $summary = $this->watchMapper->getSeriesWatchSummary($id, $libraryId);
         $data['rating'] = $summary['rating'];
         $data['review'] = $summary['review'];
         $data['watchedAt'] = $summary['watchedAt'];
@@ -260,9 +261,9 @@ class SeriesService {
     /**
      * @return Episode[]
      */
-    public function getEpisodes(int $seriesId, string $userId): array {
-        // Verify ownership.
-        $this->mapper->find($seriesId, $userId);
+    public function getEpisodes(int $seriesId, int $libraryId): array {
+        // Verify access.
+        $this->mapper->find($seriesId, $libraryId);
         return $this->episodeMapper->findBySeries($seriesId);
     }
 
@@ -272,8 +273,8 @@ class SeriesService {
      *
      * @throws DoesNotExistException
      */
-    public function markEpisodeWatched(int $seriesId, int $episodeId, string $userId, bool $watched = true): void {
-        $this->mapper->find($seriesId, $userId);
+    public function markEpisodeWatched(int $seriesId, int $episodeId, int $libraryId, bool $watched = true): void {
+        $this->mapper->find($seriesId, $libraryId);
         $episode = $this->episodeMapper->find($episodeId);
         if ($episode->getSeriesId() !== $seriesId) {
             throw new DoesNotExistException('Episode does not belong to series');
@@ -291,8 +292,8 @@ class SeriesService {
      *
      * @throws DoesNotExistException
      */
-    public function markSeasonWatched(int $seriesId, int $seasonNumber, string $userId, bool $watched = true): int {
-        $this->mapper->find($seriesId, $userId);
+    public function markSeasonWatched(int $seriesId, int $seasonNumber, int $libraryId, bool $watched = true): int {
+        $this->mapper->find($seriesId, $libraryId);
         $episodes = $this->episodeMapper->findBySeriesAndSeason($seriesId, $seasonNumber);
         return $this->setEpisodesWatched($episodes, $watched);
     }
@@ -302,8 +303,8 @@ class SeriesService {
      *
      * @throws DoesNotExistException
      */
-    public function markSeriesWatched(int $seriesId, string $userId, bool $watched = true): int {
-        $this->mapper->find($seriesId, $userId);
+    public function markSeriesWatched(int $seriesId, int $libraryId, bool $watched = true): int {
+        $this->mapper->find($seriesId, $libraryId);
         $episodes = array_filter(
             $this->episodeMapper->findBySeries($seriesId),
             static fn (Episode $e): bool => $e->getSeasonNumber() !== 0
@@ -352,13 +353,14 @@ class SeriesService {
      * Create or update the single series-level watch row (series_id set,
      * episode_id NULL) carrying the show's rating/platform/language/date.
      */
-    public function upsertSeriesWatch(int $seriesId, string $userId, array $data): void {
-        $watch = $this->watchMapper->findSeriesWatch($seriesId, $userId);
+    public function upsertSeriesWatch(int $seriesId, string $userId, int $libraryId, array $data): void {
+        $watch = $this->watchMapper->findSeriesWatch($seriesId, $libraryId);
         $isNew = $watch === null;
         if ($isNew) {
             $watch = new MovieWatch();
             $watch->setSeriesId($seriesId);
             $watch->setUserId($userId);
+            $watch->setLibraryId($libraryId);
             $watch->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
         }
 
@@ -386,8 +388,8 @@ class SeriesService {
     /**
      * @throws DoesNotExistException
      */
-    public function update(int $id, string $userId, array $data): Series {
-        $series = $this->mapper->find($id, $userId);
+    public function update(int $id, int $libraryId, array $data): Series {
+        $series = $this->mapper->find($id, $libraryId);
 
         if (isset($data['title'])) {
             $series->setTitle($data['title']);
@@ -415,7 +417,7 @@ class SeriesService {
         // Series-level watch metadata (rating/platform/language/date) lives in a
         // dedicated watch row, not on the series entity. Persist it if present.
         if ($this->hasWatchMetadata($data)) {
-            $this->upsertSeriesWatch($id, $userId, $data);
+            $this->upsertSeriesWatch($id, $series->getUserId(), $libraryId, $data);
         }
 
         return $updated;
@@ -427,12 +429,12 @@ class SeriesService {
      *
      * @throws DoesNotExistException
      */
-    public function delete(int $id, string $userId): void {
-        $series = $this->mapper->find($id, $userId);
+    public function delete(int $id, int $libraryId): void {
+        $series = $this->mapper->find($id, $libraryId);
 
         $this->db->beginTransaction();
         try {
-            $this->watchMapper->deleteBySeries($id, $userId);
+            $this->watchMapper->deleteBySeries($id, $libraryId);
             $this->episodeMapper->deleteBySeries($id);
             $this->mapper->delete($series);
             $this->db->commit();

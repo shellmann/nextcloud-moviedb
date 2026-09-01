@@ -2,6 +2,7 @@ import { defineStore } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import api from '../services/api.js'
+import { useLibrariesStore } from './libraries.js'
 
 export const useWatchesStore = defineStore('watches', {
 	state: () => ({
@@ -18,7 +19,8 @@ export const useWatchesStore = defineStore('watches', {
 			this.loading = true
 			this.movieId = movieId
 			try {
-				const response = await api.getWatches(movieId)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const response = await api.getWatches(movieId, libraryId !== null ? libraryId : undefined)
 				this.watches = response.data.watches
 			} catch (error) {
 				console.error('Failed to fetch watch history:', error)
@@ -30,7 +32,9 @@ export const useWatchesStore = defineStore('watches', {
 
 		async create(movieId, data) {
 			try {
-				const response = await api.createWatch(movieId, data)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = libraryId !== null ? { ...data, libraryId } : data
+				const response = await api.createWatch(movieId, payload)
 				this.watches.unshift(response.data.watch)
 				showSuccess(t('moviedb', 'Watch logged successfully.'))
 				return response.data.watch
@@ -43,7 +47,9 @@ export const useWatchesStore = defineStore('watches', {
 
 		async update(movieId, watchId, data) {
 			try {
-				const response = await api.updateWatch(movieId, watchId, data)
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = libraryId !== null ? { ...data, libraryId } : data
+				const response = await api.updateWatch(movieId, watchId, payload)
 				const updated = response.data.watch
 				const index = this.watches.findIndex(w => w.id === watchId)
 				if (index !== -1) {
@@ -60,7 +66,8 @@ export const useWatchesStore = defineStore('watches', {
 
 		async delete(movieId, watchId) {
 			try {
-				await api.deleteWatch(movieId, watchId)
+				const libraryId = useLibrariesStore().activeLibraryId
+				await api.deleteWatch(movieId, watchId, libraryId !== null ? libraryId : undefined)
 				this.watches = this.watches.filter(w => w.id !== watchId)
 				showSuccess(t('moviedb', 'Watch entry deleted.'))
 				return true

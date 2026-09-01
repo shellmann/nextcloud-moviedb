@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
+use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\SeriesService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -19,16 +20,19 @@ use Psr\Log\LoggerInterface;
  */
 class SeriesController extends AuthenticatedController {
     private SeriesService $service;
+    private LibraryService $libraryService;
     private LoggerInterface $logger;
 
     public function __construct(
         IRequest $request,
         SeriesService $service,
+        LibraryService $libraryService,
         IUserSession $userSession,
         LoggerInterface $logger
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
+        $this->libraryService = $libraryService;
         $this->logger = $logger;
     }
 
@@ -37,6 +41,8 @@ class SeriesController extends AuthenticatedController {
         if ($error = $this->requireAuth()) {
             return $error;
         }
+
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
 
         $page = (int)$this->request->getParam('page', 1);
         $limit = min((int)$this->request->getParam('limit', 24), 100);
@@ -51,8 +57,8 @@ class SeriesController extends AuthenticatedController {
             'favorite' => $this->request->getParam('favorite'),
         ];
 
-        $series = $this->service->findAll($this->userId, $filters, $limit, $offset);
-        $total = $this->service->count($this->userId, $filters);
+        $series = $this->service->findAll($libraryId, $filters, $limit, $offset);
+        $total = $this->service->count($libraryId, $filters);
 
         return new JSONResponse([
             'series' => $series,
@@ -69,8 +75,10 @@ class SeriesController extends AuthenticatedController {
             return $error;
         }
 
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+
         try {
-            $series = $this->service->findWithProgress($id, $this->userId);
+            $series = $this->service->findWithProgress($id, $libraryId);
             return new JSONResponse(['series' => $series]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Series not found'], Http::STATUS_NOT_FOUND);
@@ -83,6 +91,16 @@ class SeriesController extends AuthenticatedController {
             return $error;
         }
 
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
         $data = $this->request->getParams();
 
         if (empty($data['title'])) {
@@ -91,7 +109,7 @@ class SeriesController extends AuthenticatedController {
 
         // Check if series is already tracked.
         if (!empty($data['tmdbId'])) {
-            $existing = $this->service->findByTmdbId($this->userId, (int)$data['tmdbId']);
+            $existing = $this->service->findByTmdbId($libraryId, (int)$data['tmdbId']);
             if ($existing !== null) {
                 return new JSONResponse([
                     'error' => 'Series already in your list',
@@ -103,7 +121,7 @@ class SeriesController extends AuthenticatedController {
         $language = $this->request->getParam('language', 'en-US');
 
         try {
-            $series = $this->service->createFromTmdb($this->userId, $data, $language);
+            $series = $this->service->createFromTmdb($this->userId, $libraryId, $data, $language);
             return new JSONResponse(['series' => $series], Http::STATUS_CREATED);
         } catch (\Exception $e) {
             $this->logger->error('Failed to create series', [
@@ -123,10 +141,20 @@ class SeriesController extends AuthenticatedController {
             return $error;
         }
 
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
         $data = $this->request->getParams();
 
         try {
-            $series = $this->service->update($id, $this->userId, $data);
+            $series = $this->service->update($id, $libraryId, $data);
             return new JSONResponse(['series' => $series]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Series not found'], Http::STATUS_NOT_FOUND);
@@ -150,7 +178,17 @@ class SeriesController extends AuthenticatedController {
         }
 
         try {
-            $this->service->delete($id, $this->userId);
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
+        try {
+            $this->service->delete($id, $libraryId);
             return new JSONResponse(['success' => true]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Series not found'], Http::STATUS_NOT_FOUND);
@@ -163,8 +201,10 @@ class SeriesController extends AuthenticatedController {
             return $error;
         }
 
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+
         try {
-            $episodes = $this->service->getEpisodes($id, $this->userId);
+            $episodes = $this->service->getEpisodes($id, $libraryId);
             return new JSONResponse(['episodes' => $episodes]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Series not found'], Http::STATUS_NOT_FOUND);
@@ -177,6 +217,16 @@ class SeriesController extends AuthenticatedController {
             return $error;
         }
 
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
         // Episodes are a plain watched/unwatched toggle; default true so an
         // omitted flag still marks watched (season/series "mark all" buttons).
         $watched = $this->parseWatchedFlag($this->request->getParam('watched'));
@@ -185,12 +235,12 @@ class SeriesController extends AuthenticatedController {
             $episodeId = $this->request->getParam('episodeId');
             if ($episodeId !== null && $episodeId !== '') {
                 // Single episode.
-                $this->service->markEpisodeWatched($id, (int)$episodeId, $this->userId, $watched);
+                $this->service->markEpisodeWatched($id, (int)$episodeId, $libraryId, $watched);
             } else {
                 // Whole series.
-                $this->service->markSeriesWatched($id, $this->userId, $watched);
+                $this->service->markSeriesWatched($id, $libraryId, $watched);
             }
-            $series = $this->service->findWithProgress($id, $this->userId);
+            $series = $this->service->findWithProgress($id, $libraryId);
             return new JSONResponse(['series' => $series]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Series or episode not found'], Http::STATUS_NOT_FOUND);
@@ -212,11 +262,21 @@ class SeriesController extends AuthenticatedController {
             return $error;
         }
 
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
         $watched = $this->parseWatchedFlag($this->request->getParam('watched'));
 
         try {
-            $this->service->markSeasonWatched($id, $seasonNumber, $this->userId, $watched);
-            $series = $this->service->findWithProgress($id, $this->userId);
+            $this->service->markSeasonWatched($id, $seasonNumber, $libraryId, $watched);
+            $series = $this->service->findWithProgress($id, $libraryId);
             return new JSONResponse(['series' => $series]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Series not found'], Http::STATUS_NOT_FOUND);

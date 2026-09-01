@@ -6,7 +6,9 @@ We currently provide security updates for the following versions:
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.0.x   | :white_check_mark: |
+| 1.4.x   | :white_check_mark: |
+| 1.3.x   | :white_check_mark: |
+| < 1.3   | :x:                |
 
 ## Reporting a Vulnerability
 
@@ -49,7 +51,7 @@ When using MovieDB:
 ### Known Security Considerations
 
 - **TMDB API Key**: Your TMDB API key is stored in Nextcloud's encrypted user settings
-- **Data Privacy**: Movie data is private to each user - no data is shared between users
+- **Data Privacy**: Movie data is private to each user by default. Shared libraries allow users to intentionally share their collection with specific other Nextcloud users — access is controlled by the library owner via role assignments (viewer/editor)
 - **XSS Protection**: All user input is sanitized to prevent cross-site scripting
 - **SQL Injection**: We use Nextcloud's QueryBuilder to prevent SQL injection attacks
 - **CSRF Protection**: All forms use Nextcloud's built-in CSRF protection

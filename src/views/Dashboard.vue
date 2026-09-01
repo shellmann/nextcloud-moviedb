@@ -82,15 +82,17 @@
 		<div class="dashboard-sections">
 			<div class="section">
 				<h3>{{ t('moviedb', 'Recently Watched') }}</h3>
-				<div v-if="recentMovies.length || recentSeries.length" class="movie-row">
-					<MovieCard v-for="movie in recentMovies"
-						:key="'movie-' + movie.id"
-						:movie="movie"
-						@click="goToMovie(movie.id)" />
-					<SeriesCard v-for="series in recentSeries"
-						:key="'series-' + series.id"
-						:series="series"
-						@click="goToSeries(series.id)" />
+				<div v-if="recentItems.length" class="movie-row">
+					<template v-for="item in recentItems">
+						<MovieCard v-if="item._type === 'movie'"
+							:key="'movie-' + item.id"
+							:movie="item"
+							@click="goToMovie(item.id)" />
+						<SeriesCard v-else
+							:key="'series-' + item.id"
+							:series="item"
+							@click="goToSeries(item.id)" />
+					</template>
 				</div>
 				<p v-else class="empty-message">
 					{{ t('moviedb', 'No movies watched yet') }}
@@ -99,15 +101,17 @@
 
 			<div class="section">
 				<h3>{{ t('moviedb', 'Top Rated') }}</h3>
-				<div v-if="topRatedMovies.length || topRatedSeries.length" class="movie-row">
-					<MovieCard v-for="movie in topRatedMovies"
-						:key="'movie-' + movie.id"
-						:movie="movie"
-						@click="goToMovie(movie.id)" />
-					<SeriesCard v-for="series in topRatedSeries"
-						:key="'series-' + series.id"
-						:series="series"
-						@click="goToSeries(series.id)" />
+				<div v-if="topRatedItems.length" class="movie-row">
+					<template v-for="item in topRatedItems">
+						<MovieCard v-if="item._type === 'movie'"
+							:key="'movie-' + item.id"
+							:movie="item"
+							@click="goToMovie(item.id)" />
+						<SeriesCard v-else
+							:key="'series-' + item.id"
+							:series="item"
+							@click="goToSeries(item.id)" />
+					</template>
 				</div>
 				<p v-else class="empty-message">
 					{{ t('moviedb', 'Rate some movies to see them here') }}
@@ -123,6 +127,7 @@ import MovieCard from '../components/MovieCard.vue'
 import SeriesCard from '../components/SeriesCard.vue'
 import api from '../services/api.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 
 export default {
 	name: 'Dashboard',
@@ -133,7 +138,8 @@ export default {
 	},
 	setup() {
 		const settingsStore = useSettingsStore()
-		return { settingsStore }
+		const librariesStore = useLibrariesStore()
+		return { settingsStore, librariesStore }
 	},
 	data() {
 		return {
@@ -156,18 +162,36 @@ export default {
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
 		},
+		recentItems() {
+			const movies = this.recentMovies.map(m => ({ ...m, _type: 'movie' }))
+			const series = this.recentSeries.map(s => ({ ...s, _type: 'series' }))
+			return [...movies, ...series]
+				.sort((a, b) => (b.lastWatchedAt || '').localeCompare(a.lastWatchedAt || ''))
+				.slice(0, 10)
+		},
+		topRatedItems() {
+			const movies = this.topRatedMovies.map(m => ({ ...m, _type: 'movie' }))
+			const series = this.topRatedSeries.map(s => ({ ...s, _type: 'series' }))
+			return [...movies, ...series]
+				.sort((a, b) => (b.lastRating ?? b.rating ?? 0) - (a.lastRating ?? a.rating ?? 0))
+				.slice(0, 10)
+		},
 	},
 	async created() {
+		// Wait for libraries so the active library id is known before fetching.
+		await this.librariesStore.whenReady()
 		await this.loadDashboardData()
 	},
 	methods: {
 		async loadDashboardData() {
 			this.loading = true
 			try {
+				const libraryId = this.librariesStore.activeLibraryId
+				const lid = libraryId !== null ? libraryId : undefined
 				const [statsRes, recentRes, topRatedRes] = await Promise.all([
-					api.getStats(),
-					api.getRecentMovies(5),
-					api.getTopRatedMovies(5),
+					api.getStats(lid),
+					api.getRecentMovies(5, lid),
+					api.getTopRatedMovies(5, lid),
 				])
 				this.stats = statsRes.data
 				this.recentMovies = recentRes.data.movies

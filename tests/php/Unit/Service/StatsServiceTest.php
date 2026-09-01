@@ -31,6 +31,8 @@ class StatsServiceTest extends TestCase {
     private EpisodeMapper $episodeMapper;
     private StatsService $service;
 
+    private const LIBRARY_ID = 1;
+
     protected function setUp(): void {
         parent::setUp();
 
@@ -54,13 +56,13 @@ class StatsServiceTest extends TestCase {
     public function testGetTopRatedSeriesSortsByRatingDescending(): void {
         $this->seriesMapper->expects($this->once())
             ->method('findAll')
-            ->with('testuser', ['sort' => 'rating', 'dir' => 'DESC'], 20, 0)
+            ->with(self::LIBRARY_ID, ['sort' => 'rating', 'dir' => 'DESC'], 20, 0)
             ->willReturn([
                 $this->makeSeries(1, 9),
                 $this->makeSeries(2, 7),
             ]);
 
-        $result = $this->service->getTopRatedSeries('testuser', 5);
+        $result = $this->service->getTopRatedSeries('testuser', self::LIBRARY_ID, 5);
 
         $this->assertCount(2, $result);
         $this->assertSame(1, $result[0]->getId());
@@ -76,7 +78,7 @@ class StatsServiceTest extends TestCase {
             $this->makeSeries(3, 6),
         ]);
 
-        $result = $this->service->getTopRatedSeries('testuser', 5);
+        $result = $this->service->getTopRatedSeries('testuser', self::LIBRARY_ID, 5);
 
         $this->assertCount(2, $result);
         $ids = array_map(static fn (Series $s) => $s->getId(), $result);
@@ -90,7 +92,7 @@ class StatsServiceTest extends TestCase {
             $this->makeSeries(3, 8),
         ]);
 
-        $result = $this->service->getTopRatedSeries('testuser', 2);
+        $result = $this->service->getTopRatedSeries('testuser', self::LIBRARY_ID, 2);
 
         $this->assertCount(2, $result);
         $this->assertSame([1, 2], array_map(static fn (Series $s) => $s->getId(), $result));
@@ -99,10 +101,10 @@ class StatsServiceTest extends TestCase {
     public function testGetTopRatedSeriesOverFetchesFourTimesTheLimit(): void {
         $this->seriesMapper->expects($this->once())
             ->method('findAll')
-            ->with('testuser', ['sort' => 'rating', 'dir' => 'DESC'], 12, 0)
+            ->with(self::LIBRARY_ID, ['sort' => 'rating', 'dir' => 'DESC'], 12, 0)
             ->willReturn([]);
 
-        $this->assertSame([], $this->service->getTopRatedSeries('testuser', 3));
+        $this->assertSame([], $this->service->getTopRatedSeries('testuser', self::LIBRARY_ID, 3));
     }
 
     public function testGetOverviewPassesThroughCombinedAverageRating(): void {
@@ -116,7 +118,7 @@ class StatsServiceTest extends TestCase {
         $this->seriesMapper->method('countAll')->willReturn(0);
         $this->watchMapper->method('getAverageRating')->willReturn(7.5);
 
-        $overview = $this->service->getOverview('testuser');
+        $overview = $this->service->getOverview('testuser', self::LIBRARY_ID);
 
         $this->assertSame(7.5, $overview['averageRating']);
     }

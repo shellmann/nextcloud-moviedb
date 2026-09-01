@@ -20,7 +20,7 @@ class SeriesMapper extends QBMapper {
      * properties but are not real table columns, so we never SELECT *.
      */
     private const COLUMNS = [
-        'id', 'user_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
+        'id', 'user_id', 'library_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
         'backdrop_path', 'overview', 'genre_ids', 'first_air_date', 'first_air_year',
         'number_of_seasons', 'number_of_episodes', 'status', 'cast_data', 'director',
         'is_favorite', 'created_at', 'updated_at',
@@ -33,13 +33,16 @@ class SeriesMapper extends QBMapper {
     /**
      * @throws DoesNotExistException
      */
-    public function find(int $id, ?string $userId = null): Series {
+    public function find(int $id, ?int $libraryId = null): Series {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select(...self::COLUMNS)
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)))
-            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+
+        if ($libraryId !== null) {
+            $qb->andWhere($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
+        }
 
         return $this->findEntity($qb);
     }
@@ -47,12 +50,12 @@ class SeriesMapper extends QBMapper {
     /**
      * @return Series[]
      */
-    public function findAll(string $userId, array $filters = [], int $limit = 50, int $offset = 0): array {
+    public function findAll(int $libraryId, array $filters = [], int $limit = 50, int $offset = 0): array {
         $qb = $this->db->getQueryBuilder();
 
-        // Bind user_id once on the OUTER builder; the placeholder is reused both in
+        // Bind library_id once on the OUTER builder; the placeholder is reused both in
         // the aggregate subquery text and in the outer WHERE. Mirrors MovieMapper.
-        $userParam = $qb->createNamedParameter($userId, IQueryBuilder::PARAM_STR, ':lw_series_user_id');
+        $libraryParam = $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT, ':lw_series_library_id');
 
         // Latest-watch-per-series aggregate over episode watches. Episode rows carry
         // a denormalized series_id, so no join to episodes is needed here.
@@ -61,7 +64,7 @@ class SeriesMapper extends QBMapper {
             ->selectAlias($sub->func()->max('w.watched_at'), 'watched_at')
             ->selectAlias($sub->func()->max('w.rating'), 'rating')
             ->from('moviedb_movie_watches', 'w')
-            ->where('w.user_id = :lw_series_user_id')
+            ->where('w.library_id = :lw_series_library_id')
             ->andWhere($sub->expr()->isNotNull('w.series_id'))
             ->groupBy('w.series_id');
 
@@ -75,7 +78,7 @@ class SeriesMapper extends QBMapper {
                 'lw',
                 $qb->expr()->eq('m.id', 'lw.series_id')
             )
-            ->where($qb->expr()->eq('m.user_id', $userParam));
+            ->where($qb->expr()->eq('m.library_id', $libraryParam));
 
         $this->applyFilters($qb, $filters);
 
@@ -99,12 +102,12 @@ class SeriesMapper extends QBMapper {
         return $this->findEntities($qb);
     }
 
-    public function countAll(string $userId, array $filters = []): int {
+    public function countAll(int $libraryId, array $filters = []): int {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select($qb->func()->count('*', 'count'))
             ->from($this->getTableName(), 'm')
-            ->where($qb->expr()->eq('m.user_id', $qb->createNamedParameter($userId)));
+            ->where($qb->expr()->eq('m.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
 
         $this->applyFilters($qb, $filters);
 
@@ -141,12 +144,12 @@ class SeriesMapper extends QBMapper {
         }
     }
 
-    public function findByTmdbId(string $userId, int $tmdbId): ?Series {
+    public function findByTmdbId(int $libraryId, int $tmdbId): ?Series {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select(...self::COLUMNS)
             ->from($this->getTableName())
-            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->eq('tmdb_id', $qb->createNamedParameter($tmdbId, IQueryBuilder::PARAM_INT)))
             ->setMaxResults(1);
 
@@ -155,5 +158,17 @@ class SeriesMapper extends QBMapper {
         } catch (DoesNotExistException $e) {
             return null;
         }
+    }
+
+    /**
+     * Delete all series rows belonging to a library (used on library cascade delete).
+     */
+    public function deleteByLibrary(int $libraryId): void {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
+
+        $qb->executeStatement();
     }
 }

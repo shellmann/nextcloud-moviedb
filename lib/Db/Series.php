@@ -46,6 +46,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setLastWatchedAt(?string $lastWatchedAt)
  * @method bool getIsFavorite()
  * @method void setIsFavorite(bool $isFavorite)
+ * @method int|null getLibraryId()
+ * @method void setLibraryId(?int $libraryId)
  * @method string getCreatedAt()
  * @method void setCreatedAt(string $createdAt)
  * @method string|null getUpdatedAt()
@@ -53,6 +55,7 @@ use OCP\AppFramework\Db\Entity;
  */
 class Series extends Entity implements JsonSerializable {
     protected string $userId = '';
+    protected ?int $libraryId = null;
     protected ?int $tmdbId = null;
     protected string $title = '';
     protected ?string $originalTitle = null;
@@ -75,6 +78,7 @@ class Series extends Entity implements JsonSerializable {
 
     public function __construct() {
         $this->addType('id', 'integer');
+        $this->addType('libraryId', 'integer');
         $this->addType('tmdbId', 'integer');
         $this->addType('genreIds', 'json');
         $this->addType('firstAirYear', 'integer');
@@ -89,6 +93,7 @@ class Series extends Entity implements JsonSerializable {
         return [
             'id' => $this->id,
             'userId' => $this->userId,
+            'libraryId' => $this->libraryId,
             'tmdbId' => $this->tmdbId,
             'title' => $this->title,
             'originalTitle' => $this->originalTitle,

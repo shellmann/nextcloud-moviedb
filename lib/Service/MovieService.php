@@ -23,8 +23,8 @@ class MovieService {
     /**
      * @throws DoesNotExistException
      */
-    public function find(int $id, string $userId): Movie {
-        return $this->mapper->find($id, $userId);
+    public function find(int $id, int $libraryId): Movie {
+        return $this->mapper->find($id, $libraryId);
     }
 
     /**
@@ -34,11 +34,11 @@ class MovieService {
      *
      * @throws DoesNotExistException
      */
-    public function findWithLatestWatch(int $id, string $userId): array {
-        $movie = $this->mapper->find($id, $userId);
+    public function findWithLatestWatch(int $id, int $libraryId): array {
+        $movie = $this->mapper->find($id, $libraryId);
         $data = $movie->jsonSerialize();
 
-        $watches = $this->watchMapper->findByMovie($id, $userId);
+        $watches = $this->watchMapper->findByMovie($id, $libraryId);
         if (!empty($watches)) {
             $latest = $watches[0]; // already ordered DESC by watched_at
             $data['lastWatchedAt'] = $latest->getWatchedAt();
@@ -66,15 +66,15 @@ class MovieService {
     /**
      * @return Movie[]
      */
-    public function findAll(string $userId, array $filters = [], int $limit = 50, int $offset = 0): array {
-        return $this->mapper->findAll($userId, $filters, $limit, $offset);
+    public function findAll(int $libraryId, array $filters = [], int $limit = 50, int $offset = 0): array {
+        return $this->mapper->findAll($libraryId, $filters, $limit, $offset);
     }
 
-    public function count(string $userId, array $filters = []): int {
-        return $this->mapper->countAll($userId, $filters);
+    public function count(int $libraryId, array $filters = []): int {
+        return $this->mapper->countAll($libraryId, $filters);
     }
 
-    public function create(string $userId, array $data): Movie {
+    public function create(string $userId, int $libraryId, array $data): Movie {
         if (isset($data['rating']) && $data['rating'] !== null) {
             $rating = (int)$data['rating'];
             if ($rating < 1 || $rating > 10) {
@@ -85,6 +85,7 @@ class MovieService {
 
         $movie = new Movie();
         $movie->setUserId($userId);
+        $movie->setLibraryId($libraryId);
         $movie->setTmdbId($data['tmdbId'] ?? null);
         $movie->setTitle($data['title']);
         $movie->setOriginalTitle($data['originalTitle'] ?? null);
@@ -112,6 +113,7 @@ class MovieService {
             $watch = new MovieWatch();
             $watch->setMovieId($movie->getId());
             $watch->setUserId($userId);
+            $watch->setLibraryId($libraryId);
             $watch->setWatchedAt($data['dateWatched'] ?? null);
             $watch->setRating($data['rating'] ?? null);
             $watch->setReview($data['review'] ?? null);
@@ -127,8 +129,8 @@ class MovieService {
     /**
      * @throws DoesNotExistException
      */
-    public function update(int $id, string $userId, array $data): Movie {
-        $movie = $this->mapper->find($id, $userId);
+    public function update(int $id, int $libraryId, array $data): Movie {
+        $movie = $this->mapper->find($id, $libraryId);
 
         if (isset($data['title'])) {
             $movie->setTitle($data['title']);
@@ -176,17 +178,17 @@ class MovieService {
     /**
      * @throws DoesNotExistException
      */
-    public function delete(int $id, string $userId): void {
-        $movie = $this->mapper->find($id, $userId);
+    public function delete(int $id, int $libraryId): void {
+        $movie = $this->mapper->find($id, $libraryId);
         $this->mapper->delete($movie);
     }
 
-    public function existsByTmdbId(string $userId, int $tmdbId): bool {
-        return $this->mapper->findByTmdbId($userId, $tmdbId) !== null;
+    public function existsByTmdbId(int $libraryId, int $tmdbId): bool {
+        return $this->mapper->findByTmdbId($libraryId, $tmdbId) !== null;
     }
 
-    public function findByTmdbId(string $userId, int $tmdbId): ?Movie {
-        return $this->mapper->findByTmdbId($userId, $tmdbId);
+    public function findByTmdbId(int $libraryId, int $tmdbId): ?Movie {
+        return $this->mapper->findByTmdbId($libraryId, $tmdbId);
     }
 
     private function extractYear(?string $releaseDate): ?int {

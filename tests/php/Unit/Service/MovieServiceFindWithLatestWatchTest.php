@@ -39,7 +39,7 @@ class MovieServiceFindWithLatestWatchTest extends TestCase {
         $this->mapper->method('find')->willReturn($movie);
         $this->watchMapper->method('findByMovie')->willReturn([$watch]);
 
-        $result = $this->service->findWithLatestWatch(1, 'user1');
+        $result = $this->service->findWithLatestWatch(1, 1);
 
         $this->assertIsArray($result);
         $this->assertEquals('2024-06-15', $result['lastWatchedAt']);
@@ -61,7 +61,7 @@ class MovieServiceFindWithLatestWatchTest extends TestCase {
         $this->mapper->method('find')->willReturn($movie);
         $this->watchMapper->method('findByMovie')->willReturn([$latest, $older]);
 
-        $result = $this->service->findWithLatestWatch(1, 'user1');
+        $result = $this->service->findWithLatestWatch(1, 1);
 
         $this->assertEquals('2025-01-01', $result['dateWatched']);
         $this->assertEquals(8, $result['rating']);
@@ -76,7 +76,7 @@ class MovieServiceFindWithLatestWatchTest extends TestCase {
         $this->mapper->method('find')->willReturn($movie);
         $this->watchMapper->method('findByMovie')->willReturn([]);
 
-        $result = $this->service->findWithLatestWatch(1, 'user1');
+        $result = $this->service->findWithLatestWatch(1, 1);
 
         $this->assertNull($result['lastWatchedAt']);
         $this->assertNull($result['lastRating']);
@@ -95,7 +95,7 @@ class MovieServiceFindWithLatestWatchTest extends TestCase {
         $this->mapper->method('find')->willReturn($movie);
         $this->watchMapper->method('findByMovie')->willReturn([$watch]);
 
-        $result = $this->service->findWithLatestWatch(7, 'user1');
+        $result = $this->service->findWithLatestWatch(7, 1);
 
         $this->assertEquals(7, $result['id']);
         $this->assertEquals('The Dark Knight', $result['title']);
@@ -106,7 +106,7 @@ class MovieServiceFindWithLatestWatchTest extends TestCase {
             ->willThrowException(new DoesNotExistException('not found'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->findWithLatestWatch(999, 'user1');
+        $this->service->findWithLatestWatch(999, 1);
     }
 
     // ── helpers ──────────────────────────────────────────────────────────────

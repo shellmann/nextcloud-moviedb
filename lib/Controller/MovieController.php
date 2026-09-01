@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
+use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Service\MovieWatchService;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -24,18 +25,21 @@ use Psr\Log\LoggerInterface;
 class MovieController extends AuthenticatedController {
     private MovieService $service;
     private MovieWatchService $watchService;
+    private LibraryService $libraryService;
     private LoggerInterface $logger;
 
     public function __construct(
         IRequest $request,
         MovieService $service,
         MovieWatchService $watchService,
+        LibraryService $libraryService,
         IUserSession $userSession,
         LoggerInterface $logger
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
         $this->watchService = $watchService;
+        $this->libraryService = $libraryService;
         $this->logger = $logger;
     }
 
@@ -61,6 +65,8 @@ class MovieController extends AuthenticatedController {
             return $error;
         }
 
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+
         $page = (int)$this->request->getParam('page', 1);
         $limit = min((int)$this->request->getParam('limit', 24), 100);
         $offset = ($page - 1) * $limit;
@@ -75,8 +81,8 @@ class MovieController extends AuthenticatedController {
             'favorite' => $this->request->getParam('favorite'),
         ];
 
-        $movies = $this->service->findAll($this->userId, $filters, $limit, $offset);
-        $total = $this->service->count($this->userId, $filters);
+        $movies = $this->service->findAll($libraryId, $filters, $limit, $offset);
+        $total = $this->service->count($libraryId, $filters);
 
         return new JSONResponse([
             'movies' => $movies,
@@ -99,8 +105,10 @@ class MovieController extends AuthenticatedController {
             return $error;
         }
 
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+
         try {
-            $movie = $this->service->findWithLatestWatch($id, $this->userId);
+            $movie = $this->service->findWithLatestWatch($id, $libraryId);
             return new JSONResponse(['movie' => $movie]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Movie not found'], Http::STATUS_NOT_FOUND);
@@ -126,6 +134,16 @@ class MovieController extends AuthenticatedController {
             return $error;
         }
 
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
         $data = $this->request->getParams();
 
         if (empty($data['title'])) {
@@ -134,7 +152,7 @@ class MovieController extends AuthenticatedController {
 
         // Check if movie is already tracked
         if (!empty($data['tmdbId'])) {
-            $existing = $this->service->findByTmdbId($this->userId, (int)$data['tmdbId']);
+            $existing = $this->service->findByTmdbId($libraryId, (int)$data['tmdbId']);
             if ($existing !== null) {
                 return new JSONResponse([
                     'error' => 'Movie already in your list',
@@ -144,7 +162,7 @@ class MovieController extends AuthenticatedController {
         }
 
         try {
-            $movie = $this->service->create($this->userId, $data);
+            $movie = $this->service->create($this->userId, $libraryId, $data);
             return new JSONResponse(['movie' => $movie], Http::STATUS_CREATED);
         } catch (\Exception $e) {
             $this->logger->error('Failed to create movie', [
@@ -171,16 +189,26 @@ class MovieController extends AuthenticatedController {
             return $error;
         }
 
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
         $data = $this->request->getParams();
 
         try {
-            $movie = $this->service->update($id, $this->userId, $data);
+            $movie = $this->service->update($id, $libraryId, $data);
 
             // If any watch-specific fields were submitted, update the latest watch entry
             $watchFields = ['rating', 'review', 'dateWatched', 'platformId', 'languageWatched'];
             $watchData = array_intersect_key($data, array_flip($watchFields));
             if (!empty($watchData)) {
-                $watches = $this->watchService->findByMovie($id, $this->userId);
+                $watches = $this->watchService->findRawByMovie($id, $libraryId);
                 // Only pass keys that were actually present in the request
                 $mappedWatch = [];
                 if (array_key_exists('rating', $watchData)) $mappedWatch['rating'] = $watchData['rating'];
@@ -190,10 +218,10 @@ class MovieController extends AuthenticatedController {
                 if (array_key_exists('languageWatched', $watchData)) $mappedWatch['languageWatched'] = $watchData['languageWatched'];
                 if (!empty($watches)) {
                     // watches are ordered DESC by watched_at — first is the latest
-                    $this->watchService->update($watches[0]->getId(), $this->userId, $mappedWatch);
+                    $this->watchService->update($watches[0]->getId(), $libraryId, $mappedWatch);
                 } else {
                     // No watch row yet (movie created without watch fields, or pre-migration NULL row)
-                    $this->watchService->create($id, $this->userId, $mappedWatch);
+                    $this->watchService->create($id, $this->userId, $libraryId, $mappedWatch);
                 }
             }
 
@@ -227,7 +255,17 @@ class MovieController extends AuthenticatedController {
         }
 
         try {
-            $this->service->delete($id, $this->userId);
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
+        try {
+            $this->service->delete($id, $libraryId);
             return new JSONResponse(['success' => true]);
         } catch (DoesNotExistException $e) {
             return new JSONResponse(['error' => 'Movie not found'], Http::STATUS_NOT_FOUND);

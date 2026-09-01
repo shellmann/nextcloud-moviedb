@@ -19,24 +19,25 @@ class WatchlistService {
     /**
      * @throws DoesNotExistException
      */
-    public function find(int $id, string $userId): WatchlistItem {
-        return $this->mapper->find($id, $userId);
+    public function find(int $id, int $libraryId): WatchlistItem {
+        return $this->mapper->find($id, $libraryId);
     }
 
     /**
      * @return WatchlistItem[]
      */
-    public function findAll(string $userId, array $filters = []): array {
-        return $this->mapper->findAll($userId, $filters);
+    public function findAll(int $libraryId, array $filters = []): array {
+        return $this->mapper->findAll($libraryId, $filters);
     }
 
-    public function count(string $userId): int {
-        return $this->mapper->countAll($userId);
+    public function count(int $libraryId): int {
+        return $this->mapper->countAll($libraryId);
     }
 
-    public function create(string $userId, array $data): WatchlistItem {
+    public function create(string $userId, int $libraryId, array $data): WatchlistItem {
         $item = new WatchlistItem();
         $item->setUserId($userId);
+        $item->setLibraryId($libraryId);
         $item->setTmdbId($data['tmdbId'] ?? null);
         $item->setTitle($data['title']);
         $item->setPosterPath($data['posterPath'] ?? null);
@@ -54,8 +55,8 @@ class WatchlistService {
     /**
      * @throws DoesNotExistException
      */
-    public function update(int $id, string $userId, array $data): WatchlistItem {
-        $item = $this->mapper->find($id, $userId);
+    public function update(int $id, int $libraryId, array $data): WatchlistItem {
+        $item = $this->mapper->find($id, $libraryId);
 
         if (isset($data['title'])) {
             $item->setTitle($data['title']);
@@ -73,12 +74,12 @@ class WatchlistService {
     /**
      * @throws DoesNotExistException
      */
-    public function delete(int $id, string $userId): void {
-        $item = $this->mapper->find($id, $userId);
+    public function delete(int $id, int $libraryId): void {
+        $item = $this->mapper->find($id, $libraryId);
         $this->mapper->delete($item);
     }
 
-    public function existsByTmdbId(string $userId, int $tmdbId, ?string $mediaType = null): bool {
-        return $this->mapper->findByTmdbId($userId, $tmdbId, $mediaType) !== null;
+    public function existsByTmdbId(int $libraryId, int $tmdbId, ?string $mediaType = null): bool {
+        return $this->mapper->findByTmdbId($libraryId, $tmdbId, $mediaType) !== null;
     }
 }

@@ -7,6 +7,7 @@ namespace OCA\MovieDB\Tests\Unit\Controller;
 use OCA\MovieDB\Controller\MovieController;
 use OCA\MovieDB\Db\Movie;
 use OCA\MovieDB\Db\MovieWatch;
+use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Service\MovieWatchService;
 use OCA\MovieDB\Tests\Unit\TestCase;
@@ -28,9 +29,12 @@ class MovieControllerUpdateTest extends TestCase {
     private IRequest $request;
     private MovieService $movieService;
     private MovieWatchService $watchService;
+    private LibraryService $libraryService;
     private IUserSession $userSession;
     private LoggerInterface $logger;
     private MovieController $controller;
+
+    private const LIBRARY_ID = 1;
 
     protected function setUp(): void {
         parent::setUp();
@@ -38,6 +42,7 @@ class MovieControllerUpdateTest extends TestCase {
         $this->request = $this->createMock(IRequest::class);
         $this->movieService = $this->createMock(MovieService::class);
         $this->watchService = $this->createMock(MovieWatchService::class);
+        $this->libraryService = $this->createMock(LibraryService::class);
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->userSession = $this->createMock(IUserSession::class);
 
@@ -45,10 +50,15 @@ class MovieControllerUpdateTest extends TestCase {
         $user->method('getUID')->willReturn('testuser');
         $this->userSession->method('getUser')->willReturn($user);
 
+        // The controller resolves the libraryId from the request via libraryService.
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->libraryService->method('canEdit')->willReturn(true);
+
         $this->controller = new MovieController(
             $this->request,
             $this->movieService,
             $this->watchService,
+            $this->libraryService,
             $this->userSession,
             $this->logger
         );
@@ -79,11 +89,11 @@ class MovieControllerUpdateTest extends TestCase {
         ]);
 
         $this->movieService->method('update')->willReturn($this->makeMovie());
-        $this->watchService->method('findByMovie')->willReturn([$this->makeWatch()]);
+        $this->watchService->method('findRawByMovie')->willReturn([$this->makeWatch()]);
 
         $this->watchService->expects($this->once())
             ->method('update')
-            ->with(10, 'testuser', $this->arrayHasKey('rating'));
+            ->with(10, self::LIBRARY_ID, $this->arrayHasKey('rating'));
 
         $response = $this->controller->update(1);
         $this->assertEquals(Http::STATUS_OK, $response->getStatus());
@@ -96,11 +106,11 @@ class MovieControllerUpdateTest extends TestCase {
         ]);
 
         $this->movieService->method('update')->willReturn($this->makeMovie());
-        $this->watchService->method('findByMovie')->willReturn([$this->makeWatch()]);
+        $this->watchService->method('findRawByMovie')->willReturn([$this->makeWatch()]);
 
         $this->watchService->expects($this->once())
             ->method('update')
-            ->with(10, 'testuser', $this->callback(fn($d) => ($d['review'] ?? null) === 'Still amazing'));
+            ->with(10, self::LIBRARY_ID, $this->callback(fn($d) => ($d['review'] ?? null) === 'Still amazing'));
 
         $this->controller->update(1);
     }
@@ -112,11 +122,11 @@ class MovieControllerUpdateTest extends TestCase {
         ]);
 
         $this->movieService->method('update')->willReturn($this->makeMovie());
-        $this->watchService->method('findByMovie')->willReturn([$this->makeWatch()]);
+        $this->watchService->method('findRawByMovie')->willReturn([$this->makeWatch()]);
 
         $this->watchService->expects($this->once())
             ->method('update')
-            ->with(10, 'testuser', $this->callback(fn($d) => ($d['watchedAt'] ?? null) === '2025-03-20'));
+            ->with(10, self::LIBRARY_ID, $this->callback(fn($d) => ($d['watchedAt'] ?? null) === '2025-03-20'));
 
         $this->controller->update(1);
     }
@@ -142,12 +152,12 @@ class MovieControllerUpdateTest extends TestCase {
         ]);
 
         $this->movieService->method('update')->willReturn($this->makeMovie());
-        $this->watchService->method('findByMovie')->willReturn([]);
+        $this->watchService->method('findRawByMovie')->willReturn([]);
 
         $this->watchService->expects($this->never())->method('update');
         $this->watchService->expects($this->once())
             ->method('create')
-            ->with(1, 'testuser', $this->callback(fn($d) => ($d['rating'] ?? null) === 9));
+            ->with(1, 'testuser', self::LIBRARY_ID, $this->callback(fn($d) => ($d['rating'] ?? null) === 9));
 
         $response = $this->controller->update(1);
         $this->assertEquals(Http::STATUS_OK, $response->getStatus());
@@ -163,11 +173,11 @@ class MovieControllerUpdateTest extends TestCase {
 
         $this->movieService->method('update')->willReturn($this->makeMovie());
         // findByMovie returns DESC order (latest first)
-        $this->watchService->method('findByMovie')->willReturn([$latest, $older]);
+        $this->watchService->method('findRawByMovie')->willReturn([$latest, $older]);
 
         $this->watchService->expects($this->once())
             ->method('update')
-            ->with(20, 'testuser', $this->anything()); // must use id=20, not 10
+            ->with(20, self::LIBRARY_ID, $this->anything()); // must use id=20, not 10
 
         $this->controller->update(1);
     }

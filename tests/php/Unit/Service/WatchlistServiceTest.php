@@ -19,6 +19,8 @@ class WatchlistServiceTest extends TestCase {
     private WatchlistMapper $mapper;
     private WatchlistService $service;
 
+    private const LIBRARY_ID = 1;
+
     protected function setUp(): void {
         parent::setUp();
 
@@ -27,19 +29,18 @@ class WatchlistServiceTest extends TestCase {
     }
 
     public function testFind(): void {
-        $userId = 'testuser';
         $itemId = 1;
         $item = new WatchlistItem();
         $item->setId($itemId);
-        $item->setUserId($userId);
+        $item->setUserId('testuser');
         $item->setTitle('Dune');
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with($itemId, $userId)
+            ->with($itemId, self::LIBRARY_ID)
             ->willReturn($item);
 
-        $result = $this->service->find($itemId, $userId);
+        $result = $this->service->find($itemId, self::LIBRARY_ID);
 
         $this->assertInstanceOf(WatchlistItem::class, $result);
         $this->assertEquals($itemId, $result->getId());
@@ -47,7 +48,6 @@ class WatchlistServiceTest extends TestCase {
     }
 
     public function testFindAll(): void {
-        $userId = 'testuser';
         $filters = ['search' => 'Dune', 'sort' => 'priority'];
 
         $items = [
@@ -57,10 +57,10 @@ class WatchlistServiceTest extends TestCase {
 
         $this->mapper->expects($this->once())
             ->method('findAll')
-            ->with($userId, $filters)
+            ->with(self::LIBRARY_ID, $filters)
             ->willReturn($items);
 
-        $result = $this->service->findAll($userId, $filters);
+        $result = $this->service->findAll(self::LIBRARY_ID, $filters);
 
         $this->assertIsArray($result);
         $this->assertCount(2, $result);
@@ -68,15 +68,14 @@ class WatchlistServiceTest extends TestCase {
     }
 
     public function testCount(): void {
-        $userId = 'testuser';
         $expectedCount = 15;
 
         $this->mapper->expects($this->once())
             ->method('countAll')
-            ->with($userId)
+            ->with(self::LIBRARY_ID)
             ->willReturn($expectedCount);
 
-        $result = $this->service->count($userId);
+        $result = $this->service->count(self::LIBRARY_ID);
 
         $this->assertEquals($expectedCount, $result);
     }
@@ -109,7 +108,7 @@ class WatchlistServiceTest extends TestCase {
                 return $item;
             });
 
-        $result = $this->service->create($userId, $data);
+        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertInstanceOf(WatchlistItem::class, $result);
         $this->assertEquals($data['title'], $result->getTitle());
@@ -133,7 +132,7 @@ class WatchlistServiceTest extends TestCase {
                 return $item;
             });
 
-        $result = $this->service->create($userId, $data);
+        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertEquals('Oppenheimer', $result->getTitle());
         $this->assertEquals(0, $result->getPriority());
@@ -159,16 +158,15 @@ class WatchlistServiceTest extends TestCase {
                 return $item;
             });
 
-        $result = $this->service->create($userId, $data);
+        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertEquals('series', $result->getMediaType());
     }
 
     public function testUpdate(): void {
-        $userId = 'testuser';
         $itemId = 1;
         $existingItem = $this->createWatchlistItem($itemId, 'Old Title');
-        $existingItem->setUserId($userId);
+        $existingItem->setUserId('testuser');
         $existingItem->setPriority(1);
 
         $updateData = [
@@ -179,7 +177,7 @@ class WatchlistServiceTest extends TestCase {
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with($itemId, $userId)
+            ->with($itemId, self::LIBRARY_ID)
             ->willReturn($existingItem);
 
         $this->mapper->expects($this->once())
@@ -191,17 +189,16 @@ class WatchlistServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->update($itemId, $userId, $updateData);
+        $result = $this->service->update($itemId, self::LIBRARY_ID, $updateData);
 
         $this->assertEquals('Updated Title', $result->getTitle());
         $this->assertEquals(10, $result->getPriority());
     }
 
     public function testUpdateWithNullValues(): void {
-        $userId = 'testuser';
         $itemId = 1;
         $existingItem = $this->createWatchlistItem($itemId, 'Title');
-        $existingItem->setUserId($userId);
+        $existingItem->setUserId('testuser');
         $existingItem->setNotes('Old notes');
 
         $updateData = ['notes' => null];
@@ -217,31 +214,29 @@ class WatchlistServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->update($itemId, $userId, $updateData);
+        $result = $this->service->update($itemId, self::LIBRARY_ID, $updateData);
 
         $this->assertNull($result->getNotes());
     }
 
     public function testDelete(): void {
-        $userId = 'testuser';
         $itemId = 1;
         $item = $this->createWatchlistItem($itemId, 'To Delete');
-        $item->setUserId($userId);
+        $item->setUserId('testuser');
 
         $this->mapper->expects($this->once())
             ->method('find')
-            ->with($itemId, $userId)
+            ->with($itemId, self::LIBRARY_ID)
             ->willReturn($item);
 
         $this->mapper->expects($this->once())
             ->method('delete')
             ->with($item);
 
-        $this->service->delete($itemId, $userId);
+        $this->service->delete($itemId, self::LIBRARY_ID);
     }
 
     public function testDeleteThrowsDoesNotExistException(): void {
-        $userId = 'testuser';
         $itemId = 999;
 
         $this->mapper->expects($this->once())
@@ -249,48 +244,45 @@ class WatchlistServiceTest extends TestCase {
             ->willThrowException(new DoesNotExistException('Item not found'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->delete($itemId, $userId);
+        $this->service->delete($itemId, self::LIBRARY_ID);
     }
 
     public function testExistsByTmdbIdReturnsTrueWhenExists(): void {
-        $userId = 'testuser';
         $tmdbId = 438631;
         $item = $this->createWatchlistItem(1, 'Dune');
 
         $this->mapper->expects($this->once())
             ->method('findByTmdbId')
-            ->with($userId, $tmdbId, null)
+            ->with(self::LIBRARY_ID, $tmdbId, null)
             ->willReturn($item);
 
-        $result = $this->service->existsByTmdbId($userId, $tmdbId);
+        $result = $this->service->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
 
         $this->assertTrue($result);
     }
 
     public function testExistsByTmdbIdReturnsFalseWhenNotExists(): void {
-        $userId = 'testuser';
         $tmdbId = 999;
 
         $this->mapper->expects($this->once())
             ->method('findByTmdbId')
             ->willReturn(null);
 
-        $result = $this->service->existsByTmdbId($userId, $tmdbId);
+        $result = $this->service->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
 
         $this->assertFalse($result);
     }
 
     public function testExistsByTmdbIdIsTypeAware(): void {
-        $userId = 'testuser';
         $tmdbId = 1399;
 
         // A movie with this TMDB id exists, but no series with it does.
         $this->mapper->expects($this->once())
             ->method('findByTmdbId')
-            ->with($userId, $tmdbId, 'series')
+            ->with(self::LIBRARY_ID, $tmdbId, 'series')
             ->willReturn(null);
 
-        $result = $this->service->existsByTmdbId($userId, $tmdbId, 'series');
+        $result = $this->service->existsByTmdbId(self::LIBRARY_ID, $tmdbId, 'series');
 
         $this->assertFalse($result);
     }
