@@ -32,7 +32,7 @@
     "devDependencies": {
         "@nextcloud/babel-config": "^1.0.0",
         "@nextcloud/browserslist-config": "^3.0.0",
-        "@nextcloud/eslint-config": "^8.3.0",
+        "@nextcloud/eslint-config": "^9.0.1",
         "@nextcloud/webpack-vue-config": "^7.0.4",
         "@typescript-eslint/eslint-plugin": "^8.65.0",
         "@typescript-eslint/parser": "^8.65.0",
