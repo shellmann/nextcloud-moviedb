@@ -41,7 +41,7 @@
         "@vue/compiler-sfc": "^3.4.0",
         "@vue/test-utils": "^2.4.0",
         "eslint": "^8.56.0",
-        "eslint-webpack-plugin": "^4.0.1",
+        "eslint-webpack-plugin": "^6.0.0",
         "jsdom": "^30.0.1",
         "terser-webpack-plugin": "^5.6.1",
         "vitest": "^4.1.11",
