@@ -28,7 +28,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 2. Enter your API key in the app settings
 3. Start adding movies and TV shows to your collection!
     ]]></description>
-    <version>1.4.1</version>
+    <version>1.4.2</version>
     <licence>AGPL-3.0-or-later</licence>
     <author>shellmann</author>
     <namespace>MovieDB</namespace>
