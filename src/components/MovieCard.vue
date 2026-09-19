@@ -1,5 +1,6 @@
 <template>
-	<div class="movie-card"
+	<div
+		class="movie-card"
 		role="button"
 		tabindex="0"
 		:aria-labelledby="'movie-title-' + movie.id"
@@ -7,7 +8,8 @@
 		@keydown.enter="$emit('click')"
 		@keydown.space.prevent="$emit('click')">
 		<div class="poster">
-			<img v-if="movie.posterPath"
+			<img
+				v-if="movie.posterPath"
 				:src="posterUrl"
 				:alt="movie.title"
 				loading="lazy">
@@ -43,9 +45,9 @@
 </template>
 
 <script>
-import Movie from 'vue-material-design-icons/Movie.vue'
-import Heart from 'vue-material-design-icons/Heart.vue'
 import Calendar from 'vue-material-design-icons/Calendar.vue'
+import Heart from 'vue-material-design-icons/Heart.vue'
+import Movie from 'vue-material-design-icons/Movie.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { GENRE_OPTIONS } from '../constants.js'
 import { formatDate } from '../utils/formatters.js'
@@ -60,9 +62,11 @@ export default {
 		Heart,
 		Calendar,
 	},
+
 	props: {
 		/**
 		 * Movie object containing all movie data
+		 *
 		 * @type {{ id: number, title: string, posterPath?: string, releaseYear?: number, dateWatched?: string, languageWatched?: string, rating?: number, isFavorite?: boolean }}
 		 */
 		movie: {
@@ -70,26 +74,30 @@ export default {
 			required: true,
 		},
 	},
+
 	emits: [
 		/**
 		 * Emitted when the card is clicked
 		 */
 		'click',
 	],
+
 	computed: {
 		posterUrl() {
 			return getPosterUrl(this.movie.posterPath, 'w300')
 		},
+
 		genreLabels() {
 			const genreIds = this.movie.genreIds
-			if (!genreIds) return []
+			if (!genreIds) { return [] }
 			const ids = Array.isArray(genreIds) ? genreIds : JSON.parse(genreIds || '[]')
 			return ids
-				.map(id => GENRE_OPTIONS.find(g => g.id === id)?.label)
+				.map((id) => GENRE_OPTIONS.find((g) => g.id === id)?.label)
 				.filter(Boolean)
 				.slice(0, 2)
 		},
 	},
+
 	methods: {
 		formatDate,
 	},

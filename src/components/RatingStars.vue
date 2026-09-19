@@ -1,6 +1,7 @@
 <template>
 	<div class="rating-stars" :role="!readonly ? 'radiogroup' : undefined" :aria-label="!readonly ? t('moviedb', 'Rating') : undefined">
-		<span v-for="star in max"
+		<span
+			v-for="star in max"
 			:key="star"
 			class="star"
 			:class="{ filled: star <= rating, interactive: !readonly }"
@@ -27,24 +28,29 @@ export default {
 		Star,
 		StarOutline,
 	},
+
 	props: {
 		rating: {
 			type: Number,
 			default: 0,
 		},
+
 		max: {
 			type: Number,
 			default: 10,
 		},
+
 		size: {
 			type: Number,
 			default: 20,
 		},
+
 		readonly: {
 			type: Boolean,
 			default: false,
 		},
 	},
+
 	emits: ['update'],
 }
 </script>

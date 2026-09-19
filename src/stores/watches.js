@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
+import { defineStore } from 'pinia'
 import api from '../services/api.js'
 import { useLibrariesStore } from './libraries.js'
 
@@ -51,7 +51,7 @@ export const useWatchesStore = defineStore('watches', {
 				const payload = libraryId !== null ? { ...data, libraryId } : data
 				const response = await api.updateWatch(movieId, watchId, payload)
 				const updated = response.data.watch
-				const index = this.watches.findIndex(w => w.id === watchId)
+				const index = this.watches.findIndex((w) => w.id === watchId)
 				if (index !== -1) {
 					this.watches.splice(index, 1, updated)
 				}
@@ -68,7 +68,7 @@ export const useWatchesStore = defineStore('watches', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				await api.deleteWatch(movieId, watchId, libraryId !== null ? libraryId : undefined)
-				this.watches = this.watches.filter(w => w.id !== watchId)
+				this.watches = this.watches.filter((w) => w.id !== watchId)
 				showSuccess(t('moviedb', 'Watch entry deleted.'))
 				return true
 			} catch (error) {

@@ -58,13 +58,15 @@
 						<div class="watch-meta-row">
 							<div class="watch-meta-field">
 								<label>{{ t('moviedb', 'Platform') }}</label>
-								<NcSelect v-model="selectedPlatform"
+								<NcSelect
+									v-model="selectedPlatform"
 									:options="platformOptions"
 									:placeholder="t('moviedb', 'Select platform')" />
 							</div>
 							<div class="watch-meta-field">
 								<label>{{ t('moviedb', 'Language Watched') }}</label>
-								<NcSelect v-model="selectedLanguage"
+								<NcSelect
+									v-model="selectedLanguage"
 									:options="languageOptions"
 									:placeholder="t('moviedb', 'Select language')" />
 							</div>
@@ -76,7 +78,8 @@
 							</div>
 							<div class="watch-meta-field">
 								<label>{{ t('moviedb', 'Rating') }}</label>
-								<NcSelect v-model="selectedRating"
+								<NcSelect
+									v-model="selectedRating"
 									:options="ratingOptions"
 									:placeholder="t('moviedb', 'Select rating')" />
 							</div>
@@ -93,7 +96,7 @@
 				<NcButton @click="selectedSeries = null">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="primary" :disabled="saving" @click="saveSeries">
+				<NcButton variant="primary" :disabled="saving" @click="saveSeries">
 					<template v-if="saving" #icon>
 						<NcLoadingIcon :size="20" />
 					</template>
@@ -103,12 +106,14 @@
 		</div>
 
 		<!-- Search Section (shown when no series is selected) -->
-		<TmdbSearchSection v-else
-			:initial-media-type="'series'"
+		<TmdbSearchSection
+			v-else
+			initialMediaType="series"
 			@select="selectSeries" />
 
 		<!-- Duplicate Dialog -->
-		<NcDialog :open="showDuplicateDialog"
+		<NcDialog
+			:open="showDuplicateDialog"
 			:name="t('moviedb', 'TV show already in your list')"
 			@update:open="showDuplicateDialog = $event">
 			<p>{{ t('moviedb', 'You have already added this TV show. Would you like to view the existing entry?') }}</p>
@@ -116,7 +121,8 @@
 				<NcButton @click="showDuplicateDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="primary"
+				<NcButton
+					variant="primary"
 					:disabled="!duplicateExistingId"
 					@click="viewExistingSeries">
 					{{ t('moviedb', 'View existing entry') }}
@@ -127,17 +133,17 @@
 </template>
 
 <script>
-import { NcNoteCard, NcButton, NcDialog, NcLoadingIcon, NcSelect, NcTextField } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
+import { NcButton, NcDialog, NcLoadingIcon, NcNoteCard, NcSelect, NcTextField } from '@nextcloud/vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
-import api from '../services/api.js'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { LANGUAGE_OPTIONS, getRatingOptions } from '../constants.js'
+import { getRatingOptions, LANGUAGE_OPTIONS } from '../constants.js'
+import api from '../services/api.js'
+import { useLibrariesStore } from '../stores/libraries.js'
+import { usePlatformsStore } from '../stores/platforms.js'
 import { useSeriesStore } from '../stores/series.js'
 import { useSettingsStore } from '../stores/settings.js'
-import { usePlatformsStore } from '../stores/platforms.js'
-import { useLibrariesStore } from '../stores/libraries.js'
 
 export default {
 	name: 'AddSeries',
@@ -151,6 +157,7 @@ export default {
 		ArrowLeft,
 		TmdbSearchSection,
 	},
+
 	setup() {
 		const seriesStore = useSeriesStore()
 		const settingsStore = useSettingsStore()
@@ -158,6 +165,7 @@ export default {
 		const librariesStore = useLibrariesStore()
 		return { seriesStore, settingsStore, platformsStore, librariesStore }
 	},
+
 	data() {
 		return {
 			selectedSeries: null,
@@ -173,26 +181,33 @@ export default {
 			ratingOptions: getRatingOptions(),
 		}
 	},
+
 	computed: {
 		activeCanEdit() {
 			return this.librariesStore.activeCanEdit
 		},
+
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
 		},
+
 		tmdbLanguage() {
 			return this.settingsStore.defaultLanguage || 'en-US'
 		},
+
 		posterUrl() {
 			return getPosterUrl(this.selectedSeries?.posterPath, 'w300')
 		},
+
 		platformOptions() {
-			return this.platformsStore.platforms.map(p => ({ id: p.id, label: p.name }))
+			return this.platformsStore.platforms.map((p) => ({ id: p.id, label: p.name }))
 		},
 	},
+
 	created() {
 		this.platformsStore.fetchAll()
 	},
+
 	methods: {
 		async selectSeries(item) {
 			try {
@@ -206,7 +221,7 @@ export default {
 					posterPath: details.poster_path,
 					backdropPath: details.backdrop_path,
 					overview: details.overview,
-					genreIds: details.genres?.map(g => g.id) || [],
+					genreIds: details.genres?.map((g) => g.id) || [],
 					firstAirDate: details.first_air_date,
 					numberOfSeasons: details.number_of_seasons,
 					numberOfEpisodes: details.number_of_episodes,
@@ -218,7 +233,7 @@ export default {
 				}
 				this.isFavorite = false
 				this.selectedPlatform = null
-				this.selectedLanguage = this.languageOptions.find(l => l.id === this.tmdbLanguage) || null
+				this.selectedLanguage = this.languageOptions.find((l) => l.id === this.tmdbLanguage) || null
 				this.selectedRating = null
 				this.dateWatched = new Date().toISOString().slice(0, 10)
 				window.scrollTo({ top: 0, behavior: 'smooth' })
@@ -227,8 +242,9 @@ export default {
 				showError(t('moviedb', 'Failed to load TV show details.'))
 			}
 		},
+
 		async saveSeries() {
-			if (this.saving) return
+			if (this.saving) { return }
 
 			this.saving = true
 			const result = await this.seriesStore.create({
@@ -251,8 +267,9 @@ export default {
 				this.$router.push({ name: 'series-detail', params: { id: String(result.id) } })
 			}
 		},
+
 		viewExistingSeries() {
-			if (!this.duplicateExistingId) return
+			if (!this.duplicateExistingId) { return }
 			const id = this.duplicateExistingId
 			this.showDuplicateDialog = false
 			this.$router.push({ name: 'series-detail', params: { id: String(id) } })

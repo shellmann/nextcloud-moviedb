@@ -17,13 +17,15 @@
 			<div class="form-row-inline">
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Platform') }}</label>
-					<NcSelect v-model="selectedPlatform"
+					<NcSelect
+						v-model="selectedPlatform"
 						:options="platformOptions"
 						:placeholder="t('moviedb', 'Select platform')" />
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Language Watched') }}</label>
-					<NcSelect v-model="selectedLanguage"
+					<NcSelect
+						v-model="selectedLanguage"
 						:options="languageOptions"
 						:placeholder="t('moviedb', 'Select language')" />
 				</div>
@@ -36,7 +38,8 @@
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Rating') }}</label>
-					<NcSelect v-model="selectedRating"
+					<NcSelect
+						v-model="selectedRating"
 						:options="ratingOptions"
 						:placeholder="t('moviedb', 'Select rating')" />
 				</div>
@@ -53,7 +56,7 @@
 				<NcButton @click="$router.back()">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="primary" :disabled="saving" @click="saveSeries">
+				<NcButton variant="primary" :disabled="saving" @click="saveSeries">
 					{{ t('moviedb', 'Update TV Show') }}
 				</NcButton>
 			</div>
@@ -62,10 +65,10 @@
 </template>
 
 <script>
-import { NcLoadingIcon, NcTextField, NcButton, NcSelect } from '@nextcloud/vue'
-import { LANGUAGE_OPTIONS, getRatingOptions } from '../constants.js'
-import { useSeriesStore } from '../stores/series.js'
+import { NcButton, NcLoadingIcon, NcSelect, NcTextField } from '@nextcloud/vue'
+import { getRatingOptions, LANGUAGE_OPTIONS } from '../constants.js'
 import { usePlatformsStore } from '../stores/platforms.js'
+import { useSeriesStore } from '../stores/series.js'
 
 export default {
 	name: 'EditSeries',
@@ -75,17 +78,20 @@ export default {
 		NcButton,
 		NcSelect,
 	},
+
 	props: {
 		id: {
 			type: [String, Number],
 			required: true,
 		},
 	},
+
 	setup() {
 		const seriesStore = useSeriesStore()
 		const platformsStore = usePlatformsStore()
 		return { seriesStore, platformsStore }
 	},
+
 	data() {
 		return {
 			formData: null,
@@ -97,17 +103,21 @@ export default {
 			ratingOptions: getRatingOptions(),
 		}
 	},
+
 	computed: {
 		series() {
 			return this.seriesStore.currentSeries
 		},
+
 		loading() {
 			return this.seriesStore.loading
 		},
+
 		platformOptions() {
-			return this.platformsStore.platforms.map(p => ({ id: p.id, label: p.name }))
+			return this.platformsStore.platforms.map((p) => ({ id: p.id, label: p.name }))
 		},
 	},
+
 	watch: {
 		series: {
 			immediate: true,
@@ -119,22 +129,24 @@ export default {
 						watchedAt: series.watchedAt || '',
 					}
 					this.selectedPlatform = series.platformId
-						? this.platformOptions.find(p => p.id === series.platformId) || null
+						? this.platformOptions.find((p) => p.id === series.platformId) || null
 						: null
 					this.selectedLanguage = series.languageWatched
-						? this.languageOptions.find(l => l.id === series.languageWatched) || null
+						? this.languageOptions.find((l) => l.id === series.languageWatched) || null
 						: null
 					this.selectedRating = series.rating
-						? this.ratingOptions.find(r => r.id === series.rating) || null
+						? this.ratingOptions.find((r) => r.id === series.rating) || null
 						: null
 				}
 			},
 		},
 	},
+
 	created() {
 		this.platformsStore.fetchAll()
 		this.seriesStore.fetchOne(this.id)
 	},
+
 	methods: {
 		async saveSeries() {
 			this.saving = true

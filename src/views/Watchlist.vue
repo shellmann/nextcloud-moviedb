@@ -3,15 +3,17 @@
 		<div class="list-header">
 			<h2>{{ t('moviedb', 'Watchlist') }}</h2>
 			<div class="header-actions">
-				<NcButton v-if="activeCanEdit"
-					type="primary"
+				<NcButton
+					v-if="activeCanEdit"
+					variant="primary"
 					@click="$router.push({ name: 'add-to-watchlist' })">
 					<template #icon>
 						<Plus :size="20" />
 					</template>
 					{{ t('moviedb', 'Add') }}
 				</NcButton>
-				<NcButton :aria-label="t('moviedb', 'Pick Random')"
+				<NcButton
+					:aria-label="t('moviedb', 'Pick Random')"
 					:title="t('moviedb', 'Pick Random')"
 					@click="pickRandom">
 					<template #icon>
@@ -22,13 +24,15 @@
 		</div>
 
 		<div class="filters">
-			<NcSelect v-model="selectedType"
+			<NcSelect
+				v-model="selectedType"
 				:options="typeOptions"
 				:placeholder="t('moviedb', 'Type')"
 				:aria-label="t('moviedb', 'Filter by type')"
 				:clearable="false"
 				@update:modelValue="onTypeChange" />
-			<NcSelect v-model="selectedSort"
+			<NcSelect
+				v-model="selectedSort"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
 				:aria-label="t('moviedb', 'Sort by')"
@@ -40,13 +44,15 @@
 		</div>
 
 		<div v-else-if="items.length" class="watchlist-grid">
-			<div v-for="item in items"
+			<div
+				v-for="item in items"
 				:key="item.id"
 				:ref="'item-' + item.id"
 				class="watchlist-item"
 				:class="{ highlighted: highlightedId === item.id }">
 				<div class="item-poster">
-					<img v-if="item.posterPath"
+					<img
+						v-if="item.posterPath"
 						:src="getPosterUrl(item.posterPath)"
 						:alt="item.title">
 					<div v-else class="no-poster">
@@ -73,24 +79,27 @@
 						{{ item.notes }}
 					</p>
 					<div class="item-actions">
-						<NcButton v-if="activeCanEdit"
-							type="primary"
+						<NcButton
+							v-if="activeCanEdit"
+							variant="primary"
 							@click="openWatchedModal(item)">
 							<template #icon>
 								<Check :size="20" />
 							</template>
 							{{ isSeries(item) ? t('moviedb', 'Add to TV Shows') : t('moviedb', 'Mark as Watched') }}
 						</NcButton>
-						<NcButton v-if="activeCanEdit"
+						<NcButton
+							v-if="activeCanEdit"
 							:aria-label="t('moviedb', 'Edit')"
 							@click="openEditModal(item)">
 							<template #icon>
 								<Pencil :size="20" />
 							</template>
 						</NcButton>
-						<NcButton v-if="activeCanEdit"
+						<NcButton
+							v-if="activeCanEdit"
 							:aria-label="t('moviedb', 'Delete')"
-							type="error"
+							variant="error"
 							@click="removeFromWatchlist(item.id)">
 							<template #icon>
 								<Delete :size="20" />
@@ -118,13 +127,15 @@
 				<h3>{{ t('moviedb', 'Mark as Watched') }}: "{{ selectedItem?.title }}"</h3>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Platform') }}</label>
-					<NcSelect v-model="watchedData.platform"
+					<NcSelect
+						v-model="watchedData.platform"
 						:options="platformOptions"
 						:placeholder="t('moviedb', 'Select platform')" />
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Language Watched') }}</label>
-					<NcSelect v-model="watchedData.language"
+					<NcSelect
+						v-model="watchedData.language"
 						:options="languageOptions"
 						:placeholder="t('moviedb', 'Select language')" />
 				</div>
@@ -134,7 +145,8 @@
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Rating') }}</label>
-					<NcSelect v-model="watchedData.rating"
+					<NcSelect
+						v-model="watchedData.rating"
 						:options="ratingOptions"
 						:placeholder="t('moviedb', 'Select rating')" />
 				</div>
@@ -142,7 +154,7 @@
 					<NcButton @click="showWatchedModal = false">
 						{{ t('moviedb', 'Cancel') }}
 					</NcButton>
-					<NcButton type="primary" :disabled="saving" @click="confirmWatched">
+					<NcButton variant="primary" :disabled="saving" @click="confirmWatched">
 						{{ t('moviedb', 'Save') }}
 					</NcButton>
 				</div>
@@ -155,13 +167,15 @@
 				<h3>{{ t('moviedb', 'Edit') }}: "{{ selectedItem?.title }}"</h3>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Priority') }}</label>
-					<NcSelect v-model="editData.priority"
+					<NcSelect
+						v-model="editData.priority"
 						:options="priorityOptions"
 						:placeholder="t('moviedb', 'Select priority')" />
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Notes') }}</label>
-					<textarea v-model="editData.notes"
+					<textarea
+						v-model="editData.notes"
 						rows="3"
 						:placeholder="t('moviedb', 'Why do you want to watch this?')" />
 				</div>
@@ -169,7 +183,7 @@
 					<NcButton @click="showEditModal = false">
 						{{ t('moviedb', 'Cancel') }}
 					</NcButton>
-					<NcButton type="primary" :disabled="saving" @click="saveEdit">
+					<NcButton variant="primary" :disabled="saving" @click="saveEdit">
 						{{ t('moviedb', 'Save') }}
 					</NcButton>
 				</div>
@@ -177,7 +191,8 @@
 		</NcModal>
 
 		<!-- Remove from Watchlist Confirmation Dialog -->
-		<NcDialog :open="showRemoveDialog"
+		<NcDialog
+			:open="showRemoveDialog"
 			:name="t('moviedb', 'Remove from Watchlist')"
 			@update:open="showRemoveDialog = $event">
 			<p>{{ t('moviedb', 'Remove from watchlist?') }}</p>
@@ -185,7 +200,7 @@
 				<NcButton @click="showRemoveDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="error" @click="confirmRemove">
+				<NcButton variant="error" @click="confirmRemove">
 					{{ t('moviedb', 'Remove') }}
 				</NcButton>
 			</template>
@@ -194,19 +209,19 @@
 </template>
 
 <script>
-import { NcButton, NcLoadingIcon, NcEmptyContent, NcModal, NcSelect, NcTextField, NcDialog } from '@nextcloud/vue'
+import { NcButton, NcDialog, NcEmptyContent, NcLoadingIcon, NcModal, NcSelect, NcTextField } from '@nextcloud/vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
 import DiceMultiple from 'vue-material-design-icons/DiceMultiple.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
-import { LANGUAGE_OPTIONS, getGenreOptions, getRatingOptions, getPriorityOptions, getPriorityLabel, getPriorityColor, MEDIA_TYPE } from '../constants.js'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { useWatchlistStore } from '../stores/watchlist.js'
+import { getGenreOptions, getPriorityColor, getPriorityLabel, getPriorityOptions, getRatingOptions, LANGUAGE_OPTIONS, MEDIA_TYPE } from '../constants.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useSettingsStore } from '../stores/settings.js'
-import { useLibrariesStore } from '../stores/libraries.js'
+import { useWatchlistStore } from '../stores/watchlist.js'
 
 export default {
 	name: 'Watchlist',
@@ -225,6 +240,7 @@ export default {
 		PlaylistPlay,
 		Plus,
 	},
+
 	setup() {
 		const watchlistStore = useWatchlistStore()
 		const platformsStore = usePlatformsStore()
@@ -232,6 +248,7 @@ export default {
 		const librariesStore = useLibrariesStore()
 		return { watchlistStore, platformsStore, settingsStore, librariesStore }
 	},
+
 	data() {
 		return {
 			showWatchedModal: false,
@@ -248,10 +265,12 @@ export default {
 				dateWatched: new Date().toISOString().split('T')[0],
 				rating: null,
 			},
+
 			editData: {
 				priority: null,
 				notes: '',
 			},
+
 			languageOptions: LANGUAGE_OPTIONS,
 			ratingOptions: getRatingOptions(),
 			priorityOptions: getPriorityOptions(),
@@ -260,31 +279,39 @@ export default {
 				{ id: 'added_at', label: t('moviedb', 'Date Added') },
 				{ id: 'title', label: t('moviedb', 'Title') },
 			],
+
 			typeOptions: [
 				{ id: 'all', label: t('moviedb', 'All') },
 				{ id: 'movie', label: t('moviedb', 'Movies') },
 				{ id: 'series', label: t('moviedb', 'TV Shows') },
 			],
+
 			saving: false,
 		}
 	},
+
 	computed: {
 		items() {
 			return this.watchlistStore.filteredItems
 		},
+
 		loading() {
 			return this.watchlistStore.loading
 		},
+
 		platforms() {
 			return this.platformsStore.platforms
 		},
+
 		platformOptions() {
-			return this.platforms.map(p => ({ id: p.id, label: p.name }))
+			return this.platforms.map((p) => ({ id: p.id, label: p.name }))
 		},
+
 		activeCanEdit() {
 			return this.librariesStore.activeCanEdit
 		},
 	},
+
 	async created() {
 		this.selectedSort = this.sortOptions[0]
 		this.selectedType = this.typeOptions[0]
@@ -294,6 +321,7 @@ export default {
 		await this.librariesStore.whenReady()
 		this.watchlistStore.fetchAll()
 	},
+
 	methods: {
 		getPosterUrl,
 		getPriorityLabel,
@@ -301,16 +329,19 @@ export default {
 		isSeries(item) {
 			return (item.mediaType || 'movie') === MEDIA_TYPE.SERIES
 		},
+
 		onSortChange(selected) {
 			if (selected) {
 				this.watchlistStore.setSort(selected.id, 'DESC')
 			}
 		},
+
 		onTypeChange(selected) {
 			this.watchlistStore.setTypeFilter(selected ? selected.id : 'all')
 		},
+
 		pickRandom() {
-			if (!this.items.length) return
+			if (!this.items.length) { return }
 			const randomIndex = Math.floor(Math.random() * this.items.length)
 			const item = this.items[randomIndex]
 			this.highlightedId = item.id
@@ -324,16 +355,18 @@ export default {
 				this.highlightedId = null
 			}, 4000)
 		},
+
 		getGenreNames(item) {
 			const genreIds = item.genreIds
-			if (!genreIds) return []
+			if (!genreIds) { return [] }
 			const ids = Array.isArray(genreIds) ? genreIds : JSON.parse(genreIds || '[]')
 			const options = getGenreOptions(this.isSeries(item) ? MEDIA_TYPE.SERIES : MEDIA_TYPE.MOVIE)
 			return ids
-				.map(id => options.find(g => g.id === id)?.label)
+				.map((id) => options.find((g) => g.id === id)?.label)
 				.filter(Boolean)
 				.slice(0, 2)
 		},
+
 		async openWatchedModal(item) {
 			// Series don't have a single watch event — importing the show tracks it
 			// at 0% and the user marks episodes/seasons afterward. Skip the modal.
@@ -355,6 +388,7 @@ export default {
 			}
 			this.showWatchedModal = true
 		},
+
 		async confirmWatched() {
 			this.saving = true
 			const result = await this.watchlistStore.moveToWatched(this.selectedItem.id, {
@@ -368,25 +402,29 @@ export default {
 			}
 			this.saving = false
 		},
+
 		async removeFromWatchlist(id) {
 			this.pendingRemoveId = id
 			this.showRemoveDialog = true
 		},
+
 		async confirmRemove() {
 			await this.watchlistStore.delete(this.pendingRemoveId)
 			this.showRemoveDialog = false
 			this.pendingRemoveId = null
 		},
+
 		openEditModal(item) {
 			this.selectedItem = item
 			this.editData = {
-				priority: this.priorityOptions.find(p => p.id === item.priority) || this.priorityOptions[0],
+				priority: this.priorityOptions.find((p) => p.id === item.priority) || this.priorityOptions[0],
 				notes: item.notes || '',
 			}
 			this.showEditModal = true
 		},
+
 		async saveEdit() {
-			if (this.saving) return
+			if (this.saving) { return }
 
 			this.saving = true
 			const item = await this.watchlistStore.update(this.selectedItem.id, {

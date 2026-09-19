@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
+import { defineStore } from 'pinia'
 import api from '../services/api.js'
 
 /**
@@ -20,22 +20,23 @@ export const usePlatformsStore = defineStore('platforms', {
 		 * @param state
 		 * @return {Array<object>} Built-in default platforms
 		 */
-		defaultPlatforms: (state) => state.platforms.filter(p => p.isDefault),
+		defaultPlatforms: (state) => state.platforms.filter((p) => p.isDefault),
 		/**
 		 * @param state
 		 * @return {Array<object>} User-created custom platforms
 		 */
-		customPlatforms: (state) => state.platforms.filter(p => !p.isDefault),
+		customPlatforms: (state) => state.platforms.filter((p) => !p.isDefault),
 		/**
 		 * @param state
 		 * @return {function(number): object | undefined} Find platform by ID
 		 */
-		getPlatformById: (state) => (id) => state.platforms.find(p => p.id === id),
+		getPlatformById: (state) => (id) => state.platforms.find((p) => p.id === id),
 	},
 
 	actions: {
 		/**
 		 * Fetches all platforms from the API.
+		 *
 		 * @return {Promise<void>}
 		 */
 		async fetchAll() {
@@ -53,6 +54,7 @@ export const usePlatformsStore = defineStore('platforms', {
 
 		/**
 		 * Creates a new custom platform.
+		 *
 		 * @param {object} data - Platform data (name required)
 		 * @return {Promise<object | null>} The created platform or null on error
 		 */
@@ -71,6 +73,7 @@ export const usePlatformsStore = defineStore('platforms', {
 
 		/**
 		 * Updates an existing platform.
+		 *
 		 * @param {number} id - Platform ID
 		 * @param {object} data - Updated platform data
 		 * @return {Promise<object | null>} The updated platform or null on error
@@ -79,7 +82,7 @@ export const usePlatformsStore = defineStore('platforms', {
 			try {
 				const response = await api.updatePlatform(id, data)
 				const updatedPlatform = response.data.platform
-				const index = this.platforms.findIndex(p => p.id === updatedPlatform.id)
+				const index = this.platforms.findIndex((p) => p.id === updatedPlatform.id)
 				if (index !== -1) {
 					this.platforms.splice(index, 1, updatedPlatform)
 				}
@@ -94,13 +97,14 @@ export const usePlatformsStore = defineStore('platforms', {
 
 		/**
 		 * Deletes a custom platform.
+		 *
 		 * @param {number} id - Platform ID
 		 * @return {Promise<boolean>} True if deleted successfully
 		 */
 		async delete(id) {
 			try {
 				await api.deletePlatform(id)
-				this.platforms = this.platforms.filter(p => p.id !== id)
+				this.platforms = this.platforms.filter((p) => p.id !== id)
 				showSuccess(t('moviedb', 'Platform deleted successfully.'))
 				return true
 			} catch (error) {

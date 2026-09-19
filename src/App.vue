@@ -1,29 +1,30 @@
 <template>
-	<NcContent app-name="moviedb">
+	<NcContent appName="moviedb">
 		<NcAppNavigation>
 			<template #list>
-				<NcAppNavigationItem :name="t('moviedb', 'Dashboard')"
-					:to="{ name: 'dashboard' }"
-					:exact="true">
+				<NcAppNavigationItem
+					:name="t('moviedb', 'Dashboard')"
+					:to="{ name: 'dashboard' }">
 					<template #icon>
 						<ViewDashboard :size="20" />
 					</template>
 				</NcAppNavigationItem>
-				<NcAppNavigationItem :name="t('moviedb', 'Movies')"
-					:to="{ name: 'movies' }"
-					:exact="true">
+				<NcAppNavigationItem
+					:name="t('moviedb', 'Movies')"
+					:to="{ name: 'movies' }">
 					<template #icon>
 						<Movie :size="20" />
 					</template>
 				</NcAppNavigationItem>
-				<NcAppNavigationItem :name="t('moviedb', 'TV Shows')"
-					:to="{ name: 'series' }"
-					:exact="true">
+				<NcAppNavigationItem
+					:name="t('moviedb', 'TV Shows')"
+					:to="{ name: 'series' }">
 					<template #icon>
 						<Television :size="20" />
 					</template>
 				</NcAppNavigationItem>
-				<NcAppNavigationItem :name="t('moviedb', 'Watchlist')"
+				<NcAppNavigationItem
+					:name="t('moviedb', 'Watchlist')"
 					:to="{ name: 'watchlist' }">
 					<template #icon>
 						<PlaylistPlay :size="20" />
@@ -32,13 +33,15 @@
 						<NcCounterBubble v-if="watchlistCount > 0" :count="watchlistCount" />
 					</template>
 				</NcAppNavigationItem>
-				<NcAppNavigationItem :name="t('moviedb', 'Libraries')"
+				<NcAppNavigationItem
+					:name="t('moviedb', 'Libraries')"
 					:to="{ name: 'libraries' }">
 					<template #icon>
 						<BookshelfIcon :size="20" />
 					</template>
 				</NcAppNavigationItem>
-				<NcAppNavigationItem :name="t('moviedb', 'Settings')"
+				<NcAppNavigationItem
+					:name="t('moviedb', 'Settings')"
 					:to="{ name: 'settings' }">
 					<template #icon>
 						<Cog :size="20" />
@@ -47,15 +50,16 @@
 			</template>
 			<template #footer>
 				<div class="library-switcher">
-					<NcSelect v-if="libraries.length > 1"
-						:model-value="activeLibraryOption"
+					<NcSelect
+						v-if="libraries.length > 1"
+						:modelValue="activeLibraryOption"
 						:options="libraryOptions"
 						:clearable="false"
 						:placeholder="t('moviedb', 'Select library')"
-						:input-label="t('moviedb', 'Select library')"
+						:inputLabel="t('moviedb', 'Select library')"
 						label="label"
-						track-by="id"
-						@update:model-value="onLibraryChange" />
+						trackBy="id"
+						@update:modelValue="onLibraryChange" />
 					<div v-if="!activeCanEdit" class="readonly-badge">
 						<EyeOutline :size="14" />
 						{{ t('moviedb', 'Read-only') }}
@@ -70,31 +74,28 @@
 </template>
 
 <script>
+import { translate as t } from '@nextcloud/l10n'
 import {
-	NcContent,
+	NcAppContent,
 	NcAppNavigation,
 	NcAppNavigationItem,
-	NcAppContent,
+	NcContent,
 	NcCounterBubble,
 	NcSelect,
 } from '@nextcloud/vue'
-
-import ViewDashboard from 'vue-material-design-icons/ViewDashboard.vue'
-import Movie from 'vue-material-design-icons/Movie.vue'
-import Television from 'vue-material-design-icons/Television.vue'
-import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
-import Cog from 'vue-material-design-icons/Cog.vue'
 import BookshelfIcon from 'vue-material-design-icons/Bookshelf.vue'
+import Cog from 'vue-material-design-icons/Cog.vue'
 import EyeOutline from 'vue-material-design-icons/EyeOutline.vue'
-
-import { translate as t } from '@nextcloud/l10n'
-
-import { useWatchlistStore } from './stores/watchlist.js'
-import { usePlatformsStore } from './stores/platforms.js'
-import { useSettingsStore } from './stores/settings.js'
+import Movie from 'vue-material-design-icons/Movie.vue'
+import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
+import Television from 'vue-material-design-icons/Television.vue'
+import ViewDashboard from 'vue-material-design-icons/ViewDashboard.vue'
 import { useLibrariesStore } from './stores/libraries.js'
 import { useMoviesStore } from './stores/movies.js'
+import { usePlatformsStore } from './stores/platforms.js'
 import { useSeriesStore } from './stores/series.js'
+import { useSettingsStore } from './stores/settings.js'
+import { useWatchlistStore } from './stores/watchlist.js'
 
 export default {
 	name: 'App',
@@ -113,6 +114,7 @@ export default {
 		BookshelfIcon,
 		EyeOutline,
 	},
+
 	setup() {
 		const watchlistStore = useWatchlistStore()
 		const platformsStore = usePlatformsStore()
@@ -122,30 +124,37 @@ export default {
 		const seriesStore = useSeriesStore()
 		return { watchlistStore, platformsStore, settingsStore, librariesStore, moviesStore, seriesStore }
 	},
+
 	computed: {
 		watchlistCount() {
 			return this.watchlistStore.total
 		},
+
 		libraries() {
 			return this.librariesStore.libraries
 		},
+
 		activeLibraryId() {
 			return this.librariesStore.activeLibraryId
 		},
+
 		activeCanEdit() {
 			return this.librariesStore.activeCanEdit
 		},
+
 		libraryOptions() {
-			return this.libraries.map(lib => ({
+			return this.libraries.map((lib) => ({
 				id: lib.id,
 				label: lib.isPersonal ? t('moviedb', 'Personal') : lib.name,
 				role: lib.role,
 			}))
 		},
+
 		activeLibraryOption() {
-			return this.libraryOptions.find(o => o.id === this.activeLibraryId) || null
+			return this.libraryOptions.find((o) => o.id === this.activeLibraryId) || null
 		},
 	},
+
 	async created() {
 		// Fetch libraries first so the active library is known before data loads
 		await this.librariesStore.fetchLibraries()
@@ -154,9 +163,10 @@ export default {
 		this.platformsStore.fetchAll()
 		this.settingsStore.fetch()
 	},
+
 	methods: {
 		onLibraryChange(option) {
-			if (!option) return
+			if (!option) { return }
 			this.librariesStore.setActive(option.id)
 			// Re-fetch data for the newly active library
 			this.watchlistStore.fetchAll()

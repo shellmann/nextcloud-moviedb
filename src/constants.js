@@ -1,4 +1,4 @@
-import { translate as t, getLocale } from '@nextcloud/l10n'
+import { getLocale, translate as t } from '@nextcloud/l10n'
 
 /**
  * Shared constants for MovieDB app
@@ -142,7 +142,7 @@ export const PRIORITY_OPTIONS = [
  * @return {string} Priority label
  */
 export function getPriorityLabel(priorityId) {
-	const priority = PRIORITY_OPTIONS.find(p => p.id === priorityId)
+	const priority = PRIORITY_OPTIONS.find((p) => p.id === priorityId)
 	return priority?.label || 'Normal'
 }
 
@@ -153,7 +153,7 @@ export function getPriorityLabel(priorityId) {
  * @return {string|null} Priority color class
  */
 export function getPriorityColor(priorityId) {
-	const priority = PRIORITY_OPTIONS.find(p => p.id === priorityId)
+	const priority = PRIORITY_OPTIONS.find((p) => p.id === priorityId)
 	return priority?.color || null
 }
 
@@ -164,7 +164,7 @@ export function getPriorityColor(priorityId) {
  * @return {string} Flag emoji or uppercase code if not found
  */
 export function getLanguageFlag(langCode) {
-	const lang = LANGUAGE_OPTIONS.find(l => l.id === langCode)
+	const lang = LANGUAGE_OPTIONS.find((l) => l.id === langCode)
 	return lang?.flag || langCode.toUpperCase()
 }
 
@@ -175,14 +175,14 @@ export function getLanguageFlag(langCode) {
  * @return {string} Localized language name or uppercase code if not found
  */
 export function getLanguageName(langCode) {
-	if (!langCode) return ''
+	if (!langCode) { return '' }
 	try {
 		const locale = getLocale().replace('_', '-')
 		const displayNames = new Intl.DisplayNames([locale], { type: 'language' })
 		return displayNames.of(langCode)
 	} catch {
 		// Fallback to static label if Intl.DisplayNames fails
-		const lang = LANGUAGE_OPTIONS.find(l => l.id === langCode)
+		const lang = LANGUAGE_OPTIONS.find((l) => l.id === langCode)
 		return lang?.label || langCode.toUpperCase()
 	}
 }
@@ -194,7 +194,7 @@ export function getLanguageName(langCode) {
  * @return {string|null} TMDB language code (e.g., 'en-US') or null
  */
 export function getTmdbCode(langCode) {
-	const lang = LANGUAGE_OPTIONS.find(l => l.id === langCode)
+	const lang = LANGUAGE_OPTIONS.find((l) => l.id === langCode)
 	return lang?.tmdbCode || null
 }
 
@@ -205,7 +205,7 @@ export function getTmdbCode(langCode) {
  * @return {Array} Language options with tmdbCode as id
  */
 export function getTmdbLanguageOptions() {
-	return LANGUAGE_OPTIONS.map(l => ({
+	return LANGUAGE_OPTIONS.map((l) => ({
 		id: l.tmdbCode,
 		label: l.label,
 	}))

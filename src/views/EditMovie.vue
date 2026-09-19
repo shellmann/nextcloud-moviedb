@@ -9,10 +9,11 @@
 		</div>
 
 		<div v-else-if="movie" class="movie-form-section">
-			<MovieForm :movie="formData"
+			<MovieForm
+				:movie="formData"
 				:platforms="platforms"
 				:saving="saving"
-				edit-mode
+				editMode
 				@submit="saveMovie"
 				@cancel="$router.back()" />
 		</div>
@@ -31,34 +32,41 @@ export default {
 		NcLoadingIcon,
 		MovieForm,
 	},
+
 	props: {
 		id: {
 			type: [String, Number],
 			required: true,
 		},
 	},
+
 	setup() {
 		const moviesStore = useMoviesStore()
 		const platformsStore = usePlatformsStore()
 		return { moviesStore, platformsStore }
 	},
+
 	data() {
 		return {
 			formData: null,
 			saving: false,
 		}
 	},
+
 	computed: {
 		movie() {
 			return this.moviesStore.currentMovie
 		},
+
 		loading() {
 			return this.moviesStore.loading
 		},
+
 		platforms() {
 			return this.platformsStore.platforms
 		},
 	},
+
 	watch: {
 		movie: {
 			immediate: true,
@@ -69,13 +77,16 @@ export default {
 			},
 		},
 	},
+
 	created() {
 		this.loadMovie()
 	},
+
 	methods: {
 		async loadMovie() {
 			await this.moviesStore.fetchOne(this.id)
 		},
+
 		async saveMovie(movieData) {
 			this.saving = true
 			const movie = await this.moviesStore.update(this.id, movieData)

@@ -18,13 +18,15 @@
 				<div class="form-row-inline">
 					<div class="form-group">
 						<label>{{ t('moviedb', 'Platform') }}</label>
-						<NcSelect v-model="selectedPlatform"
+						<NcSelect
+							v-model="selectedPlatform"
 							:options="platformOptions"
 							:placeholder="t('moviedb', 'Select platform')" />
 					</div>
 					<div class="form-group">
 						<label>{{ t('moviedb', 'Language Watched') }}</label>
-						<NcSelect v-model="selectedLanguage"
+						<NcSelect
+							v-model="selectedLanguage"
 							:options="languageOptions"
 							:placeholder="t('moviedb', 'Select language')"
 							@update:modelValue="onLanguageChange" />
@@ -38,7 +40,8 @@
 					</div>
 					<div class="form-group">
 						<label>{{ t('moviedb', 'Rating') }}</label>
-						<NcSelect v-model="selectedRating"
+						<NcSelect
+							v-model="selectedRating"
 							:options="ratingOptions"
 							:placeholder="t('moviedb', 'Select rating')" />
 					</div>
@@ -53,9 +56,10 @@
 
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Review / Notes') }}</label>
-					<textarea v-model="formData.review"
+					<textarea
+						v-model="formData.review"
 						rows="4"
-						:placeholder="t('moviedb', 'Write your thoughts about the movie...')" />
+						:placeholder="t('moviedb', 'Write your thoughts about the movie…')" />
 				</div>
 			</div>
 		</div>
@@ -64,7 +68,7 @@
 			<NcButton @click="$emit('cancel')">
 				{{ t('moviedb', 'Cancel') }}
 			</NcButton>
-			<NcButton type="primary" :disabled="saving || isSubmitting" @click="submit">
+			<NcButton variant="primary" :disabled="saving || isSubmitting" @click="submit">
 				{{ editMode ? t('moviedb', 'Update Movie') : t('moviedb', 'Save Movie') }}
 			</NcButton>
 		</div>
@@ -72,11 +76,11 @@
 </template>
 
 <script>
-import { NcTextField, NcSelect, NcButton } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
-import api from '../services/api.js'
-import { LANGUAGE_OPTIONS, getRatingOptions } from '../constants.js'
+import { NcButton, NcSelect, NcTextField } from '@nextcloud/vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
+import { getRatingOptions, LANGUAGE_OPTIONS } from '../constants.js'
+import api from '../services/api.js'
 
 /**
  * MovieForm component - Form for creating or editing movie entries.
@@ -89,23 +93,28 @@ export default {
 		NcSelect,
 		NcButton,
 	},
+
 	props: {
 		/**
 		 * Movie object with TMDB data and user-editable fields
+		 *
 		 * @type {{ title: string, originalTitle?: string, tmdbId?: number, posterPath?: string, platformId?: number, languageWatched?: string, dateWatched?: string, rating?: number, isFavorite?: boolean, review?: string }}
 		 */
 		movie: {
 			type: Object,
 			required: true,
 		},
+
 		/**
 		 * Available streaming platforms for selection
+		 *
 		 * @type {Array<{ id: number, name: string }>}
 		 */
 		platforms: {
 			type: Array,
 			default: () => [],
 		},
+
 		/**
 		 * Whether the form is currently saving (shows loading state)
 		 */
@@ -113,6 +122,7 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+
 		/**
 		 * Whether the form is in edit mode (vs create mode)
 		 */
@@ -121,9 +131,11 @@ export default {
 			default: false,
 		},
 	},
+
 	emits: [
 		/**
 		 * Emitted when form is submitted with complete movie data
+		 *
 		 * @param {object} movieData - The form data to save
 		 */
 		'submit',
@@ -132,6 +144,7 @@ export default {
 		 */
 		'cancel',
 	],
+
 	data() {
 		return {
 			formData: { ...this.movie },
@@ -144,14 +157,17 @@ export default {
 			isSubmitting: false,
 		}
 	},
+
 	computed: {
 		platformOptions() {
-			return this.platforms.map(p => ({ id: p.id, label: p.name }))
+			return this.platforms.map((p) => ({ id: p.id, label: p.name }))
 		},
+
 		posterUrl() {
 			return getPosterUrl(this.movie.posterPath, 'w300')
 		},
 	},
+
 	watch: {
 		movie: {
 			immediate: true,
@@ -160,16 +176,16 @@ export default {
 				this.isSubmitting = false
 				this.formData = { ...movie }
 				if (movie.platformId) {
-					this.selectedPlatform = this.platformOptions.find(p => p.id === movie.platformId)
+					this.selectedPlatform = this.platformOptions.find((p) => p.id === movie.platformId)
 				}
 				if (movie.languageWatched) {
-					this.selectedLanguage = this.languageOptions.find(l => l.id === movie.languageWatched)
+					this.selectedLanguage = this.languageOptions.find((l) => l.id === movie.languageWatched)
 				} else {
 					// Default to English (first in list)
 					this.selectedLanguage = this.languageOptions[0]
 				}
 				if (movie.rating) {
-					this.selectedRating = this.ratingOptions.find(r => r.id === movie.rating)
+					this.selectedRating = this.ratingOptions.find((r) => r.id === movie.rating)
 				}
 				this.$nextTick(() => {
 					this.isInitializing = false
@@ -177,15 +193,17 @@ export default {
 			},
 		},
 	},
+
 	methods: {
 		/**
 		 * Handles language selection change by fetching localized movie title.
+		 *
 		 * @param {object} language - Selected language option
 		 */
 		async onLanguageChange(language) {
 			// Skip API call during initialization (watcher sets language)
-			if (this.isInitializing) return
-			if (!language || !this.formData.tmdbId) return
+			if (this.isInitializing) { return }
+			if (!language || !this.formData.tmdbId) { return }
 
 			// Fetch movie title in the selected language
 			try {
@@ -199,12 +217,13 @@ export default {
 				showError(t('moviedb', 'Failed to fetch localized title.'))
 			}
 		},
+
 		/**
 		 * Submits the form data to the parent component.
 		 */
 		submit() {
 			// Prevent double submission
-			if (this.saving || this.isSubmitting) return
+			if (this.saving || this.isSubmitting) { return }
 			this.isSubmitting = true
 
 			this.$emit('submit', {

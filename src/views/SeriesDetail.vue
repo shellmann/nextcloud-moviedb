@@ -39,8 +39,9 @@
 								</template>
 								{{ t('moviedb', 'Edit') }}
 							</NcButton>
-							<NcButton v-if="activeCanEdit"
-								type="error"
+							<NcButton
+								v-if="activeCanEdit"
+								variant="error"
 								@click="showDeleteDialog = true">
 								<template #icon>
 									<Delete :size="20" />
@@ -84,14 +85,16 @@
 						</div>
 						<NcProgressBar :value="series.progress" size="medium" />
 						<div v-if="activeCanEdit" class="progress-actions">
-							<NcButton :disabled="series.caughtUp || marking"
+							<NcButton
+								:disabled="series.caughtUp || marking"
 								@click="markSeriesWatched(true)">
 								<template #icon>
 									<CheckAll :size="20" />
 								</template>
 								{{ series.caughtUp ? t('moviedb', 'Caught up') : t('moviedb', 'Mark series watched') }}
 							</NcButton>
-							<NcButton v-if="series.watchedEpisodeCount > 0"
+							<NcButton
+								v-if="series.watchedEpisodeCount > 0"
 								:disabled="marking"
 								@click="markSeriesWatched(false)">
 								{{ t('moviedb', 'Mark series unwatched') }}
@@ -108,8 +111,9 @@
 								<span>{{ series.nextEpisode.name }}</span>
 								<span v-if="series.nextEpisode.airDate" class="next-episode-date">{{ formatDate(series.nextEpisode.airDate) }}</span>
 							</div>
-							<NcButton v-if="activeCanEdit"
-								type="primary"
+							<NcButton
+								v-if="activeCanEdit"
+								variant="primary"
 								:disabled="marking"
 								@click="toggleEpisode(series.nextEpisode, true)">
 								<template #icon>
@@ -126,7 +130,8 @@
 
 					<!-- Seasons -->
 					<div class="seasons">
-						<div v-for="season in series.seasons"
+						<div
+							v-for="season in series.seasons"
 							:key="season.seasonNumber"
 							class="season">
 							<div class="season-header" @click="toggleSeason(season.seasonNumber)">
@@ -136,7 +141,8 @@
 								<span v-if="season.seasonNumber !== 0" class="season-progress">
 									{{ season.watchedCount }} / {{ season.airedCount }} ({{ season.progress }}%)
 								</span>
-								<NcButton v-if="season.seasonNumber !== 0 && activeCanEdit"
+								<NcButton
+									v-if="season.seasonNumber !== 0 && activeCanEdit"
 									:disabled="marking || season.watchedCount >= season.airedCount"
 									@click.stop="markSeasonWatched(season.seasonNumber, true)">
 									{{ t('moviedb', 'Mark season watched') }}
@@ -144,15 +150,17 @@
 							</div>
 
 							<ul v-show="expandedSeasons.includes(season.seasonNumber)" class="episode-list">
-								<li v-for="ep in season.episodes"
+								<li
+									v-for="ep in season.episodes"
 									:key="ep.id"
 									class="episode-row"
 									:class="{ watched: ep.watched, unaired: !ep.aired }">
 									<span class="episode-check">
-										<NcCheckboxRadioSwitch :model-value="ep.watched"
+										<NcCheckboxRadioSwitch
+											:modelValue="ep.watched"
 											:disabled="!ep.aired || marking || !activeCanEdit"
 											:aria-label="t('moviedb', 'Watched')"
-											@update:model-value="toggleEpisode(ep, $event)" />
+											@update:modelValue="toggleEpisode(ep, $event)" />
 									</span>
 									<span class="episode-code">{{ ep.episodeNumber }}</span>
 									<span class="episode-name">{{ ep.name || t('moviedb', 'Episode {n}', { n: ep.episodeNumber }) }}</span>
@@ -174,7 +182,8 @@
 		</NcEmptyContent>
 
 		<!-- Delete Confirmation Dialog -->
-		<NcDialog :open="showDeleteDialog"
+		<NcDialog
+			:open="showDeleteDialog"
 			:name="t('moviedb', 'Delete TV Show')"
 			@update:open="showDeleteDialog = $event">
 			<p>{{ t('moviedb', 'Are you sure you want to delete this TV show? All episodes and watch history will be removed.') }}</p>
@@ -182,7 +191,7 @@
 				<NcButton @click="showDeleteDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="error" @click="deleteSeries">
+				<NcButton variant="error" @click="deleteSeries">
 					{{ t('moviedb', 'Delete') }}
 				</NcButton>
 			</template>
@@ -191,20 +200,20 @@
 </template>
 
 <script>
-import { NcButton, NcLoadingIcon, NcEmptyContent, NcDialog, NcProgressBar, NcCheckboxRadioSwitch } from '@nextcloud/vue'
-import Pencil from 'vue-material-design-icons/Pencil.vue'
-import Delete from 'vue-material-design-icons/Delete.vue'
+import { NcButton, NcCheckboxRadioSwitch, NcDialog, NcEmptyContent, NcLoadingIcon, NcProgressBar } from '@nextcloud/vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
-import Television from 'vue-material-design-icons/Television.vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import CheckAll from 'vue-material-design-icons/CheckAll.vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
+import Delete from 'vue-material-design-icons/Delete.vue'
+import Pencil from 'vue-material-design-icons/Pencil.vue'
+import Television from 'vue-material-design-icons/Television.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { formatDate, formatRuntime } from '../utils/formatters.js'
 import { LANGUAGE_OPTIONS } from '../constants.js'
-import { useSeriesStore } from '../stores/series.js'
 import { useLibrariesStore } from '../stores/libraries.js'
+import { useSeriesStore } from '../stores/series.js'
+import { formatDate, formatRuntime } from '../utils/formatters.js'
 
 export default {
 	name: 'SeriesDetail',
@@ -224,17 +233,20 @@ export default {
 		ChevronDown,
 		ChevronRight,
 	},
+
 	props: {
 		id: {
 			type: [String, Number],
 			required: true,
 		},
 	},
+
 	setup() {
 		const seriesStore = useSeriesStore()
 		const librariesStore = useLibrariesStore()
 		return { seriesStore, librariesStore }
 	},
+
 	data() {
 		return {
 			showDeleteDialog: false,
@@ -242,60 +254,71 @@ export default {
 			expandedSeasons: [],
 		}
 	},
+
 	computed: {
 		series() {
 			return this.seriesStore.currentSeries
 		},
+
 		loading() {
 			return this.seriesStore.loading
 		},
+
 		posterUrl() {
 			return getPosterUrl(this.series?.posterPath, 'w500')
 		},
+
 		backdropStyle() {
-			if (!this.series?.backdropPath) return {}
+			if (!this.series?.backdropPath) { return {} }
 			const url = getPosterUrl(this.series.backdropPath, 'w1280')
 			return {
 				backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.7), var(--color-main-background)), url(${url})`,
 			}
 		},
+
 		hasWatchMeta() {
 			return !!(this.series
 				&& (this.series.rating || this.series.platformName
 					|| this.series.languageWatched || this.series.watchedAt))
 		},
+
 		activeCanEdit() {
 			return this.librariesStore.activeCanEdit
 		},
 	},
+
 	async created() {
 		// Wait for libraries so the active library id is known before fetching.
 		await this.librariesStore.whenReady()
 		await this.seriesStore.fetchOne(this.id)
 		// Expand the first non-special season by default.
-		const first = this.series?.seasons?.find(s => s.seasonNumber !== 0)
+		const first = this.series?.seasons?.find((s) => s.seasonNumber !== 0)
 			?? this.series?.seasons?.[0]
 		if (first) {
 			this.expandedSeasons = [first.seasonNumber]
 		}
 	},
+
 	methods: {
 		formatDate,
 		formatRuntime,
 		languageLabel(code) {
-			return LANGUAGE_OPTIONS.find(l => l.id === code)?.label || code
+			return LANGUAGE_OPTIONS.find((l) => l.id === code)?.label || code
 		},
+
 		episodeCode(ep) {
 			const s = String(ep.seasonNumber).padStart(2, '0')
 			const e = String(ep.episodeNumber).padStart(2, '0')
 			return `S${s}E${e}`
 		},
+
 		seasonLabel(seasonNumber) {
 			if (seasonNumber === 0) {
 				return t('moviedb', 'Specials')
 			}
 			return t('moviedb', 'Season {n}', { n: seasonNumber })
 		},
+
 		toggleSeason(seasonNumber) {
 			const idx = this.expandedSeasons.indexOf(seasonNumber)
 			if (idx === -1) {
@@ -304,9 +327,11 @@ export default {
 				this.expandedSeasons.splice(idx, 1)
 			}
 		},
+
 		editSeries() {
 			this.$router.push({ name: 'edit-series', params: { id: this.id } })
 		},
+
 		async deleteSeries() {
 			const success = await this.seriesStore.delete(this.id)
 			this.showDeleteDialog = false
@@ -314,20 +339,23 @@ export default {
 				this.$router.push({ name: 'series' })
 			}
 		},
+
 		async toggleEpisode(ep, watched) {
-			if (this.marking) return
+			if (this.marking) { return }
 			this.marking = true
 			await this.seriesStore.markEpisodeWatched(this.id, ep.id, watched)
 			this.marking = false
 		},
+
 		async markSeasonWatched(seasonNumber, watched) {
-			if (this.marking) return
+			if (this.marking) { return }
 			this.marking = true
 			await this.seriesStore.markSeasonWatched(this.id, seasonNumber, watched)
 			this.marking = false
 		},
+
 		async markSeriesWatched(watched) {
-			if (this.marking) return
+			if (this.marking) { return }
 			this.marking = true
 			await this.seriesStore.markSeriesWatched(this.id, watched)
 			this.marking = false

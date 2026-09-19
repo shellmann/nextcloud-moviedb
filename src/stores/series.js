@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
+import { defineStore } from 'pinia'
 import api from '../services/api.js'
 import { useLibrariesStore } from './libraries.js'
 
@@ -43,6 +43,7 @@ export const useSeriesStore = defineStore('series', {
 	actions: {
 		/**
 		 * Fetches series from the API with current filters and pagination.
+		 *
 		 * @return {Promise<void>}
 		 */
 		async fetchAll() {
@@ -52,14 +53,14 @@ export const useSeriesStore = defineStore('series', {
 					page: this.page,
 					limit: this.limit,
 				}
-				if (this.filters.genre) params.genre = this.filters.genre
-				if (this.filters.year) params.year = this.filters.year
-				if (this.filters.search) params.search = this.filters.search
-				if (this.filters.sort) params.sort = this.filters.sort
-				if (this.filters.dir) params.dir = this.filters.dir
-				if (this.filters.favorite) params.favorite = 1
+				if (this.filters.genre) { params.genre = this.filters.genre }
+				if (this.filters.year) { params.year = this.filters.year }
+				if (this.filters.search) { params.search = this.filters.search }
+				if (this.filters.sort) { params.sort = this.filters.sort }
+				if (this.filters.dir) { params.dir = this.filters.dir }
+				if (this.filters.favorite) { params.favorite = 1 }
 				const libraryId = useLibrariesStore().activeLibraryId
-				if (libraryId !== null) params.libraryId = libraryId
+				if (libraryId !== null) { params.libraryId = libraryId }
 
 				const response = await api.getSeries(params)
 				this.series = response.data.series
@@ -76,6 +77,7 @@ export const useSeriesStore = defineStore('series', {
 
 		/**
 		 * Fetches a single series (with progress) by ID.
+		 *
 		 * @param {number} id - Series ID
 		 * @return {Promise<object | null>} The series object or null on error
 		 */
@@ -97,6 +99,7 @@ export const useSeriesStore = defineStore('series', {
 
 		/**
 		 * Creates a new series entry from TMDB data (fetches episodes server-side).
+		 *
 		 * @param {object} seriesData - Series data to create
 		 * @return {Promise<object | null>} The created series, a duplicate marker, or null
 		 */
@@ -124,6 +127,7 @@ export const useSeriesStore = defineStore('series', {
 
 		/**
 		 * Updates an existing series.
+		 *
 		 * @param {number} id - Series ID
 		 * @param {object} data - Updated series data
 		 * @return {Promise<object | null>} The updated series or null on error
@@ -134,7 +138,7 @@ export const useSeriesStore = defineStore('series', {
 				const payload = libraryId !== null ? { ...data, libraryId } : data
 				const response = await api.updateSeries(id, payload)
 				const updated = response.data.series
-				const index = this.series.findIndex(s => s.id === updated.id)
+				const index = this.series.findIndex((s) => s.id === updated.id)
 				if (index !== -1) {
 					this.series.splice(index, 1, updated)
 				}
@@ -152,6 +156,7 @@ export const useSeriesStore = defineStore('series', {
 
 		/**
 		 * Deletes a series by ID (cascades episodes + watch rows server-side).
+		 *
 		 * @param {number} id - Series ID
 		 * @return {Promise<boolean>} True if deleted successfully
 		 */
@@ -159,7 +164,7 @@ export const useSeriesStore = defineStore('series', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				await api.deleteSeries(id, libraryId !== null ? libraryId : undefined)
-				this.series = this.series.filter(s => s.id !== id)
+				this.series = this.series.filter((s) => s.id !== id)
 				this.total--
 				showSuccess(t('moviedb', 'Series deleted successfully.'))
 				return true
@@ -172,6 +177,7 @@ export const useSeriesStore = defineStore('series', {
 
 		/**
 		 * Toggles a single episode's watched flag; refreshes currentSeries with server progress.
+		 *
 		 * @param {number} id - Series ID
 		 * @param {number} episodeId - Episode ID
 		 * @param {boolean} watched - Watched state to set (default true)
@@ -192,6 +198,7 @@ export const useSeriesStore = defineStore('series', {
 
 		/**
 		 * Marks all aired episodes of a season watched/unwatched.
+		 *
 		 * @param {number} id - Series ID
 		 * @param {number} seasonNumber - Season number
 		 * @param {boolean} watched - Watched state to set (default true)
@@ -215,6 +222,7 @@ export const useSeriesStore = defineStore('series', {
 
 		/**
 		 * Marks all aired episodes of the series watched/unwatched (excludes specials).
+		 *
 		 * @param {number} id - Series ID
 		 * @param {boolean} watched - Watched state to set (default true)
 		 * @return {Promise<object | null>} The refreshed series or null on error
@@ -252,6 +260,7 @@ export const useSeriesStore = defineStore('series', {
 
 		/**
 		 * Updates filter criteria and refreshes the series list.
+		 *
 		 * @param {object} filters - New filter values to merge
 		 */
 		setFilters(filters) {
@@ -262,6 +271,7 @@ export const useSeriesStore = defineStore('series', {
 
 		/**
 		 * Changes the current page and refreshes the series list.
+		 *
 		 * @param {number} page - Page number to navigate to
 		 */
 		setPage(page) {

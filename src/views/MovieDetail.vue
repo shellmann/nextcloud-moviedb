@@ -39,8 +39,9 @@
 								</template>
 								{{ t('moviedb', 'Edit') }}
 							</NcButton>
-							<NcButton v-if="activeCanEdit"
-								type="error"
+							<NcButton
+								v-if="activeCanEdit"
+								variant="error"
 								@click="confirmDelete">
 								<template #icon>
 									<Delete :size="20" />
@@ -128,7 +129,8 @@
 		</NcEmptyContent>
 
 		<!-- Delete Confirmation Dialog -->
-		<NcDialog :open="showDeleteDialog"
+		<NcDialog
+			:open="showDeleteDialog"
 			:name="t('moviedb', 'Delete Movie')"
 			@update:open="showDeleteDialog = $event">
 			<p>{{ t('moviedb', 'Are you sure you want to delete this movie?') }}</p>
@@ -136,14 +138,15 @@
 				<NcButton @click="showDeleteDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="error" @click="deleteMovie">
+				<NcButton variant="error" @click="deleteMovie">
 					{{ t('moviedb', 'Delete') }}
 				</NcButton>
 			</template>
 		</NcDialog>
 
 		<!-- Log watch dialog -->
-		<NcDialog :open="showLogDialog"
+		<NcDialog
+			:open="showLogDialog"
 			:name="t('moviedb', 'Log watch')"
 			@update:open="showLogDialog = $event">
 			<div class="log-watch-form">
@@ -168,7 +171,7 @@
 				<NcButton @click="showLogDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="primary" @click="submitLog">
+				<NcButton variant="primary" @click="submitLog">
 					{{ t('moviedb', 'Save') }}
 				</NcButton>
 			</template>
@@ -177,20 +180,20 @@
 </template>
 
 <script>
-import { NcButton, NcLoadingIcon, NcEmptyContent, NcDialog, NcActions, NcActionButton } from '@nextcloud/vue'
-import Pencil from 'vue-material-design-icons/Pencil.vue'
-import Delete from 'vue-material-design-icons/Delete.vue'
+import { NcActionButton, NcActions, NcButton, NcDialog, NcEmptyContent, NcLoadingIcon } from '@nextcloud/vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
+import Delete from 'vue-material-design-icons/Delete.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
+import Pencil from 'vue-material-design-icons/Pencil.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import RatingStars from '../components/RatingStars.vue'
-import { getLanguageName } from '../constants.js'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { formatDate, formatRuntime } from '../utils/formatters.js'
+import { getLanguageName } from '../constants.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useWatchesStore } from '../stores/watches.js'
-import { useLibrariesStore } from '../stores/libraries.js'
+import { formatDate, formatRuntime } from '../utils/formatters.js'
 
 export default {
 	name: 'MovieDetail',
@@ -208,12 +211,14 @@ export default {
 		Plus,
 		RatingStars,
 	},
+
 	props: {
 		id: {
 			type: [String, Number],
 			required: true,
 		},
 	},
+
 	setup() {
 		const moviesStore = useMoviesStore()
 		const platformsStore = usePlatformsStore()
@@ -221,6 +226,7 @@ export default {
 		const librariesStore = useLibrariesStore()
 		return { moviesStore, platformsStore, watchesStore, librariesStore }
 	},
+
 	data() {
 		return {
 			showDeleteDialog: false,
@@ -232,37 +238,46 @@ export default {
 			},
 		}
 	},
+
 	computed: {
 		movie() {
 			return this.moviesStore.currentMovie
 		},
+
 		loading() {
 			return this.moviesStore.loading
 		},
+
 		platforms() {
 			return this.platformsStore.platforms
 		},
+
 		latestWatch() {
 			// Store returns watches sorted by watched_at DESC, so the first is latest.
 			return this.watchesStore.watches[0] ?? null
 		},
+
 		posterUrl() {
 			return getPosterUrl(this.movie?.posterPath, 'w500')
 		},
+
 		backdropStyle() {
-			if (!this.movie?.backdropPath) return {}
+			if (!this.movie?.backdropPath) { return {} }
 			const url = getPosterUrl(this.movie.backdropPath, 'w1280')
 			return {
 				backgroundImage: `linear-gradient(to bottom, rgba(0,0,0,0.7), var(--color-main-background)), url(${url})`,
 			}
 		},
+
 		activeCanEdit() {
 			return this.librariesStore.activeCanEdit
 		},
 	},
+
 	created() {
 		this.loadMovie()
 	},
+
 	methods: {
 		async loadMovie() {
 			// Wait for libraries so the active library id is known before fetching.
@@ -270,19 +285,23 @@ export default {
 			await this.moviesStore.fetchOne(this.id)
 			await this.watchesStore.fetchForMovie(this.id)
 		},
+
 		formatRuntime,
 		formatDate,
 		getLanguageName,
 		getPlatformName(platformId) {
-			if (!platformId) return null
-			return this.platforms.find(p => p.id === platformId)?.name ?? null
+			if (!platformId) { return null }
+			return this.platforms.find((p) => p.id === platformId)?.name ?? null
 		},
+
 		editMovie() {
 			this.$router.push({ name: 'edit-movie', params: { id: this.id } })
 		},
+
 		confirmDelete() {
 			this.showDeleteDialog = true
 		},
+
 		async deleteMovie() {
 			const success = await this.moviesStore.delete(this.id)
 			if (success) {
@@ -290,6 +309,7 @@ export default {
 			}
 			this.showDeleteDialog = false
 		},
+
 		async submitLog() {
 			const data = {
 				watchedAt: this.logForm.watchedAt || null,
@@ -300,6 +320,7 @@ export default {
 			this.showLogDialog = false
 			this.logForm = { watchedAt: new Date().toISOString().slice(0, 10), rating: null, review: '' }
 		},
+
 		async deleteWatch(watchId) {
 			await this.watchesStore.delete(this.id, watchId)
 		},

@@ -6,11 +6,13 @@
 				<span v-if="!loading" class="movie-count">({{ total }})</span>
 			</h2>
 			<div class="header-actions">
-				<NcTextField v-model="searchQuery"
+				<NcTextField
+					v-model="searchQuery"
 					:label="t('moviedb', 'Search')"
-					:placeholder="t('moviedb', 'Search movies...')"
+					:placeholder="t('moviedb', 'Search movies…')"
 					@update:modelValue="debouncedSearch" />
-				<NcButton v-if="activeCanEdit"
+				<NcButton
+					v-if="activeCanEdit"
 					:aria-label="t('moviedb', 'Add Movie')"
 					:title="t('moviedb', 'Add Movie')"
 					@click="$router.push({ name: 'add-movie' })">
@@ -22,22 +24,26 @@
 		</div>
 
 		<div class="filters">
-			<NcSelect v-model="selectedPlatform"
+			<NcSelect
+				v-model="selectedPlatform"
 				:options="platformOptions"
 				:placeholder="t('moviedb', 'All platforms')"
 				:clearable="true"
 				@update:modelValue="applyFilters" />
-			<NcSelect v-model="selectedGenre"
+			<NcSelect
+				v-model="selectedGenre"
 				:options="genreOptions"
 				:placeholder="t('moviedb', 'All genres')"
 				:clearable="true"
 				@update:modelValue="applyFilters" />
-			<NcSelect v-model="sortBy"
+			<NcSelect
+				v-model="sortBy"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
 				:aria-label="t('moviedb', 'Sort by')"
 				@update:modelValue="applyFilters" />
-			<NcButton :aria-label="t('moviedb', 'Toggle sort direction')"
+			<NcButton
+				:aria-label="t('moviedb', 'Toggle sort direction')"
 				:title="sortDirection === 'DESC' ? t('moviedb', 'Descending') : t('moviedb', 'Ascending')"
 				@click="toggleSortDirection">
 				<template #icon>
@@ -45,7 +51,8 @@
 					<SortAscending v-else :size="20" />
 				</template>
 			</NcButton>
-			<NcButton :type="showFavoritesOnly ? 'primary' : 'secondary'"
+			<NcButton
+				:variant="showFavoritesOnly ? 'primary' : 'secondary'"
 				@click="toggleFavorites">
 				<template #icon>
 					<Heart :size="20" />
@@ -59,7 +66,8 @@
 		</div>
 
 		<div v-else-if="movies.length" class="movie-grid">
-			<MovieCard v-for="movie in movies"
+			<MovieCard
+				v-for="movie in movies"
 				:key="movie.id"
 				:movie="movie"
 				@click="goToMovie(movie.id)" />
@@ -83,12 +91,14 @@
 		</NcEmptyContent>
 
 		<div v-if="totalPages > 1" class="pagination">
-			<NcButton :disabled="page <= 1"
+			<NcButton
+				:disabled="page <= 1"
 				@click="goToPage(page - 1)">
 				{{ t('moviedb', 'Previous') }}
 			</NcButton>
 			<span class="page-info">{{ t('moviedb', 'Page {page} of {total}', { page: page, total: totalPages }) }}</span>
-			<NcButton :disabled="page >= totalPages"
+			<NcButton
+				:disabled="page >= totalPages"
 				@click="goToPage(page + 1)">
 				{{ t('moviedb', 'Next') }}
 			</NcButton>
@@ -97,18 +107,18 @@
 </template>
 
 <script>
-import { NcTextField, NcButton, NcSelect, NcLoadingIcon, NcEmptyContent } from '@nextcloud/vue'
-import Plus from 'vue-material-design-icons/Plus.vue'
+import { NcButton, NcEmptyContent, NcLoadingIcon, NcSelect, NcTextField } from '@nextcloud/vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
+import Plus from 'vue-material-design-icons/Plus.vue'
 import SortAscending from 'vue-material-design-icons/SortAscending.vue'
 import SortDescending from 'vue-material-design-icons/SortDescending.vue'
 import MovieCard from '../components/MovieCard.vue'
-import { debounce } from '../utils/debounce.js'
+import { GENRE_OPTIONS } from '../constants.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
-import { useLibrariesStore } from '../stores/libraries.js'
-import { GENRE_OPTIONS } from '../constants.js'
+import { debounce } from '../utils/debounce.js'
 
 export default {
 	name: 'MovieList',
@@ -125,12 +135,14 @@ export default {
 		SortDescending,
 		MovieCard,
 	},
+
 	setup() {
 		const moviesStore = useMoviesStore()
 		const platformsStore = usePlatformsStore()
 		const librariesStore = useLibrariesStore()
 		return { moviesStore, platformsStore, librariesStore }
 	},
+
 	data() {
 		return {
 			searchQuery: '',
@@ -141,31 +153,40 @@ export default {
 			showFavoritesOnly: false,
 		}
 	},
+
 	computed: {
 		movies() {
 			return this.moviesStore.movies
 		},
+
 		loading() {
 			return this.moviesStore.loading
 		},
+
 		total() {
 			return this.moviesStore.total
 		},
+
 		page() {
 			return this.moviesStore.page
 		},
+
 		totalPages() {
 			return this.moviesStore.totalPages
 		},
+
 		platforms() {
 			return this.platformsStore.platforms
 		},
+
 		platformOptions() {
-			return this.platforms.map(p => ({ id: p.id, label: p.name }))
+			return this.platforms.map((p) => ({ id: p.id, label: p.name }))
 		},
+
 		genreOptions() {
 			return GENRE_OPTIONS
 		},
+
 		sortOptions() {
 			return [
 				{ id: 'date_watched', label: t('moviedb', 'Date Watched') },
@@ -174,16 +195,19 @@ export default {
 				{ id: 'release_year', label: t('moviedb', 'Release Year') },
 			]
 		},
+
 		emptyStateMessage() {
 			if (this.showFavoritesOnly) {
 				return t('moviedb', 'No favorite movies yet')
 			}
 			return t('moviedb', 'No movies found')
 		},
+
 		activeCanEdit() {
 			return this.librariesStore.activeCanEdit
 		},
 	},
+
 	async created() {
 		this.sortBy = this.sortOptions[0]
 		this.debouncedSearch = debounce(this.applyFilters, 300)
@@ -194,6 +218,7 @@ export default {
 		await this.librariesStore.whenReady()
 		this.moviesStore.fetchAll()
 	},
+
 	methods: {
 		applyFilters() {
 			this.moviesStore.setFilters({
@@ -205,17 +230,21 @@ export default {
 				favorite: this.showFavoritesOnly,
 			})
 		},
+
 		toggleSortDirection() {
 			this.sortDirection = this.sortDirection === 'DESC' ? 'ASC' : 'DESC'
 			this.applyFilters()
 		},
+
 		toggleFavorites() {
 			this.showFavoritesOnly = !this.showFavoritesOnly
 			this.applyFilters()
 		},
+
 		goToPage(page) {
 			this.moviesStore.setPage(page)
 		},
+
 		goToMovie(id) {
 			this.$router.push({ name: 'movie-detail', params: { id } })
 		},

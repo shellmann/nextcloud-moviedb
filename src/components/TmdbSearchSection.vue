@@ -3,36 +3,41 @@
 		<h3>{{ t('moviedb', 'Search TMDB') }}</h3>
 
 		<div v-if="allowTypeToggle" class="media-type-toggle">
-			<NcCheckboxRadioSwitch :model-value="mediaType"
+			<NcCheckboxRadioSwitch
+				:modelValue="mediaType"
 				value="movie"
 				name="media-type"
 				type="radio"
-				button-variant
-				button-variant-grouped="horizontal"
-				@update:model-value="switchMediaType">
+				buttonVariant
+				buttonVariantGrouped="horizontal"
+				@update:modelValue="switchMediaType">
 				{{ t('moviedb', 'Movies') }}
 			</NcCheckboxRadioSwitch>
-			<NcCheckboxRadioSwitch :model-value="mediaType"
+			<NcCheckboxRadioSwitch
+				:modelValue="mediaType"
 				value="series"
 				name="media-type"
 				type="radio"
-				button-variant
-				button-variant-grouped="horizontal"
-				@update:model-value="switchMediaType">
+				buttonVariant
+				buttonVariantGrouped="horizontal"
+				@update:modelValue="switchMediaType">
 				{{ t('moviedb', 'TV Shows') }}
 			</NcCheckboxRadioSwitch>
 		</div>
 
 		<div class="search-form">
-			<NcTextField v-model="searchQuery"
+			<NcTextField
+				v-model="searchQuery"
 				:label="searchLabel"
 				:placeholder="searchPlaceholder"
 				@keyup.enter="search" />
-			<NcTextField v-model="searchYear"
+			<NcTextField
+				v-model="searchYear"
 				:label="t('moviedb', 'Year (optional)')"
 				type="number"
 				:placeholder="t('moviedb', 'Year')" />
-			<NcButton type="primary"
+			<NcButton
+				variant="primary"
 				:disabled="!searchQuery || searching"
 				@click="search">
 				<template #icon>
@@ -49,7 +54,8 @@
 		<div v-else-if="searchResults.length" class="search-results">
 			<h4>{{ t('moviedb', 'Search Results - Click to select') }}</h4>
 			<div class="results-grid">
-				<div v-for="item in searchResults"
+				<div
+					v-for="item in searchResults"
 					:key="item.id"
 					class="result-item"
 					role="button"
@@ -58,7 +64,8 @@
 					@click="$emit('select', item, mediaType)"
 					@keydown.enter="$emit('select', item, mediaType)"
 					@keydown.space.prevent="$emit('select', item, mediaType)">
-					<img v-if="item.poster_path"
+					<img
+						v-if="item.poster_path"
 						:src="getImageUrl(item.poster_path)"
 						:alt="getResultTitle(item)">
 					<div v-else class="no-poster">
@@ -84,13 +91,13 @@
 </template>
 
 <script>
-import { NcTextField, NcButton, NcLoadingIcon, NcCheckboxRadioSwitch } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
+import { NcButton, NcCheckboxRadioSwitch, NcLoadingIcon, NcTextField } from '@nextcloud/vue'
 import Magnify from 'vue-material-design-icons/Magnify.vue'
-import api from '../services/api.js'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { useSettingsStore } from '../stores/settings.js'
 import { MEDIA_TYPE } from '../constants.js'
+import api from '../services/api.js'
+import { useSettingsStore } from '../stores/settings.js'
 
 /**
  * TmdbSearchSection component - Search interface for finding movies or TV shows on TMDB.
@@ -105,6 +112,7 @@ export default {
 		NcCheckboxRadioSwitch,
 		Magnify,
 	},
+
 	props: {
 		/**
 		 * Whether to show the Movies/TV toggle. Off by default so AddMovie /
@@ -114,6 +122,7 @@ export default {
 			type: Boolean,
 			default: false,
 		},
+
 		/**
 		 * Initial media type, one of MEDIA_TYPE values.
 		 */
@@ -122,18 +131,22 @@ export default {
 			default: MEDIA_TYPE.MOVIE,
 		},
 	},
+
 	emits: [
 		/**
 		 * Emitted when a search result is selected
+		 *
 		 * @param {object} item - The selected TMDB movie or series object
 		 * @param {string} mediaType - 'movie' or 'series'
 		 */
 		'select',
 	],
+
 	setup() {
 		const settingsStore = useSettingsStore()
 		return { settingsStore }
 	},
+
 	data() {
 		return {
 			mediaType: this.initialMediaType,
@@ -144,48 +157,57 @@ export default {
 			searched: false,
 		}
 	},
+
 	computed: {
 		tmdbLanguage() {
 			return this.settingsStore.defaultLanguage || 'en-US'
 		},
+
 		searchLabel() {
 			return this.mediaType === MEDIA_TYPE.SERIES
 				? t('moviedb', 'TV show title')
 				: t('moviedb', 'Movie title')
 		},
+
 		searchPlaceholder() {
 			return this.mediaType === MEDIA_TYPE.SERIES
-				? t('moviedb', 'Enter TV show title...')
-				: t('moviedb', 'Enter movie title...')
+				? t('moviedb', 'Enter TV show title…')
+				: t('moviedb', 'Enter movie title…')
 		},
 	},
+
 	mounted() {
 		// Auto-focus the search field
 		this.$nextTick(() => {
 			const input = this.$el?.querySelector('input[type="text"]')
-			if (input) input.focus()
+			if (input) { input.focus() }
 		})
 	},
+
 	methods: {
 		getImageUrl(path) {
 			return getPosterUrl(path, 'w200')
 		},
+
 		getResultTitle(item) {
 			// Movies use `title`, TV shows use `name`.
 			return item.title || item.name || ''
 		},
+
 		getResultYear(item) {
 			const date = item.release_date || item.first_air_date
 			return date ? date.substring(0, 4) : ''
 		},
+
 		switchMediaType(value) {
-			if (value === this.mediaType) return
+			if (value === this.mediaType) { return }
 			this.mediaType = value
 			this.searchResults = []
 			this.searched = false
 		},
+
 		async search() {
-			if (!this.searchQuery) return
+			if (!this.searchQuery) { return }
 
 			this.searching = true
 			this.searched = false

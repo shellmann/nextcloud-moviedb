@@ -59,14 +59,16 @@
 
 					<div class="form-group">
 						<label>{{ t('moviedb', 'Notes (optional)') }}</label>
-						<textarea v-model="notes"
+						<textarea
+							v-model="notes"
 							rows="3"
 							:placeholder="t('moviedb', 'Why do you want to watch this?')" />
 					</div>
 
 					<div class="form-group">
 						<label>{{ t('moviedb', 'Priority') }}</label>
-						<NcSelect v-model="selectedPriority"
+						<NcSelect
+							v-model="selectedPriority"
 							:options="priorityOptions"
 							:placeholder="t('moviedb', 'Select priority')" />
 					</div>
@@ -75,7 +77,7 @@
 						<NcButton @click="selectedMovie = null">
 							{{ t('moviedb', 'Cancel') }}
 						</NcButton>
-						<NcButton type="primary" :disabled="saving" @click="addToWatchlist">
+						<NcButton variant="primary" :disabled="saving" @click="addToWatchlist">
 							<template #icon>
 								<PlaylistPlus :size="20" />
 							</template>
@@ -87,23 +89,23 @@
 		</div>
 
 		<!-- Search Section (shown when no movie is selected) -->
-		<TmdbSearchSection v-else :allow-type-toggle="true" @select="selectItem" />
+		<TmdbSearchSection v-else :allowTypeToggle="true" @select="selectItem" />
 	</div>
 </template>
 
 <script>
-import { NcNoteCard, NcButton, NcSelect } from '@nextcloud/vue'
+import { showError } from '@nextcloud/dialogs'
+import { NcButton, NcNoteCard, NcSelect } from '@nextcloud/vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import PlaylistPlus from 'vue-material-design-icons/PlaylistPlus.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getPriorityOptions, MEDIA_TYPE } from '../constants.js'
 import api from '../services/api.js'
-import { useWatchlistStore } from '../stores/watchlist.js'
-import { useSettingsStore } from '../stores/settings.js'
-import { useMoviesStore } from '../stores/movies.js'
 import { useLibrariesStore } from '../stores/libraries.js'
-import { showError } from '@nextcloud/dialogs'
+import { useMoviesStore } from '../stores/movies.js'
+import { useSettingsStore } from '../stores/settings.js'
+import { useWatchlistStore } from '../stores/watchlist.js'
 
 export default {
 	name: 'AddToWatchlist',
@@ -115,6 +117,7 @@ export default {
 		PlaylistPlus,
 		TmdbSearchSection,
 	},
+
 	setup() {
 		const watchlistStore = useWatchlistStore()
 		const settingsStore = useSettingsStore()
@@ -122,6 +125,7 @@ export default {
 		const librariesStore = useLibrariesStore()
 		return { watchlistStore, settingsStore, moviesStore, librariesStore }
 	},
+
 	data() {
 		return {
 			selectedMovie: null,
@@ -133,20 +137,25 @@ export default {
 			saving: false,
 		}
 	},
+
 	computed: {
 		activeCanEdit() {
 			return this.librariesStore.activeCanEdit
 		},
+
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
 		},
+
 		isSeries() {
 			return this.mediaType === MEDIA_TYPE.SERIES
 		},
+
 		tmdbLanguage() {
 			return this.settingsStore.defaultLanguage || 'en-US'
 		},
 	},
+
 	methods: {
 		getPosterUrl,
 		async selectItem(item, mediaType) {
@@ -157,6 +166,7 @@ export default {
 				this.selectMovie(item)
 			}
 		},
+
 		selectMovie(movie) {
 			this.selectedMovie = {
 				tmdbId: movie.id,
@@ -168,11 +178,12 @@ export default {
 			}
 			this.notes = ''
 			this.selectedPriority = this.priorityOptions[0]
-			this.alreadyWatched = this.moviesStore.movies.some(m => m.tmdbId === movie.id)
+			this.alreadyWatched = this.moviesStore.movies.some((m) => m.tmdbId === movie.id)
 
 			// Scroll to top to show the form
 			window.scrollTo({ top: 0, behavior: 'smooth' })
 		},
+
 		async selectSeries(item) {
 			try {
 				// Fetch details so the watchlist row carries a usable first-air year,
@@ -185,7 +196,7 @@ export default {
 					posterPath: details.poster_path,
 					overview: details.overview,
 					releaseDate: details.first_air_date,
-					genreIds: details.genres?.map(g => g.id) || [],
+					genreIds: details.genres?.map((g) => g.id) || [],
 				}
 			} catch (error) {
 				console.error('Failed to fetch series details:', error)
@@ -199,6 +210,7 @@ export default {
 
 			window.scrollTo({ top: 0, behavior: 'smooth' })
 		},
+
 		async addToWatchlist() {
 			this.saving = true
 			const result = await this.watchlistStore.create({

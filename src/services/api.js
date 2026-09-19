@@ -156,17 +156,17 @@ export default {
 	},
 	markSeriesWatched(id, watched = true, libraryId = undefined) {
 		const body = { watched }
-		if (libraryId !== undefined) body.libraryId = libraryId
+		if (libraryId !== undefined) { body.libraryId = libraryId }
 		return axios.post(`${baseUrl}/series/${id}/watched`, body)
 	},
 	markEpisodeWatched(id, episodeId, watched = true, libraryId = undefined) {
 		const body = { episodeId, watched }
-		if (libraryId !== undefined) body.libraryId = libraryId
+		if (libraryId !== undefined) { body.libraryId = libraryId }
 		return axios.post(`${baseUrl}/series/${id}/watched`, body)
 	},
 	markSeasonWatched(id, seasonNumber, watched = true, libraryId = undefined) {
 		const body = { watched }
-		if (libraryId !== undefined) body.libraryId = libraryId
+		if (libraryId !== undefined) { body.libraryId = libraryId }
 		return axios.post(`${baseUrl}/series/${id}/seasons/${seasonNumber}/watched`, body)
 	},
 
@@ -189,12 +189,12 @@ export default {
 	},
 	getRecentMovies(limit = 5, libraryId = undefined) {
 		const params = { limit }
-		if (libraryId !== undefined) params.libraryId = libraryId
+		if (libraryId !== undefined) { params.libraryId = libraryId }
 		return axios.get(`${baseUrl}/stats/recent`, { params })
 	},
 	getTopRatedMovies(limit = 5, libraryId = undefined) {
 		const params = { limit }
-		if (libraryId !== undefined) params.libraryId = libraryId
+		if (libraryId !== undefined) { params.libraryId = libraryId }
 		return axios.get(`${baseUrl}/stats/top-rated`, { params })
 	},
 

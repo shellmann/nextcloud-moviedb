@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
+import { defineStore } from 'pinia'
 import api from '../services/api.js'
 import { useLibrariesStore } from './libraries.js'
 
@@ -43,6 +43,7 @@ export const useMoviesStore = defineStore('movies', {
 	actions: {
 		/**
 		 * Fetches movies from the API with current filters and pagination.
+		 *
 		 * @return {Promise<void>}
 		 */
 		async fetchAll() {
@@ -53,15 +54,15 @@ export const useMoviesStore = defineStore('movies', {
 					page: this.page,
 					limit: this.limit,
 				}
-				if (this.filters.genre) params.genre = this.filters.genre
-				if (this.filters.year) params.year = this.filters.year
-				if (this.filters.platform) params.platform = this.filters.platform
-				if (this.filters.search) params.search = this.filters.search
-				if (this.filters.sort) params.sort = this.filters.sort
-				if (this.filters.dir) params.dir = this.filters.dir
-				if (this.filters.favorite) params.favorite = 1
+				if (this.filters.genre) { params.genre = this.filters.genre }
+				if (this.filters.year) { params.year = this.filters.year }
+				if (this.filters.platform) { params.platform = this.filters.platform }
+				if (this.filters.search) { params.search = this.filters.search }
+				if (this.filters.sort) { params.sort = this.filters.sort }
+				if (this.filters.dir) { params.dir = this.filters.dir }
+				if (this.filters.favorite) { params.favorite = 1 }
 				const libraryId = useLibrariesStore().activeLibraryId
-				if (libraryId !== null) params.libraryId = libraryId
+				if (libraryId !== null) { params.libraryId = libraryId }
 
 				const response = await api.getMovies(params)
 				this.movies = response.data.movies
@@ -78,6 +79,7 @@ export const useMoviesStore = defineStore('movies', {
 
 		/**
 		 * Fetches a single movie by ID.
+		 *
 		 * @param {number} id - Movie ID
 		 * @return {Promise<object | null>} The movie object or null on error
 		 */
@@ -99,6 +101,7 @@ export const useMoviesStore = defineStore('movies', {
 
 		/**
 		 * Creates a new movie entry.
+		 *
 		 * @param {object} movieData - Movie data to create
 		 * @return {Promise<object | null>} The created movie or null on error
 		 */
@@ -128,6 +131,7 @@ export const useMoviesStore = defineStore('movies', {
 
 		/**
 		 * Updates an existing movie.
+		 *
 		 * @param {number} id - Movie ID
 		 * @param {object} data - Updated movie data
 		 * @return {Promise<object | null>} The updated movie or null on error
@@ -138,7 +142,7 @@ export const useMoviesStore = defineStore('movies', {
 				const payload = libraryId !== null ? { ...data, libraryId } : data
 				const response = await api.updateMovie(id, payload)
 				const updatedMovie = response.data.movie
-				const index = this.movies.findIndex(m => m.id === updatedMovie.id)
+				const index = this.movies.findIndex((m) => m.id === updatedMovie.id)
 				if (index !== -1) {
 					this.movies.splice(index, 1, updatedMovie)
 				}
@@ -156,6 +160,7 @@ export const useMoviesStore = defineStore('movies', {
 
 		/**
 		 * Deletes a movie by ID.
+		 *
 		 * @param {number} id - Movie ID
 		 * @return {Promise<boolean>} True if deleted successfully
 		 */
@@ -163,7 +168,7 @@ export const useMoviesStore = defineStore('movies', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				await api.deleteMovie(id, libraryId !== null ? libraryId : undefined)
-				this.movies = this.movies.filter(m => m.id !== id)
+				this.movies = this.movies.filter((m) => m.id !== id)
 				this.total--
 				showSuccess(t('moviedb', 'Movie deleted successfully.'))
 				return true
@@ -192,6 +197,7 @@ export const useMoviesStore = defineStore('movies', {
 
 		/**
 		 * Updates filter criteria and refreshes the movie list.
+		 *
 		 * @param {object} filters - New filter values to merge
 		 */
 		setFilters(filters) {
@@ -202,6 +208,7 @@ export const useMoviesStore = defineStore('movies', {
 
 		/**
 		 * Changes the current page and refreshes the movie list.
+		 *
 		 * @param {number} page - Page number to navigate to
 		 */
 		setPage(page) {

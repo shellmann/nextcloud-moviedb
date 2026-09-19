@@ -17,7 +17,8 @@
 		</div>
 
 		<div class="stats-grid">
-			<div class="stat-card clickable"
+			<div
+				class="stat-card clickable"
 				role="link"
 				tabindex="0"
 				@click="$router.push({ name: 'movies' })"
@@ -29,7 +30,8 @@
 					{{ t('moviedb', 'Movies Watched') }}
 				</div>
 			</div>
-			<div class="stat-card clickable"
+			<div
+				class="stat-card clickable"
 				role="link"
 				tabindex="0"
 				@click="$router.push({ name: 'series' })"
@@ -65,7 +67,8 @@
 					{{ t('moviedb', 'Avg Rating') }}
 				</div>
 			</div>
-			<div class="stat-card clickable"
+			<div
+				class="stat-card clickable"
 				role="link"
 				tabindex="0"
 				@click="$router.push({ name: 'watchlist' })"
@@ -84,11 +87,13 @@
 				<h3>{{ t('moviedb', 'Recently Watched') }}</h3>
 				<div v-if="recentItems.length" class="movie-row">
 					<template v-for="item in recentItems">
-						<MovieCard v-if="item._type === 'movie'"
+						<MovieCard
+							v-if="item._type === 'movie'"
 							:key="'movie-' + item.id"
 							:movie="item"
 							@click="goToMovie(item.id)" />
-						<SeriesCard v-else
+						<SeriesCard
+							v-else
 							:key="'series-' + item.id"
 							:series="item"
 							@click="goToSeries(item.id)" />
@@ -103,11 +108,13 @@
 				<h3>{{ t('moviedb', 'Top Rated') }}</h3>
 				<div v-if="topRatedItems.length" class="movie-row">
 					<template v-for="item in topRatedItems">
-						<MovieCard v-if="item._type === 'movie'"
+						<MovieCard
+							v-if="item._type === 'movie'"
 							:key="'movie-' + item.id"
 							:movie="item"
 							@click="goToMovie(item.id)" />
-						<SeriesCard v-else
+						<SeriesCard
+							v-else
 							:key="'series-' + item.id"
 							:series="item"
 							@click="goToSeries(item.id)" />
@@ -126,8 +133,8 @@ import { NcNoteCard } from '@nextcloud/vue'
 import MovieCard from '../components/MovieCard.vue'
 import SeriesCard from '../components/SeriesCard.vue'
 import api from '../services/api.js'
-import { useSettingsStore } from '../stores/settings.js'
 import { useLibrariesStore } from '../stores/libraries.js'
+import { useSettingsStore } from '../stores/settings.js'
 
 export default {
 	name: 'Dashboard',
@@ -136,11 +143,13 @@ export default {
 		MovieCard,
 		SeriesCard,
 	},
+
 	setup() {
 		const settingsStore = useSettingsStore()
 		const librariesStore = useLibrariesStore()
 		return { settingsStore, librariesStore }
 	},
+
 	data() {
 		return {
 			stats: {
@@ -151,6 +160,7 @@ export default {
 				averageRating: 0,
 				watchlistCount: 0,
 			},
+
 			recentMovies: [],
 			recentSeries: [],
 			topRatedMovies: [],
@@ -158,30 +168,35 @@ export default {
 			loading: true,
 		}
 	},
+
 	computed: {
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
 		},
+
 		recentItems() {
-			const movies = this.recentMovies.map(m => ({ ...m, _type: 'movie' }))
-			const series = this.recentSeries.map(s => ({ ...s, _type: 'series' }))
+			const movies = this.recentMovies.map((m) => ({ ...m, _type: 'movie' }))
+			const series = this.recentSeries.map((s) => ({ ...s, _type: 'series' }))
 			return [...movies, ...series]
 				.sort((a, b) => (b.lastWatchedAt || '').localeCompare(a.lastWatchedAt || ''))
 				.slice(0, 10)
 		},
+
 		topRatedItems() {
-			const movies = this.topRatedMovies.map(m => ({ ...m, _type: 'movie' }))
-			const series = this.topRatedSeries.map(s => ({ ...s, _type: 'series' }))
+			const movies = this.topRatedMovies.map((m) => ({ ...m, _type: 'movie' }))
+			const series = this.topRatedSeries.map((s) => ({ ...s, _type: 'series' }))
 			return [...movies, ...series]
 				.sort((a, b) => (b.lastRating ?? b.rating ?? 0) - (a.lastRating ?? a.rating ?? 0))
 				.slice(0, 10)
 		},
 	},
+
 	async created() {
 		// Wait for libraries so the active library id is known before fetching.
 		await this.librariesStore.whenReady()
 		await this.loadDashboardData()
 	},
+
 	methods: {
 		async loadDashboardData() {
 			this.loading = true
@@ -204,9 +219,11 @@ export default {
 				this.loading = false
 			}
 		},
+
 		goToMovie(id) {
 			this.$router.push({ name: 'movie-detail', params: { id } })
 		},
+
 		goToSeries(id) {
 			this.$router.push({ name: 'series-detail', params: { id } })
 		},
