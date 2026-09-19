@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.4.2] - 2026-09-19
+
+### Maintenance
+- Upgraded `eslint` 8 → 10, `@nextcloud/eslint-config` 8 → 9 (flat config migration),
+  `eslint-webpack-plugin` 4 → 6, and `@typescript-eslint/*` to latest. No functional
+  changes; a handful of newly-flagged issues fixed along the way (deprecated
+  `router-link` `exact` prop removed, unused `catch` bindings dropped, `NcButton`
+  `type` prop renamed to `variant`).
+- Upgraded `pinia` 2 → 4 and `vue-router` 4 → 5. No code changes required.
+- Fixed `qs` and `fast-xml-parser` `npm audit` advisories (transitive dev
+  dependencies, resolved by the eslint-config bump).
+
 ## [1.4.1] - 2026-09-13
 
 ### Fixed
