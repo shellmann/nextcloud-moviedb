@@ -1,6 +1,6 @@
-import { defineStore } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
+import { defineStore } from 'pinia'
 import api from '../services/api.js'
 
 /**
@@ -22,6 +22,7 @@ export const useSettingsStore = defineStore('settings', {
 	actions: {
 		/**
 		 * Fetches current settings from the API.
+		 *
 		 * @return {Promise<void>}
 		 */
 		async fetch() {
@@ -41,6 +42,7 @@ export const useSettingsStore = defineStore('settings', {
 
 		/**
 		 * Updates user settings.
+		 *
 		 * @param {object} data - Settings to update
 		 * @param {string} [data.apiKey] - TMDB API key
 		 * @param {string} [data.defaultLanguage] - Default TMDB language

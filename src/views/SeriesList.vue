@@ -6,11 +6,13 @@
 				<span v-if="!loading" class="series-count">({{ total }})</span>
 			</h2>
 			<div class="header-actions">
-				<NcTextField v-model="searchQuery"
+				<NcTextField
+					v-model="searchQuery"
 					:label="t('moviedb', 'Search')"
-					:placeholder="t('moviedb', 'Search TV shows...')"
+					:placeholder="t('moviedb', 'Search TV shows…')"
 					@update:modelValue="debouncedSearch" />
-				<NcButton v-if="activeCanEdit"
+				<NcButton
+					v-if="activeCanEdit"
 					:aria-label="t('moviedb', 'Add TV Show')"
 					:title="t('moviedb', 'Add TV Show')"
 					@click="$router.push({ name: 'add-series' })">
@@ -22,17 +24,20 @@
 		</div>
 
 		<div class="filters">
-			<NcSelect v-model="selectedGenre"
+			<NcSelect
+				v-model="selectedGenre"
 				:options="genreOptions"
 				:placeholder="t('moviedb', 'All genres')"
 				:clearable="true"
 				@update:modelValue="applyFilters" />
-			<NcSelect v-model="sortBy"
+			<NcSelect
+				v-model="sortBy"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
 				:aria-label="t('moviedb', 'Sort by')"
 				@update:modelValue="applyFilters" />
-			<NcButton :aria-label="t('moviedb', 'Toggle sort direction')"
+			<NcButton
+				:aria-label="t('moviedb', 'Toggle sort direction')"
 				:title="sortDirection === 'DESC' ? t('moviedb', 'Descending') : t('moviedb', 'Ascending')"
 				@click="toggleSortDirection">
 				<template #icon>
@@ -40,7 +45,8 @@
 					<SortAscending v-else :size="20" />
 				</template>
 			</NcButton>
-			<NcButton :type="showFavoritesOnly ? 'primary' : 'secondary'"
+			<NcButton
+				:variant="showFavoritesOnly ? 'primary' : 'secondary'"
 				@click="toggleFavorites">
 				<template #icon>
 					<Heart :size="20" />
@@ -54,7 +60,8 @@
 		</div>
 
 		<div v-else-if="series.length" class="series-grid">
-			<SeriesCard v-for="item in series"
+			<SeriesCard
+				v-for="item in series"
 				:key="item.id"
 				:series="item"
 				@click="goToSeries(item.id)" />
@@ -78,12 +85,14 @@
 		</NcEmptyContent>
 
 		<div v-if="totalPages > 1" class="pagination">
-			<NcButton :disabled="page <= 1"
+			<NcButton
+				:disabled="page <= 1"
 				@click="goToPage(page - 1)">
 				{{ t('moviedb', 'Previous') }}
 			</NcButton>
 			<span class="page-info">{{ t('moviedb', 'Page {page} of {total}', { page: page, total: totalPages }) }}</span>
-			<NcButton :disabled="page >= totalPages"
+			<NcButton
+				:disabled="page >= totalPages"
 				@click="goToPage(page + 1)">
 				{{ t('moviedb', 'Next') }}
 			</NcButton>
@@ -92,17 +101,17 @@
 </template>
 
 <script>
-import { NcTextField, NcButton, NcSelect, NcLoadingIcon, NcEmptyContent } from '@nextcloud/vue'
-import Plus from 'vue-material-design-icons/Plus.vue'
+import { NcButton, NcEmptyContent, NcLoadingIcon, NcSelect, NcTextField } from '@nextcloud/vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
-import Television from 'vue-material-design-icons/Television.vue'
+import Plus from 'vue-material-design-icons/Plus.vue'
 import SortAscending from 'vue-material-design-icons/SortAscending.vue'
 import SortDescending from 'vue-material-design-icons/SortDescending.vue'
+import Television from 'vue-material-design-icons/Television.vue'
 import SeriesCard from '../components/SeriesCard.vue'
-import { debounce } from '../utils/debounce.js'
-import { useSeriesStore } from '../stores/series.js'
-import { useLibrariesStore } from '../stores/libraries.js'
 import { TV_GENRE_OPTIONS } from '../constants.js'
+import { useLibrariesStore } from '../stores/libraries.js'
+import { useSeriesStore } from '../stores/series.js'
+import { debounce } from '../utils/debounce.js'
 
 export default {
 	name: 'SeriesList',
@@ -119,11 +128,13 @@ export default {
 		SortDescending,
 		SeriesCard,
 	},
+
 	setup() {
 		const seriesStore = useSeriesStore()
 		const librariesStore = useLibrariesStore()
 		return { seriesStore, librariesStore }
 	},
+
 	data() {
 		return {
 			searchQuery: '',
@@ -133,25 +144,32 @@ export default {
 			showFavoritesOnly: false,
 		}
 	},
+
 	computed: {
 		series() {
 			return this.seriesStore.series
 		},
+
 		loading() {
 			return this.seriesStore.loading
 		},
+
 		total() {
 			return this.seriesStore.total
 		},
+
 		page() {
 			return this.seriesStore.page
 		},
+
 		totalPages() {
 			return this.seriesStore.totalPages
 		},
+
 		genreOptions() {
 			return TV_GENRE_OPTIONS
 		},
+
 		sortOptions() {
 			return [
 				{ id: 'date_watched', label: t('moviedb', 'Date Watched') },
@@ -160,16 +178,19 @@ export default {
 				{ id: 'first_air_year', label: t('moviedb', 'First Air Year') },
 			]
 		},
+
 		emptyStateMessage() {
 			if (this.showFavoritesOnly) {
 				return t('moviedb', 'No favorite TV shows yet')
 			}
 			return t('moviedb', 'No TV shows found')
 		},
+
 		activeCanEdit() {
 			return this.librariesStore.activeCanEdit
 		},
 	},
+
 	async created() {
 		this.sortBy = this.sortOptions[0]
 		this.debouncedSearch = debounce(this.applyFilters, 300)
@@ -180,6 +201,7 @@ export default {
 		await this.librariesStore.whenReady()
 		this.seriesStore.fetchAll()
 	},
+
 	methods: {
 		applyFilters() {
 			this.seriesStore.setFilters({
@@ -190,17 +212,21 @@ export default {
 				favorite: this.showFavoritesOnly,
 			})
 		},
+
 		toggleSortDirection() {
 			this.sortDirection = this.sortDirection === 'DESC' ? 'ASC' : 'DESC'
 			this.applyFilters()
 		},
+
 		toggleFavorites() {
 			this.showFavoritesOnly = !this.showFavoritesOnly
 			this.applyFilters()
 		},
+
 		goToPage(page) {
 			this.seriesStore.setPage(page)
 		},
+
 		goToSeries(id) {
 			this.$router.push({ name: 'series-detail', params: { id } })
 		},

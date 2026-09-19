@@ -1,5 +1,6 @@
 <template>
-	<div class="series-card"
+	<div
+		class="series-card"
 		role="button"
 		tabindex="0"
 		:aria-labelledby="'series-title-' + series.id"
@@ -7,7 +8,8 @@
 		@keydown.enter="$emit('click')"
 		@keydown.space.prevent="$emit('click')">
 		<div class="poster">
-			<img v-if="series.posterPath"
+			<img
+				v-if="series.posterPath"
 				:src="posterUrl"
 				:alt="series.title"
 				loading="lazy">
@@ -43,9 +45,9 @@
 </template>
 
 <script>
-import Television from 'vue-material-design-icons/Television.vue'
-import Heart from 'vue-material-design-icons/Heart.vue'
 import Calendar from 'vue-material-design-icons/Calendar.vue'
+import Heart from 'vue-material-design-icons/Heart.vue'
+import Television from 'vue-material-design-icons/Television.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { TV_GENRE_OPTIONS } from '../constants.js'
 import { formatDate } from '../utils/formatters.js'
@@ -60,9 +62,11 @@ export default {
 		Heart,
 		Calendar,
 	},
+
 	props: {
 		/**
 		 * Series object containing all series data
+		 *
 		 * @type {{ id: number, title: string, posterPath?: string, firstAirYear?: number, genreIds?: (Array|string), lastRating?: number, lastWatchedAt?: string, isFavorite?: boolean }}
 		 */
 		series: {
@@ -70,26 +74,30 @@ export default {
 			required: true,
 		},
 	},
+
 	emits: [
 		/**
 		 * Emitted when the card is clicked
 		 */
 		'click',
 	],
+
 	computed: {
 		posterUrl() {
 			return getPosterUrl(this.series.posterPath, 'w300')
 		},
+
 		genreLabels() {
 			const genreIds = this.series.genreIds
-			if (!genreIds) return []
+			if (!genreIds) { return [] }
 			const ids = Array.isArray(genreIds) ? genreIds : JSON.parse(genreIds || '[]')
 			return ids
-				.map(id => TV_GENRE_OPTIONS.find(g => g.id === id)?.label)
+				.map((id) => TV_GENRE_OPTIONS.find((g) => g.id === id)?.label)
 				.filter(Boolean)
 				.slice(0, 2)
 		},
 	},
+
 	methods: {
 		formatDate,
 	},

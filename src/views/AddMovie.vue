@@ -16,7 +16,7 @@
 					<strong>{{ t('moviedb', 'TMDB API Key Required') }}</strong><br>
 					{{ t('moviedb', 'To search for movies and fetch metadata, you need a free TMDB API key.') }}
 				</p>
-				<NcButton type="primary" @click="$router.push({ name: 'settings' })">
+				<NcButton variant="primary" @click="$router.push({ name: 'settings' })">
 					<template #icon>
 						<Cog :size="20" />
 					</template>
@@ -36,7 +36,8 @@
 					{{ t('moviedb', 'Back to Search') }}
 				</NcButton>
 			</div>
-			<MovieForm :movie="selectedMovie"
+			<MovieForm
+				:movie="selectedMovie"
 				:platforms="platforms"
 				:saving="saving"
 				@submit="saveMovie"
@@ -47,7 +48,8 @@
 		<TmdbSearchSection v-else @select="selectMovie" />
 
 		<!-- Duplicate Movie Dialog -->
-		<NcDialog :open="showDuplicateDialog"
+		<NcDialog
+			:open="showDuplicateDialog"
 			:name="t('moviedb', 'Movie already in your list')"
 			@update:open="showDuplicateDialog = $event">
 			<p>{{ t('moviedb', 'You have already added this movie to your list. Would you like to view the existing entry?') }}</p>
@@ -55,7 +57,8 @@
 				<NcButton @click="showDuplicateDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="primary"
+				<NcButton
+					variant="primary"
 					:disabled="!duplicateExistingId"
 					@click="viewExistingMovie">
 					{{ t('moviedb', 'View existing entry') }}
@@ -66,17 +69,17 @@
 </template>
 
 <script>
-import { NcNoteCard, NcButton, NcDialog } from '@nextcloud/vue'
 import { showError } from '@nextcloud/dialogs'
+import { NcButton, NcDialog, NcNoteCard } from '@nextcloud/vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
 import MovieForm from '../components/MovieForm.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
 import api from '../services/api.js'
+import { useLibrariesStore } from '../stores/libraries.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useSettingsStore } from '../stores/settings.js'
-import { useLibrariesStore } from '../stores/libraries.js'
 
 export default {
 	name: 'AddMovie',
@@ -89,6 +92,7 @@ export default {
 		MovieForm,
 		TmdbSearchSection,
 	},
+
 	setup() {
 		const moviesStore = useMoviesStore()
 		const platformsStore = usePlatformsStore()
@@ -96,6 +100,7 @@ export default {
 		const librariesStore = useLibrariesStore()
 		return { moviesStore, platformsStore, settingsStore, librariesStore }
 	},
+
 	data() {
 		return {
 			selectedMovie: null,
@@ -104,20 +109,25 @@ export default {
 			duplicateExistingId: null,
 		}
 	},
+
 	computed: {
 		activeCanEdit() {
 			return this.librariesStore.activeCanEdit
 		},
+
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
 		},
+
 		platforms() {
 			return this.platformsStore.platforms
 		},
+
 		tmdbLanguage() {
 			return this.settingsStore.defaultLanguage || 'en-US'
 		},
 	},
+
 	methods: {
 		async selectMovie(movie) {
 			// Fetch full details from TMDB
@@ -132,7 +142,7 @@ export default {
 					posterPath: details.poster_path,
 					backdropPath: details.backdrop_path,
 					overview: details.overview,
-					genreIds: details.genres?.map(g => g.id) || [],
+					genreIds: details.genres?.map((g) => g.id) || [],
 					releaseDate: details.release_date,
 					runtime: details.runtime,
 					castData: details.cast,
@@ -152,9 +162,10 @@ export default {
 				showError(t('moviedb', 'Failed to load movie details.'))
 			}
 		},
+
 		async saveMovie(movieData) {
 			// Prevent double submission
-			if (this.saving) return
+			if (this.saving) { return }
 
 			this.saving = true
 			const result = await this.moviesStore.create(movieData)
@@ -169,8 +180,9 @@ export default {
 				this.$router.push({ name: 'movies' })
 			}
 		},
+
 		viewExistingMovie() {
-			if (!this.duplicateExistingId) return
+			if (!this.duplicateExistingId) { return }
 			const id = this.duplicateExistingId
 			this.showDuplicateDialog = false
 			this.$router.push({ name: 'movie-detail', params: { id: String(id) } })

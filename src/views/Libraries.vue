@@ -15,7 +15,8 @@
 			</div>
 
 			<div v-else class="library-list">
-				<div v-for="lib in libraries"
+				<div
+					v-for="lib in libraries"
 					:key="lib.id"
 					class="library-item"
 					:class="{ 'library-item--active': lib.id === activeLibraryId }">
@@ -34,11 +35,13 @@
 						</span>
 					</div>
 					<div class="library-item__actions">
-						<NcButton v-if="lib.id !== activeLibraryId"
+						<NcButton
+							v-if="lib.id !== activeLibraryId"
 							@click="switchTo(lib.id)">
 							{{ t('moviedb', 'Switch') }}
 						</NcButton>
-						<NcButton v-if="lib.role === 'owner' && !lib.isPersonal"
+						<NcButton
+							v-if="lib.role === 'owner' && !lib.isPersonal"
 							:aria-label="t('moviedb', 'Rename library')"
 							:title="t('moviedb', 'Rename library')"
 							@click="openRenameDialog(lib)">
@@ -46,7 +49,8 @@
 								<Pencil :size="16" />
 							</template>
 						</NcButton>
-						<NcButton v-if="!lib.isPersonal"
+						<NcButton
+							v-if="!lib.isPersonal"
 							:aria-label="t('moviedb', 'Members')"
 							:title="t('moviedb', 'Members')"
 							@click="openMembersDialog(lib)">
@@ -54,8 +58,9 @@
 								<AccountMultiple :size="16" />
 							</template>
 						</NcButton>
-						<NcButton v-if="lib.role !== 'owner' && !lib.isPersonal"
-							type="error"
+						<NcButton
+							v-if="lib.role !== 'owner' && !lib.isPersonal"
+							variant="error"
 							:aria-label="t('moviedb', 'Leave library')"
 							:title="t('moviedb', 'Leave library')"
 							@click="confirmLeave(lib)">
@@ -63,8 +68,9 @@
 								<ExitToApp :size="16" />
 							</template>
 						</NcButton>
-						<NcButton v-if="lib.role === 'owner' && !lib.isPersonal"
-							type="error"
+						<NcButton
+							v-if="lib.role === 'owner' && !lib.isPersonal"
+							variant="error"
 							:aria-label="t('moviedb', 'Delete library')"
 							:title="t('moviedb', 'Delete library')"
 							@click="confirmDelete(lib)">
@@ -77,10 +83,12 @@
 			</div>
 
 			<div class="create-library">
-				<NcTextField v-model="newLibraryName"
+				<NcTextField
+					v-model="newLibraryName"
 					:placeholder="t('moviedb', 'Library name')" />
-				<NcButton :disabled="!newLibraryName.trim() || creating"
-					type="primary"
+				<NcButton
+					:disabled="!newLibraryName.trim() || creating"
+					variant="primary"
 					@click="createLibrary">
 					<template #icon>
 						<Plus :size="20" />
@@ -91,16 +99,19 @@
 		</div>
 
 		<!-- Rename Dialog -->
-		<NcDialog :open="showRenameDialog"
+		<NcDialog
+			:open="showRenameDialog"
 			:name="t('moviedb', 'Rename Library')"
 			@update:open="showRenameDialog = $event">
-			<NcTextField v-model="renameValue"
+			<NcTextField
+				v-model="renameValue"
 				:placeholder="t('moviedb', 'Library name')" />
 			<template #actions>
 				<NcButton @click="showRenameDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="primary"
+				<NcButton
+					variant="primary"
 					:disabled="!renameValue.trim()"
 					@click="doRename">
 					{{ t('moviedb', 'Save') }}
@@ -109,7 +120,8 @@
 		</NcDialog>
 
 		<!-- Delete Confirmation Dialog -->
-		<NcDialog :open="showDeleteDialog"
+		<NcDialog
+			:open="showDeleteDialog"
 			:name="t('moviedb', 'Delete Library')"
 			@update:open="showDeleteDialog = $event">
 			<p>{{ t('moviedb', 'Delete this library? All its movies, TV shows, and watchlist entries will be permanently removed.') }}</p>
@@ -117,14 +129,15 @@
 				<NcButton @click="showDeleteDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="error" @click="doDelete">
+				<NcButton variant="error" @click="doDelete">
 					{{ t('moviedb', 'Delete') }}
 				</NcButton>
 			</template>
 		</NcDialog>
 
 		<!-- Members Dialog -->
-		<NcDialog :open="showMembersDialog"
+		<NcDialog
+			:open="showMembersDialog"
 			:name="membersDialogTitle"
 			size="normal"
 			@update:open="onMembersDialogToggle">
@@ -134,13 +147,15 @@
 				</div>
 				<div v-else>
 					<div v-if="members.length" class="member-list">
-						<div v-for="member in members"
+						<div
+							v-for="member in members"
 							:key="member.userId"
 							class="member-item">
 							<span class="member-name">{{ member.displayName || member.userId }}</span>
 							<span class="member-role" :class="'role-' + member.role">{{ roleLabel(member.role) }}</span>
-							<NcButton v-if="canManageMembers && !member.isOwner"
-								type="error"
+							<NcButton
+								v-if="canManageMembers && !member.isOwner"
+								variant="error"
 								:aria-label="t('moviedb', 'Remove member')"
 								@click="confirmRemoveMember(member)">
 								<template #icon>
@@ -155,21 +170,24 @@
 
 					<div v-if="canManageMembers" class="add-member">
 						<h4>{{ t('moviedb', 'Add member') }}</h4>
-						<NcSelectUsers v-model="selectedSharee"
+						<NcSelectUsers
+							v-model="selectedSharee"
 							:options="shareeOptions"
 							:loading="searchLoading"
-							:placeholder="t('moviedb', 'Search users...')"
-							:input-label="t('moviedb', 'Search users...')"
+							:placeholder="t('moviedb', 'Search users…')"
+							:inputLabel="t('moviedb', 'Search users…')"
 							@search="onShareeSearch" />
 						<div class="add-member-role">
 							<label>
-								<input v-model="newMemberCanEdit"
+								<input
+									v-model="newMemberCanEdit"
 									type="checkbox">
 								{{ t('moviedb', 'Allow editing') }}
 							</label>
 						</div>
-						<NcButton :disabled="!selectedSharee || addingMember"
-							type="primary"
+						<NcButton
+							:disabled="!selectedSharee || addingMember"
+							variant="primary"
 							@click="addMember">
 							<template #icon>
 								<Plus :size="20" />
@@ -187,7 +205,8 @@
 		</NcDialog>
 
 		<!-- Remove Member Confirmation Dialog -->
-		<NcDialog :open="showRemoveMemberDialog"
+		<NcDialog
+			:open="showRemoveMemberDialog"
 			:name="t('moviedb', 'Remove Member')"
 			@update:open="showRemoveMemberDialog = $event">
 			<p>{{ removeMemberMessage }}</p>
@@ -195,13 +214,14 @@
 				<NcButton @click="showRemoveMemberDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="error" :disabled="removingMember" @click="doRemoveMember">
+				<NcButton variant="error" :disabled="removingMember" @click="doRemoveMember">
 					{{ t('moviedb', 'Remove') }}
 				</NcButton>
 			</template>
 		</NcDialog>
 		<!-- Leave Library Confirmation Dialog -->
-		<NcDialog :open="showLeaveDialog"
+		<NcDialog
+			:open="showLeaveDialog"
 			:name="t('moviedb', 'Leave Library')"
 			@update:open="showLeaveDialog = $event">
 			<p>{{ leaveMessage }}</p>
@@ -209,7 +229,7 @@
 				<NcButton @click="showLeaveDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="error" :disabled="leaving" @click="doLeave">
+				<NcButton variant="error" :disabled="leaving" @click="doLeave">
 					{{ t('moviedb', 'Leave') }}
 				</NcButton>
 			</template>
@@ -218,13 +238,13 @@
 </template>
 
 <script>
-import { NcButton, NcTextField, NcDialog, NcLoadingIcon, NcSelectUsers } from '@nextcloud/vue'
 import { translate as t } from '@nextcloud/l10n'
-import Plus from 'vue-material-design-icons/Plus.vue'
-import Delete from 'vue-material-design-icons/Delete.vue'
-import Pencil from 'vue-material-design-icons/Pencil.vue'
+import { NcButton, NcDialog, NcLoadingIcon, NcSelectUsers, NcTextField } from '@nextcloud/vue'
 import AccountMultiple from 'vue-material-design-icons/AccountMultiple.vue'
+import Delete from 'vue-material-design-icons/Delete.vue'
 import ExitToApp from 'vue-material-design-icons/ExitToApp.vue'
+import Pencil from 'vue-material-design-icons/Pencil.vue'
+import Plus from 'vue-material-design-icons/Plus.vue'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { debounce } from '../utils/debounce.js'
 
@@ -242,10 +262,12 @@ export default {
 		AccountMultiple,
 		ExitToApp,
 	},
+
 	setup() {
 		const librariesStore = useLibrariesStore()
 		return { librariesStore }
 	},
+
 	data() {
 		return {
 			newLibraryName: '',
@@ -275,55 +297,68 @@ export default {
 			leaving: false,
 		}
 	},
+
 	computed: {
 		libraries() {
 			return this.librariesStore.libraries
 		},
+
 		loading() {
 			return this.librariesStore.loading
 		},
+
 		activeLibraryId() {
 			return this.librariesStore.activeLibraryId
 		},
+
 		members() {
 			return this.librariesStore.members
 		},
+
 		membersLoading() {
 			return this.librariesStore.membersLoading
 		},
+
 		membersDialogTitle() {
-			if (!this.membersTarget) return t('moviedb', 'Members')
+			if (!this.membersTarget) { return t('moviedb', 'Members') }
 			return t('moviedb', 'Members of {name}', { name: this.membersTarget.name })
 		},
+
 		canManageMembers() {
 			return this.membersTarget?.role === 'owner'
 		},
+
 		removeMemberMessage() {
 			const name = this.removeMemberTarget
 				? (this.removeMemberTarget.displayName || this.removeMemberTarget.userId)
 				: ''
 			return t('moviedb', 'Remove {name} from this library?', { name })
 		},
+
 		leaveMessage() {
 			const name = this.leaveTarget ? this.leaveTarget.name : ''
 			return t('moviedb', 'Leave {name}?', { name })
 		},
 	},
+
 	created() {
 		this.debouncedSearch = debounce(this.searchSharees, 300)
 	},
+
 	methods: {
 		roleLabel(role) {
-			if (role === 'owner') return t('moviedb', 'Owner')
-			if (role === 'editor') return t('moviedb', 'Editor')
+			if (role === 'owner') { return t('moviedb', 'Owner') }
+			if (role === 'editor') { return t('moviedb', 'Editor') }
 			return t('moviedb', 'Viewer')
 		},
+
 		switchTo(id) {
 			this.librariesStore.setActive(id)
 		},
+
 		async createLibrary() {
 			const name = this.newLibraryName.trim()
-			if (!name) return
+			if (!name) { return }
 			this.creating = true
 			const result = await this.librariesStore.create(name)
 			this.creating = false
@@ -331,34 +366,40 @@ export default {
 				this.newLibraryName = ''
 			}
 		},
+
 		openRenameDialog(lib) {
 			this.renameTarget = lib
 			this.renameValue = lib.name
 			this.showRenameDialog = true
 		},
+
 		async doRename() {
 			const name = this.renameValue.trim()
-			if (!name || !this.renameTarget) return
+			if (!name || !this.renameTarget) { return }
 			await this.librariesStore.rename(this.renameTarget.id, name)
 			this.showRenameDialog = false
 			this.renameTarget = null
 		},
+
 		confirmDelete(lib) {
 			this.deleteTarget = lib
 			this.showDeleteDialog = true
 		},
+
 		async doDelete() {
-			if (!this.deleteTarget) return
+			if (!this.deleteTarget) { return }
 			await this.librariesStore.remove(this.deleteTarget.id)
 			this.showDeleteDialog = false
 			this.deleteTarget = null
 		},
+
 		async openMembersDialog(lib) {
 			this.membersTarget = lib
 			this.showMembersDialog = true
 			await this.librariesStore.fetchMembers(lib.id)
 			this.shareeOptions = []
 		},
+
 		onMembersDialogToggle(open) {
 			this.showMembersDialog = open
 			if (!open) {
@@ -368,6 +409,7 @@ export default {
 				this.newMemberCanEdit = false
 			}
 		},
+
 		onShareeSearch(query) {
 			if ((query || '').length >= 1) {
 				this.debouncedSearch(query)
@@ -375,16 +417,18 @@ export default {
 				this.shareeOptions = []
 			}
 		},
+
 		async searchSharees(query) {
 			this.searchLoading = true
 			const results = await this.librariesStore.searchSharees(query)
 			// Hide users who are already members (or the owner) of this library.
-			const existing = new Set(this.members.map(m => m.userId))
-			this.shareeOptions = results.filter(r => !existing.has(r.id))
+			const existing = new Set(this.members.map((m) => m.userId))
+			this.shareeOptions = results.filter((r) => !existing.has(r.id))
 			this.searchLoading = false
 		},
+
 		async addMember() {
-			if (!this.selectedSharee || !this.membersTarget) return
+			if (!this.selectedSharee || !this.membersTarget) { return }
 			this.addingMember = true
 			await this.librariesStore.addMember(
 				this.membersTarget.id,
@@ -396,12 +440,14 @@ export default {
 			this.newMemberCanEdit = false
 			this.shareeOptions = []
 		},
+
 		confirmRemoveMember(member) {
 			this.removeMemberTarget = member
 			this.showRemoveMemberDialog = true
 		},
+
 		async doRemoveMember() {
-			if (!this.membersTarget || !this.removeMemberTarget) return
+			if (!this.membersTarget || !this.removeMemberTarget) { return }
 			this.removingMember = true
 			await this.librariesStore.removeMember(this.membersTarget.id, this.removeMemberTarget.userId)
 			this.removingMember = false
@@ -409,12 +455,14 @@ export default {
 			this.removeMemberTarget = null
 			this.shareeOptions = []
 		},
+
 		confirmLeave(lib) {
 			this.leaveTarget = lib
 			this.showLeaveDialog = true
 		},
+
 		async doLeave() {
-			if (!this.leaveTarget) return
+			if (!this.leaveTarget) { return }
 			this.leaving = true
 			await this.librariesStore.leaveLibrary(this.leaveTarget.id)
 			this.leaving = false

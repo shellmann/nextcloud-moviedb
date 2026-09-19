@@ -1,7 +1,26 @@
 import { translate, translatePlural } from '@nextcloud/l10n'
 
-export const translateText = (appName, text, vars, count, options) =>
-	translate(appName, text, vars, count, options)
+/**
+ *
+ * @param appName
+ * @param text
+ * @param vars
+ * @param count
+ * @param options
+ */
+export function translateText(appName, text, vars, count, options) {
+	return translate(appName, text, vars, count, options)
+}
 
-export const translateTextPlural = (appName, singular, plural, count, vars, options) =>
-	translatePlural(appName, singular, plural, count, vars, options)
+/**
+ *
+ * @param appName
+ * @param singular
+ * @param plural
+ * @param count
+ * @param vars
+ * @param options
+ */
+export function translateTextPlural(appName, singular, plural, count, vars, options) {
+	return translatePlural(appName, singular, plural, count, vars, options)
+}

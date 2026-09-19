@@ -20,7 +20,8 @@
 					<div v-else class="api-key-status">
 						<span class="status-indicator status-missing">{{ t('moviedb', 'No API key') }}</span>
 					</div>
-					<NcTextField v-model="tmdbApiKey"
+					<NcTextField
+						v-model="tmdbApiKey"
 						:type="showApiKey ? 'text' : 'password'"
 						:placeholder="hasApiKey ? t('moviedb', 'Enter new key to update') : t('moviedb', 'Enter your TMDB API key')" />
 				</div>
@@ -30,8 +31,9 @@
 						<EyeOff v-else :size="20" />
 					</template>
 				</NcButton>
-				<NcButton v-if="hasApiKey"
-					type="error"
+				<NcButton
+					v-if="hasApiKey"
+					variant="error"
 					@click="removeApiKey">
 					<template #icon>
 						<Delete :size="20" />
@@ -42,7 +44,8 @@
 
 			<div class="form-group">
 				<label>{{ t('moviedb', 'Default TMDB Language') }}</label>
-				<NcSelect v-model="selectedLanguage"
+				<NcSelect
+					v-model="selectedLanguage"
 					:options="languageOptions"
 					:placeholder="t('moviedb', 'Select language')" />
 				<p class="hint">
@@ -53,7 +56,7 @@
 				</p>
 			</div>
 
-			<NcButton type="primary" :disabled="saving" @click="saveSettings">
+			<NcButton variant="primary" :disabled="saving" @click="saveSettings">
 				<template #icon>
 					<ContentSave :size="20" />
 				</template>
@@ -68,11 +71,12 @@
 			</p>
 
 			<div class="platform-list">
-				<div v-for="platform in customPlatforms"
+				<div
+					v-for="platform in customPlatforms"
 					:key="platform.id"
 					class="platform-item">
 					<span>{{ platform.name }}</span>
-					<NcButton type="error" @click="deletePlatform(platform.id)">
+					<NcButton variant="error" @click="deletePlatform(platform.id)">
 						<template #icon>
 							<Delete :size="20" />
 						</template>
@@ -81,7 +85,8 @@
 			</div>
 
 			<div class="add-platform">
-				<NcTextField v-model="newPlatformName"
+				<NcTextField
+					v-model="newPlatformName"
 					:placeholder="t('moviedb', 'Platform name')" />
 				<NcButton :disabled="!newPlatformName" @click="addPlatform">
 					<template #icon>
@@ -97,7 +102,8 @@
 		</div>
 
 		<!-- Delete Platform Confirmation Dialog -->
-		<NcDialog :open="showDeletePlatformDialog"
+		<NcDialog
+			:open="showDeletePlatformDialog"
 			:name="t('moviedb', 'Delete Platform')"
 			@update:open="showDeletePlatformDialog = $event">
 			<p>{{ t('moviedb', 'Delete this platform?') }}</p>
@@ -105,14 +111,15 @@
 				<NcButton @click="showDeletePlatformDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="error" @click="confirmDeletePlatform">
+				<NcButton variant="error" @click="confirmDeletePlatform">
 					{{ t('moviedb', 'Delete') }}
 				</NcButton>
 			</template>
 		</NcDialog>
 
 		<!-- Remove API Key Confirmation Dialog -->
-		<NcDialog :open="showRemoveApiKeyDialog"
+		<NcDialog
+			:open="showRemoveApiKeyDialog"
 			:name="t('moviedb', 'Remove API Key')"
 			@update:open="showRemoveApiKeyDialog = $event">
 			<p>{{ t('moviedb', 'Remove API key?') }}</p>
@@ -120,7 +127,7 @@
 				<NcButton @click="showRemoveApiKeyDialog = false">
 					{{ t('moviedb', 'Cancel') }}
 				</NcButton>
-				<NcButton type="error" @click="confirmRemoveApiKey">
+				<NcButton variant="error" @click="confirmRemoveApiKey">
 					{{ t('moviedb', 'Remove') }}
 				</NcButton>
 			</template>
@@ -129,17 +136,17 @@
 </template>
 
 <script>
-import { NcTextField, NcSelect, NcButton, NcDialog } from '@nextcloud/vue'
-import { showSuccess, showError } from '@nextcloud/dialogs'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
-import Eye from 'vue-material-design-icons/Eye.vue'
-import EyeOff from 'vue-material-design-icons/EyeOff.vue'
+import { NcButton, NcDialog, NcSelect, NcTextField } from '@nextcloud/vue'
 import ContentSave from 'vue-material-design-icons/ContentSave.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
+import Eye from 'vue-material-design-icons/Eye.vue'
+import EyeOff from 'vue-material-design-icons/EyeOff.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import { getTmdbLanguageOptions } from '../constants.js'
-import { useSettingsStore } from '../stores/settings.js'
 import { usePlatformsStore } from '../stores/platforms.js'
+import { useSettingsStore } from '../stores/settings.js'
 
 export default {
 	name: 'Settings',
@@ -154,11 +161,13 @@ export default {
 		Delete,
 		Plus,
 	},
+
 	setup() {
 		const settingsStore = useSettingsStore()
 		const platformsStore = usePlatformsStore()
 		return { settingsStore, platformsStore }
 	},
+
 	data() {
 		return {
 			tmdbApiKey: '',
@@ -172,23 +181,28 @@ export default {
 			pendingDeletePlatformId: null,
 		}
 	},
+
 	computed: {
 		appVersion() {
 			// eslint-disable-next-line no-undef
 			return typeof __APP_VERSION__ !== 'undefined' ? __APP_VERSION__ : 'unknown'
 		},
+
 		customPlatforms() {
 			return this.platformsStore.customPlatforms
 		},
+
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
 		},
 	},
+
 	mounted() {
 		// Set initial language from store
 		const defaultLang = this.settingsStore.defaultLanguage
-		this.selectedLanguage = this.languageOptions.find(l => l.id === defaultLang) || this.languageOptions[0]
+		this.selectedLanguage = this.languageOptions.find((l) => l.id === defaultLang) || this.languageOptions[0]
 	},
+
 	methods: {
 		async saveSettings() {
 			this.saving = true
@@ -199,14 +213,15 @@ export default {
 				})
 				showSuccess(t('moviedb', 'Settings saved successfully.'))
 				this.tmdbApiKey = '' // Clear the field after save
-			} catch (error) {
+			} catch {
 				showError(t('moviedb', 'Failed to save settings. Please try again.'))
 			} finally {
 				this.saving = false
 			}
 		},
+
 		async addPlatform() {
-			if (!this.newPlatformName) return
+			if (!this.newPlatformName) { return }
 
 			try {
 				await this.platformsStore.create({
@@ -214,33 +229,37 @@ export default {
 				})
 				showSuccess(t('moviedb', 'Platform created successfully.'))
 				this.newPlatformName = ''
-			} catch (error) {
+			} catch {
 				showError(t('moviedb', 'Failed to create platform. Please try again.'))
 			}
 		},
+
 		async deletePlatform(id) {
 			this.pendingDeletePlatformId = id
 			this.showDeletePlatformDialog = true
 		},
+
 		async confirmDeletePlatform() {
 			try {
 				await this.platformsStore.delete(this.pendingDeletePlatformId)
 				showSuccess(t('moviedb', 'Platform deleted successfully.'))
-			} catch (error) {
+			} catch {
 				showError(t('moviedb', 'Failed to delete platform. Please try again.'))
 			} finally {
 				this.showDeletePlatformDialog = false
 				this.pendingDeletePlatformId = null
 			}
 		},
+
 		async removeApiKey() {
 			this.showRemoveApiKeyDialog = true
 		},
+
 		async confirmRemoveApiKey() {
 			try {
 				await this.settingsStore.update({ tmdbApiKey: '' })
 				showSuccess(t('moviedb', 'API key removed successfully.'))
-			} catch (error) {
+			} catch {
 				showError(t('moviedb', 'Failed to remove API key. Please try again.'))
 			} finally {
 				this.showRemoveApiKeyDialog = false

@@ -12,7 +12,7 @@ import { getLocale } from '@nextcloud/l10n'
  * @return {string} Formatted date or empty string if invalid
  */
 export function formatDate(dateString, options = { year: 'numeric', month: 'short', day: 'numeric' }) {
-	if (!dateString) return ''
+	if (!dateString) { return '' }
 	const date = new Date(dateString)
 	const locale = getLocale().replace('_', '-')
 	return date.toLocaleDateString(locale, options)
@@ -25,7 +25,7 @@ export function formatDate(dateString, options = { year: 'numeric', month: 'shor
  * @return {string} Formatted runtime (e.g., "2h 15m" or "45m")
  */
 export function formatRuntime(minutes) {
-	if (!minutes) return ''
+	if (!minutes) { return '' }
 	const hours = Math.floor(minutes / 60)
 	const mins = minutes % 60
 	return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
