@@ -160,33 +160,31 @@ class MovieWatchMapper extends QBMapper {
     }
 
     /**
-     * Watch count per release/air year (movies join moviedb_movies for
-     * release_year; TV shows join moviedb_series for first_air_year — a
-     * COALESCE over both LEFT JOINs, rather than a UNION, keeps this one
-     * portable QueryBuilder query across SQLite/MySQL/Postgres).
+     * Watch count per year *watched* (not release/air year) — matches the
+     * "year in review" convention used by Trakt/Letterboxd. watched_at is a
+     * Types::DATE column stored as ISO YYYY-MM-DD across SQLite/MySQL/Postgres,
+     * so SUBSTR(watched_at, 1, 4) portably extracts the year without needing
+     * a YEAR()/EXTRACT()/strftime() call (none of which is portable across all
+     * three backends).
      *
      * @param ?string $mediaType Restrict to 'movie' or 'series' watches; null for both.
      * @return array<string, int>
      */
     public function getCountByYear(int $libraryId, ?string $mediaType = null): array {
         $qb = $this->db->getQueryBuilder();
-        $yearExpr = $qb->createFunction('COALESCE(m.release_year, s.first_air_year)');
+        $yearExpr = $qb->createFunction('SUBSTR(watched_at, 1, 4)');
 
         $qb->selectAlias($yearExpr, 'year')
             ->selectAlias($qb->func()->count('*'), 'count')
-            ->from($this->getTableName(), 'w')
-            ->leftJoin('w', 'moviedb_movies', 'm', $qb->expr()->eq('w.movie_id', 'm.id'))
-            ->leftJoin('w', 'moviedb_series', 's', $qb->expr()->andX(
-                $qb->expr()->eq('w.series_id', 's.id'),
-                $qb->expr()->isNull('w.episode_id')
-            ))
-            ->where($qb->expr()->eq('w.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->isNotNull('watched_at'));
 
         if ($mediaType === 'movie') {
-            $qb->andWhere($qb->expr()->isNotNull('w.movie_id'));
+            $qb->andWhere($qb->expr()->isNotNull('movie_id'));
         } elseif ($mediaType === 'series') {
-            $qb->andWhere($qb->expr()->isNotNull('w.series_id'))
-                ->andWhere($qb->expr()->isNull('w.episode_id'));
+            $qb->andWhere($qb->expr()->isNotNull('series_id'))
+                ->andWhere($qb->expr()->isNull('episode_id'));
         }
 
         $qb->groupBy($yearExpr)

@@ -10,10 +10,18 @@ use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
 
 /**
- * Unit tests for MovieWatchMapper's year/platform aggregation, verifying TV
- * show watches are now included (previously excluded via a movie_id filter
- * on getCountByPlatform, and structural exclusion via an inner join to
- * moviedb_movies on getCountByYear).
+ * Unit tests for MovieWatchMapper's year/platform aggregation.
+ *
+ * getCountByPlatform: TV show watches are included (previously excluded via a
+ * movie_id filter, which structurally excluded every series watch).
+ *
+ * getCountByYear: groups by the year *watched* (SUBSTR(watched_at, 1, 4)),
+ * not release/air year — matches the "year in review" convention used by
+ * Trakt/Letterboxd (v1.5.2 correction; it previously grouped by release/air
+ * year via a COALESCE over joins to moviedb_movies/moviedb_series, which
+ * didn't match what "Watches by Year" implies). watched_at lives directly on
+ * moviedb_movie_watches for both movies and series-level watch rows, so no
+ * join is needed.
  */
 class MovieWatchMapperTest extends TestCase {
     private MovieWatchMapper $mapper;
@@ -43,22 +51,27 @@ class MovieWatchMapperTest extends TestCase {
         $this->assertContains('platform_id', $this->qbStub->isNotNullCalls);
     }
 
-    public function testGetCountByYearJoinsSeriesTable(): void {
+    public function testGetCountByYearDoesNotJoin(): void {
+        // watched_at lives directly on moviedb_movie_watches for both movies
+        // and series-level watches — no join needed to group by watch year.
         $this->mapper->getCountByYear(1);
 
-        $joinedTables = array_column($this->qbStub->leftJoinCalls, 1);
-        $this->assertContains('moviedb_movies', $joinedTables);
-        $this->assertContains('moviedb_series', $joinedTables,
-            'getCountByYear must join moviedb_series so TV show watches contribute to the year breakdown.');
+        $this->assertEmpty($this->qbStub->leftJoinCalls);
     }
 
-    public function testGetCountByYearGroupsByCoalescedYear(): void {
+    public function testGetCountByYearGroupsByWatchedAtYear(): void {
         $this->mapper->getCountByYear(1);
 
         $this->assertNotEmpty($this->qbStub->createFunctionCalls);
-        $this->assertStringContainsString('COALESCE', $this->qbStub->createFunctionCalls[0]);
-        $this->assertStringContainsString('release_year', $this->qbStub->createFunctionCalls[0]);
-        $this->assertStringContainsString('first_air_year', $this->qbStub->createFunctionCalls[0]);
+        $this->assertStringContainsString('watched_at', $this->qbStub->createFunctionCalls[0]);
+        $this->assertStringNotContainsString('release_year', $this->qbStub->createFunctionCalls[0]);
+        $this->assertStringNotContainsString('first_air_year', $this->qbStub->createFunctionCalls[0]);
+    }
+
+    public function testGetCountByYearExcludesNullWatchedAt(): void {
+        $this->mapper->getCountByYear(1);
+
+        $this->assertContains('watched_at', $this->qbStub->isNotNullCalls);
     }
 
     public function testGetCountByPlatformWithMovieFilterRequiresMovieId(): void {
@@ -86,14 +99,14 @@ class MovieWatchMapperTest extends TestCase {
     public function testGetCountByYearWithMovieFilterRequiresMovieId(): void {
         $this->mapper->getCountByYear(1, 'movie');
 
-        $this->assertContains('w.movie_id', $this->qbStub->isNotNullCalls);
+        $this->assertContains('movie_id', $this->qbStub->isNotNullCalls);
     }
 
     public function testGetCountByYearWithSeriesFilterRequiresSeriesIdAndNullEpisode(): void {
         $this->mapper->getCountByYear(1, 'series');
 
-        $this->assertContains('w.series_id', $this->qbStub->isNotNullCalls);
-        $this->assertContains('w.episode_id', $this->qbStub->isNullCalls);
+        $this->assertContains('series_id', $this->qbStub->isNotNullCalls);
+        $this->assertContains('episode_id', $this->qbStub->isNullCalls);
     }
 
     public function testGetCountByYearAggregatesFetchedRowsByCoalescedYear(): void {
