@@ -12,8 +12,16 @@ export const useWatchlistStore = defineStore('watchlist', {
 	state: () => ({
 		/** @type {Array<object>} List of watchlist items */
 		items: [],
-		/** @type {number} Total number of items in watchlist */
+		/** @type {number} Total number of items matching current filters */
 		total: 0,
+		/** @type {number} Total number of items in the library, ignoring filters (for the sidebar badge) */
+		totalUnfiltered: 0,
+		/** @type {number} Current page number */
+		page: 1,
+		/** @type {number} Number of items per page */
+		limit: 50,
+		/** @type {number} Total number of pages */
+		totalPages: 0,
 		/** @type {boolean} Whether a fetch operation is in progress */
 		loading: false,
 		/** @type {string} Current sort field */
@@ -26,18 +34,6 @@ export const useWatchlistStore = defineStore('watchlist', {
 
 	getters: {
 		hasItems: (state) => state.items.length > 0,
-		/**
-		 * Items filtered by the active media-type filter (client-side; lists are small).
-		 *
-		 * @param {object} state - Store state
-		 * @return {Array<object>} Filtered items
-		 */
-		filteredItems: (state) => {
-			if (state.typeFilter === 'all') {
-				return state.items
-			}
-			return state.items.filter((i) => (i.mediaType || 'movie') === state.typeFilter)
-		},
 	},
 
 	actions: {
@@ -50,11 +46,20 @@ export const useWatchlistStore = defineStore('watchlist', {
 			this.loading = true
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
-				const params = { sort: this.sort, dir: this.dir }
+				const params = {
+					sort: this.sort,
+					dir: this.dir,
+					page: this.page,
+					limit: this.limit,
+				}
+				if (this.typeFilter !== 'all') { params.mediaType = this.typeFilter }
 				if (libraryId !== null) { params.libraryId = libraryId }
 				const response = await api.getWatchlist(params)
 				this.items = response.data.items
 				this.total = response.data.total
+				this.totalUnfiltered = response.data.totalUnfiltered
+				this.page = response.data.page
+				this.totalPages = response.data.totalPages
 			} catch (error) {
 				console.error('Failed to fetch watchlist:', error)
 				showError(t('moviedb', 'Failed to load watchlist. Please try again.'))
@@ -73,6 +78,7 @@ export const useWatchlistStore = defineStore('watchlist', {
 		async setSort(sort, dir) {
 			this.sort = sort
 			this.dir = dir
+			this.page = 1
 			await this.fetchAll()
 		},
 
@@ -85,12 +91,38 @@ export const useWatchlistStore = defineStore('watchlist', {
 		},
 
 		/**
-		 * Sets the media-type filter ('all' | 'movie' | 'series').
+		 * Resets sort, type filter, and pagination to defaults. Does not
+		 * fetch — callers are expected to call fetchAll() afterward (mirrors
+		 * the movies/series stores' resetFilters()).
+		 */
+		resetFilters() {
+			this.sort = 'priority'
+			this.dir = 'DESC'
+			this.typeFilter = 'all'
+			this.page = 1
+		},
+
+		/**
+		 * Sets the media-type filter ('all' | 'movie' | 'series') and re-fetches.
 		 *
 		 * @param {string} type - The type filter to apply
+		 * @return {Promise<void>}
 		 */
-		setTypeFilter(type) {
+		async setTypeFilter(type) {
 			this.typeFilter = type
+			this.page = 1
+			await this.fetchAll()
+		},
+
+		/**
+		 * Changes the current page and re-fetches.
+		 *
+		 * @param {number} page - Page number to navigate to
+		 * @return {Promise<void>}
+		 */
+		async setPage(page) {
+			this.page = page
+			await this.fetchAll()
 		},
 
 		/**
@@ -106,6 +138,7 @@ export const useWatchlistStore = defineStore('watchlist', {
 				const response = await api.addToWatchlist(payload)
 				this.items.unshift(response.data.item)
 				this.total++
+				this.totalUnfiltered++
 				if (response.data.alreadyWatched) {
 					showSuccess(t('moviedb', 'Added to watchlist. You\'ve seen this one before — this will be logged as a rewatch when you mark it watched.'))
 				} else {
@@ -161,6 +194,7 @@ export const useWatchlistStore = defineStore('watchlist', {
 				await api.removeFromWatchlist(id, libraryId !== null ? libraryId : undefined)
 				this.items = this.items.filter((i) => i.id !== id)
 				this.total--
+				this.totalUnfiltered--
 				showSuccess(t('moviedb', 'Removed from watchlist.'))
 				return true
 			} catch (error) {
@@ -185,6 +219,7 @@ export const useWatchlistStore = defineStore('watchlist', {
 				const response = await api.moveToWatched(id, payload)
 				this.items = this.items.filter((i) => i.id !== id)
 				this.total--
+				this.totalUnfiltered--
 				if (response.data.series) {
 					showSuccess(t('moviedb', 'Added to your TV shows.'))
 				} else {

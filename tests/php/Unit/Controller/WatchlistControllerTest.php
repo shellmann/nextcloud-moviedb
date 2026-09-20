@@ -156,4 +156,193 @@ class WatchlistControllerTest extends TestCase {
         $this->assertArrayNotHasKey('series', $data);
         $this->assertSame(99, $data['movie']->getId());
     }
+
+    public function testIndexDefaultsToPageOneAndLimitFifty(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->request->method('getParam')->willReturnCallback(
+            fn($k, $d = null) => $d
+        );
+
+        $this->service->expects($this->once())
+            ->method('findAll')
+            ->with(self::LIBRARY_ID, $this->anything(), 50, 0)
+            ->willReturn([]);
+        $this->service->expects($this->once())
+            ->method('count')
+            ->with(self::LIBRARY_ID, $this->anything())
+            ->willReturn(0);
+
+        $response = $this->controller->index();
+
+        $data = $response->getData();
+        $this->assertSame(1, $data['page']);
+        $this->assertSame(50, $data['limit']);
+    }
+
+    public function testIndexAppliesPageAndLimitParams(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->request->method('getParam')->willReturnCallback(
+            fn($k, $d = null) => match ($k) {
+                'page' => '3',
+                'limit' => '10',
+                default => $d,
+            }
+        );
+
+        // page 3, limit 10 -> offset 20
+        $this->service->expects($this->once())
+            ->method('findAll')
+            ->with(self::LIBRARY_ID, $this->anything(), 10, 20)
+            ->willReturn([]);
+        $this->service->method('count')->willReturn(25);
+
+        $response = $this->controller->index();
+
+        $data = $response->getData();
+        $this->assertSame(3, $data['page']);
+        $this->assertSame(10, $data['limit']);
+        $this->assertSame(3, (int)$data['totalPages']);
+    }
+
+    public function testIndexCapsLimitAtOneHundred(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->request->method('getParam')->willReturnCallback(
+            fn($k, $d = null) => $k === 'limit' ? '500' : $d
+        );
+
+        $this->service->expects($this->once())
+            ->method('findAll')
+            ->with(self::LIBRARY_ID, $this->anything(), 100, 0)
+            ->willReturn([]);
+        $this->service->method('count')->willReturn(0);
+
+        $response = $this->controller->index();
+
+        $this->assertSame(100, $response->getData()['limit']);
+    }
+
+    public function testIndexForwardsMediaTypeFilter(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->request->method('getParam')->willReturnCallback(
+            fn($k, $d = null) => $k === 'mediaType' ? 'series' : $d
+        );
+
+        $this->service->expects($this->once())
+            ->method('findAll')
+            ->with(self::LIBRARY_ID, $this->callback(fn($f) => ($f['mediaType'] ?? null) === 'series'), $this->anything(), $this->anything())
+            ->willReturn([]);
+        // count() is called twice: once with the mediaType filter (for
+        // pagination's `total`), once without any filter (for the sidebar's
+        // `totalUnfiltered`).
+        $this->service->expects($this->exactly(2))
+            ->method('count')
+            ->willReturnCallback(function ($libId, $filters) {
+                $this->assertSame(self::LIBRARY_ID, $libId);
+                return 0;
+            });
+
+        $this->controller->index();
+    }
+
+    public function testIndexReturnsTotalUnfilteredWhenFilterApplied(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->request->method('getParam')->willReturnCallback(
+            fn($k, $d = null) => $k === 'search' ? 'dune' : $d
+        );
+
+        $callCount = 0;
+        $this->service->method('count')->willReturnCallback(function ($libId, $filters) use (&$callCount) {
+            $callCount++;
+            return empty($filters) ? 50 : 3;
+        });
+        $this->service->method('findAll')->willReturn([]);
+
+        $response = $this->controller->index();
+
+        $data = $response->getData();
+        $this->assertSame(3, $data['total']);
+        $this->assertSame(50, $data['totalUnfiltered']);
+        $this->assertSame(2, $callCount);
+    }
+
+    public function testIndexTotalUnfilteredMatchesTotalWhenNoFilterApplied(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->request->method('getParam')->willReturnCallback(fn($k, $d = null) => $d);
+
+        $this->service->expects($this->once())
+            ->method('count')
+            ->with(self::LIBRARY_ID, $this->anything())
+            ->willReturn(12);
+        $this->service->method('findAll')->willReturn([]);
+
+        $response = $this->controller->index();
+
+        $data = $response->getData();
+        $this->assertSame(12, $data['total']);
+        $this->assertSame(12, $data['totalUnfiltered']);
+    }
+
+    public function testIndexIgnoresInvalidMediaType(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->request->method('getParam')->willReturnCallback(
+            fn($k, $d = null) => $k === 'mediaType' ? 'bogus' : $d
+        );
+
+        $this->service->expects($this->once())
+            ->method('findAll')
+            ->with(self::LIBRARY_ID, $this->callback(fn($f) => ($f['mediaType'] ?? null) === null), $this->anything(), $this->anything())
+            ->willReturn([]);
+        $this->service->method('count')->willReturn(0);
+
+        $this->controller->index();
+    }
+
+    public function testIndexClampsInvalidPaginationParams(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->request->method('getParam')->willReturnCallback(
+            fn($k, $d = null) => match ($k) {
+                'page' => '0',
+                'limit' => '0',
+                default => $d,
+            }
+        );
+
+        // page 0 clamps to 1, limit 0 clamps to 1 -> offset 0, no division by zero.
+        $this->service->expects($this->once())
+            ->method('findAll')
+            ->with(self::LIBRARY_ID, $this->anything(), 1, 0)
+            ->willReturn([]);
+        $this->service->method('count')->willReturn(5);
+
+        $response = $this->controller->index();
+
+        $data = $response->getData();
+        $this->assertSame(1, $data['page']);
+        $this->assertSame(1, $data['limit']);
+        $this->assertSame(5, $data['totalPages']);
+        $this->assertIsInt($data['totalPages']);
+    }
+
+    public function testIndexClampsNegativePageAndLimit(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $this->request->method('getParam')->willReturnCallback(
+            fn($k, $d = null) => match ($k) {
+                'page' => '-3',
+                'limit' => '-10',
+                default => $d,
+            }
+        );
+
+        $this->service->expects($this->once())
+            ->method('findAll')
+            ->with(self::LIBRARY_ID, $this->anything(), 1, 0)
+            ->willReturn([]);
+        $this->service->method('count')->willReturn(0);
+
+        $response = $this->controller->index();
+
+        $data = $response->getData();
+        $this->assertSame(1, $data['page']);
+        $this->assertSame(1, $data['limit']);
+    }
 }

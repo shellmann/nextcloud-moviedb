@@ -76,6 +76,27 @@ class AuthenticatedControllerTest extends TestCase {
     }
 
     /**
+     * @dataProvider mediaTypeProvider
+     */
+    public function testMediaTypeParam(?string $rawValue, ?string $expected): void {
+        $this->request->method('getParam')->with('mediaType')->willReturn($rawValue);
+
+        $controller = $this->createAuthenticatedController();
+
+        $this->assertSame($expected, $controller->exposeMediaTypeParam());
+    }
+
+    public static function mediaTypeProvider(): array {
+        return [
+            'movie is valid' => ['movie', 'movie'],
+            'series is valid' => ['series', 'series'],
+            'null is treated as no filter' => [null, null],
+            'garbage is treated as no filter' => ['bogus', null],
+            'empty string is treated as no filter' => ['', null],
+        ];
+    }
+
+    /**
      * Create a concrete implementation of AuthenticatedController for testing
      */
     private function createAuthenticatedController(): AuthenticatedController {
@@ -86,6 +107,10 @@ class AuthenticatedControllerTest extends TestCase {
 
             public function exposeUserId(): ?string {
                 return $this->userId;
+            }
+
+            public function exposeMediaTypeParam(): ?string {
+                return $this->mediaTypeParam();
             }
         };
     }

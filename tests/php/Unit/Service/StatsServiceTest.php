@@ -123,6 +123,86 @@ class StatsServiceTest extends TestCase {
         $this->assertSame(7.5, $overview['averageRating']);
     }
 
+    public function testGetStatsByYearForwardsNullMediaTypeByDefault(): void {
+        $this->watchMapper->expects($this->once())
+            ->method('getCountByYear')
+            ->with(self::LIBRARY_ID, null)
+            ->willReturn(['2024' => 3]);
+
+        $result = $this->service->getStatsByYear('testuser', self::LIBRARY_ID);
+
+        $this->assertSame(['2024' => 3], $result);
+    }
+
+    public function testGetStatsByYearForwardsMediaTypeFilter(): void {
+        $this->watchMapper->expects($this->once())
+            ->method('getCountByYear')
+            ->with(self::LIBRARY_ID, 'series')
+            ->willReturn(['2022' => 1]);
+
+        $result = $this->service->getStatsByYear('testuser', self::LIBRARY_ID, 'series');
+
+        $this->assertSame(['2022' => 1], $result);
+    }
+
+    public function testGetStatsByPlatformForwardsNullMediaTypeByDefault(): void {
+        $this->watchMapper->expects($this->once())
+            ->method('getCountByPlatform')
+            ->with(self::LIBRARY_ID, null)
+            ->willReturn([1 => 5]);
+        $this->platformMapper->method('find')->with(1)->willReturn($this->makePlatform(1, 'Netflix'));
+
+        $result = $this->service->getStatsByPlatform('testuser', self::LIBRARY_ID);
+
+        $this->assertSame([['id' => 1, 'name' => 'Netflix', 'icon' => null, 'count' => 5]], $result);
+    }
+
+    public function testGetStatsByPlatformForwardsMediaTypeFilter(): void {
+        $this->watchMapper->expects($this->once())
+            ->method('getCountByPlatform')
+            ->with(self::LIBRARY_ID, 'movie')
+            ->willReturn([2 => 3]);
+        $this->platformMapper->method('find')->with(2)->willReturn($this->makePlatform(2, 'HBO Max'));
+
+        $result = $this->service->getStatsByPlatform('testuser', self::LIBRARY_ID, 'movie');
+
+        $this->assertSame([['id' => 2, 'name' => 'HBO Max', 'icon' => null, 'count' => 3]], $result);
+    }
+
+    public function testGetStatsByPlatformSortsByCountDescending(): void {
+        $names = [1 => 'Netflix', 2 => 'HBO Max', 3 => 'Cinema'];
+        $this->watchMapper->method('getCountByPlatform')->willReturn([1 => 2, 2 => 9, 3 => 5]);
+        $this->platformMapper->method('find')->willReturnCallback(
+            fn (int $id) => $this->makePlatform($id, $names[$id])
+        );
+
+        $result = $this->service->getStatsByPlatform('testuser', self::LIBRARY_ID);
+
+        $this->assertSame(['HBO Max', 'Cinema', 'Netflix'], array_column($result, 'name'));
+    }
+
+    public function testGetStatsByPlatformSkipsDeletedPlatforms(): void {
+        $this->watchMapper->method('getCountByPlatform')->willReturn([1 => 2, 999 => 4]);
+        $this->platformMapper->method('find')->willReturnCallback(function (int $id) {
+            if ($id === 999) {
+                throw new \OCP\AppFramework\Db\DoesNotExistException('gone');
+            }
+            return $this->makePlatform($id, 'Netflix');
+        });
+
+        $result = $this->service->getStatsByPlatform('testuser', self::LIBRARY_ID);
+
+        $this->assertCount(1, $result);
+        $this->assertSame('Netflix', $result[0]['name']);
+    }
+
+    private function makePlatform(int $id, string $name): \OCA\MovieDB\Db\Platform {
+        $platform = new \OCA\MovieDB\Db\Platform();
+        $platform->setId($id);
+        $platform->setName($name);
+        return $platform;
+    }
+
     private function makeSeries(int $id, ?int $lastRating): Series {
         $series = new Series();
         $series->setId($id);

@@ -44,8 +44,8 @@ class SeriesController extends AuthenticatedController {
 
         $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
 
-        $page = (int)$this->request->getParam('page', 1);
-        $limit = min((int)$this->request->getParam('limit', 24), 100);
+        $page = max(1, (int)$this->request->getParam('page', 1));
+        $limit = max(1, min((int)$this->request->getParam('limit', 24), 100));
         $offset = ($page - 1) * $limit;
 
         $filters = [
@@ -65,7 +65,7 @@ class SeriesController extends AuthenticatedController {
             'total' => $total,
             'page' => $page,
             'limit' => $limit,
-            'totalPages' => ceil($total / $limit),
+            'totalPages' => (int)ceil($total / $limit),
         ]);
     }
 

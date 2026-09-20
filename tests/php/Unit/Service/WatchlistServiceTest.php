@@ -57,7 +57,7 @@ class WatchlistServiceTest extends TestCase {
 
         $this->mapper->expects($this->once())
             ->method('findAll')
-            ->with(self::LIBRARY_ID, $filters)
+            ->with(self::LIBRARY_ID, $filters, 50, 0)
             ->willReturn($items);
 
         $result = $this->service->findAll(self::LIBRARY_ID, $filters);
@@ -67,15 +67,25 @@ class WatchlistServiceTest extends TestCase {
         $this->assertInstanceOf(WatchlistItem::class, $result[0]);
     }
 
+    public function testFindAllForwardsLimitAndOffset(): void {
+        $this->mapper->expects($this->once())
+            ->method('findAll')
+            ->with(self::LIBRARY_ID, [], 10, 20)
+            ->willReturn([]);
+
+        $this->service->findAll(self::LIBRARY_ID, [], 10, 20);
+    }
+
     public function testCount(): void {
         $expectedCount = 15;
+        $filters = ['search' => 'Dune'];
 
         $this->mapper->expects($this->once())
             ->method('countAll')
-            ->with(self::LIBRARY_ID)
+            ->with(self::LIBRARY_ID, $filters)
             ->willReturn($expectedCount);
 
-        $result = $this->service->count(self::LIBRARY_ID);
+        $result = $this->service->count(self::LIBRARY_ID, $filters);
 
         $this->assertEquals($expectedCount, $result);
     }

@@ -18,7 +18,7 @@
 
 		<div class="stats-grid">
 			<div
-				class="stat-card clickable"
+				class="stat-card clickable accent-primary"
 				role="link"
 				tabindex="0"
 				@click="$router.push({ name: 'movies' })"
@@ -31,7 +31,7 @@
 				</div>
 			</div>
 			<div
-				class="stat-card clickable"
+				class="stat-card clickable accent-success"
 				role="link"
 				tabindex="0"
 				@click="$router.push({ name: 'series' })"
@@ -43,7 +43,7 @@
 					{{ t('moviedb', 'TV Shows') }}
 				</div>
 			</div>
-			<div class="stat-card">
+			<div class="stat-card accent-warning">
 				<div class="stat-value">
 					{{ stats.totalEpisodesWatched }}
 				</div>
@@ -51,7 +51,7 @@
 					{{ t('moviedb', 'Episodes Watched') }}
 				</div>
 			</div>
-			<div class="stat-card">
+			<div class="stat-card accent-maxcontrast">
 				<div class="stat-value">
 					{{ stats.totalRuntimeHours }}h
 				</div>
@@ -59,7 +59,7 @@
 					{{ t('moviedb', 'Total Runtime') }}
 				</div>
 			</div>
-			<div class="stat-card">
+			<div class="stat-card accent-favorite">
 				<div class="stat-value">
 					{{ stats.averageRating || '-' }}
 				</div>
@@ -68,7 +68,7 @@
 				</div>
 			</div>
 			<div
-				class="stat-card clickable"
+				class="stat-card clickable accent-primary-light"
 				role="link"
 				tabindex="0"
 				@click="$router.push({ name: 'watchlist' })"
@@ -124,14 +124,33 @@
 					{{ t('moviedb', 'Rate some movies to see them here') }}
 				</p>
 			</div>
+
+			<div class="section">
+				<div class="section-header">
+					<h3>{{ t('moviedb', 'Watch Statistics') }}</h3>
+					<NcSelect
+						v-model="selectedChartMediaType"
+						class="chart-media-filter"
+						:options="chartMediaTypeOptions"
+						:clearable="false"
+						:aria-label="t('moviedb', 'Show')"
+						@update:modelValue="onChartMediaTypeChange" />
+				</div>
+				<h4>{{ t('moviedb', 'Watches by Year') }}</h4>
+				<YearChart :data="statsByYear" />
+				<h4>{{ t('moviedb', 'Watches by Platform') }}</h4>
+				<PlatformChart :data="statsByPlatform" />
+			</div>
 		</div>
 	</div>
 </template>
 
 <script>
-import { NcNoteCard } from '@nextcloud/vue'
+import { NcNoteCard, NcSelect } from '@nextcloud/vue'
 import MovieCard from '../components/MovieCard.vue'
+import PlatformChart from '../components/PlatformChart.vue'
 import SeriesCard from '../components/SeriesCard.vue'
+import YearChart from '../components/YearChart.vue'
 import api from '../services/api.js'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { useSettingsStore } from '../stores/settings.js'
@@ -140,8 +159,11 @@ export default {
 	name: 'Dashboard',
 	components: {
 		NcNoteCard,
+		NcSelect,
 		MovieCard,
 		SeriesCard,
+		YearChart,
+		PlatformChart,
 	},
 
 	setup() {
@@ -165,7 +187,20 @@ export default {
 			recentSeries: [],
 			topRatedMovies: [],
 			topRatedSeries: [],
+			statsByYear: {},
+			statsByPlatform: [],
 			loading: true,
+
+			selectedChartMediaType: null,
+			chartMediaTypeOptions: [
+				{ id: 'all', label: t('moviedb', 'All') },
+				{ id: 'movie', label: t('moviedb', 'Movies') },
+				{ id: 'series', label: t('moviedb', 'TV Shows') },
+			],
+
+			// Used by loadChartData()'s race guard — do not remove without
+			// also removing the `seq`/`this.chartRequestSeq` check there.
+			chartRequestSeq: 0,
 		}
 	},
 
@@ -192,6 +227,7 @@ export default {
 	},
 
 	async created() {
+		this.selectedChartMediaType = this.chartMediaTypeOptions[0]
 		// Wait for libraries so the active library id is known before fetching.
 		await this.librariesStore.whenReady()
 		await this.loadDashboardData()
@@ -213,11 +249,37 @@ export default {
 				this.recentSeries = recentRes.data.series || []
 				this.topRatedMovies = topRatedRes.data.movies
 				this.topRatedSeries = topRatedRes.data.series || []
+				await this.loadChartData()
 			} catch (error) {
 				console.error('Failed to load dashboard data:', error)
 			} finally {
 				this.loading = false
 			}
+		},
+
+		async loadChartData() {
+			// Guard against out-of-order responses: if the user switches the
+			// media-type filter again before this request resolves, a stale
+			// response must not overwrite the data for the newer selection.
+			const seq = ++this.chartRequestSeq
+			try {
+				const libraryId = this.librariesStore.activeLibraryId
+				const lid = libraryId !== null ? libraryId : undefined
+				const mediaType = this.selectedChartMediaType?.id !== 'all' ? this.selectedChartMediaType?.id : undefined
+				const [byYearRes, byPlatformRes] = await Promise.all([
+					api.getStatsByYear(lid, mediaType),
+					api.getStatsByPlatform(lid, mediaType),
+				])
+				if (seq !== this.chartRequestSeq) { return }
+				this.statsByYear = byYearRes.data.years || {}
+				this.statsByPlatform = byPlatformRes.data.platforms || []
+			} catch (error) {
+				console.error('Failed to load chart data:', error)
+			}
+		},
+
+		onChartMediaTypeChange() {
+			this.loadChartData()
 		},
 
 		goToMovie(id) {
@@ -232,6 +294,8 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+@use '../assets/design-tokens' as tokens;
+
 .dashboard {
     padding: 20px;
     max-width: 1200px;
@@ -259,18 +323,28 @@ export default {
 }
 
 .stat-card {
+    position: relative;
     background: var(--color-background-dark);
-    border-radius: 8px;
+    border-radius: tokens.$radius-md;
+    border-top: 3px solid var(--color-primary);
+    box-shadow: tokens.$shadow-sm;
     padding: 20px;
     text-align: center;
+    transition: transform tokens.$transition-base, box-shadow tokens.$transition-base;
+
+    &.accent-success { border-top-color: var(--color-success); }
+    &.accent-warning { border-top-color: var(--color-warning); }
+    &.accent-maxcontrast { border-top-color: var(--color-text-maxcontrast); }
+    &.accent-favorite { border-top-color: #e74c3c; }
+    &.accent-primary-light { border-top-color: var(--color-primary-element-light-text); }
 
     &.clickable {
         cursor: pointer;
-        transition: transform 0.2s, box-shadow 0.2s;
 
-        &:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        &:hover,
+        &:focus-visible {
+            transform: translateY(-4px);
+            box-shadow: tokens.$shadow-md;
         }
 
         &:focus-visible {
@@ -301,8 +375,39 @@ export default {
 .section {
     h3 {
         margin: 0 0 16px;
-        font-size: 18px;
+        font-size: 19px;
+        font-weight: 700;
+        letter-spacing: -0.01em;
     }
+
+    h4 {
+        margin: 24px 0 12px;
+        font-size: 15px;
+        font-weight: 600;
+        color: var(--color-text-lighter);
+
+        &:first-of-type {
+            margin-top: 0;
+        }
+    }
+}
+
+.section-header {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px 16px;
+
+    h3 {
+        margin: 0 0 16px;
+    }
+}
+
+.chart-media-filter {
+    width: 160px;
+    max-width: 100%;
+    margin-bottom: 16px;
 }
 
 .movie-row {
@@ -310,10 +415,36 @@ export default {
     gap: 16px;
     overflow-x: auto;
     padding-bottom: 8px;
+
+    > * {
+        flex: 0 0 140px;
+        width: 140px;
+    }
 }
 
 .empty-message {
     color: var(--color-text-lighter);
     font-style: italic;
+}
+
+@media (max-width: 600px) {
+    .dashboard {
+        padding: 12px;
+    }
+
+    .movie-row > * {
+        flex-basis: 110px;
+        width: 110px;
+    }
+
+    .section-header {
+        h3 {
+            margin: 0 0 8px;
+        }
+    }
+
+    .chart-media-filter {
+        width: 100%;
+    }
 }
 </style>

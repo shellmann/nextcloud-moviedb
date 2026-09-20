@@ -65,7 +65,8 @@ class StatsController extends AuthenticatedController {
         }
 
         $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
-        $stats = $this->service->getStatsByYear($this->userId, $libraryId);
+        $mediaType = $this->mediaTypeParam();
+        $stats = $this->service->getStatsByYear($this->userId, $libraryId, $mediaType);
 
         return new JSONResponse(['years' => $stats]);
     }
@@ -77,7 +78,8 @@ class StatsController extends AuthenticatedController {
         }
 
         $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
-        $stats = $this->service->getStatsByPlatform($this->userId, $libraryId);
+        $mediaType = $this->mediaTypeParam();
+        $stats = $this->service->getStatsByPlatform($this->userId, $libraryId, $mediaType);
 
         return new JSONResponse(['platforms' => $stats]);
     }

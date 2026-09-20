@@ -122,18 +122,32 @@ class MovieWatchMapper extends QBMapper {
     }
 
     /**
+     * @param ?string $mediaType Restrict to 'movie' or 'series' watches; null for both.
      * @return array<int, int>  platform_id => count of watches
      */
-    public function getCountByPlatform(int $libraryId): array {
+    public function getCountByPlatform(int $libraryId, ?string $mediaType = null): array {
         $qb = $this->db->getQueryBuilder();
 
+        // No movie_id filter by default: platform_id lives directly on the
+        // watch row for both movies and TV shows (a series carries a single
+        // series-level watch row — series_id set, episode_id NULL — with its
+        // own platform; per-episode rows never carry platform data), so
+        // counting all rows with a platform_id naturally includes TV show
+        // watches too. A mediaType filter restricts to one side explicitly.
         $qb->select('platform_id')
             ->selectAlias($qb->func()->count('*'), 'count')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
-            ->andWhere($qb->expr()->isNotNull('platform_id'))
-            ->andWhere($qb->expr()->isNotNull('movie_id'))
-            ->groupBy('platform_id');
+            ->andWhere($qb->expr()->isNotNull('platform_id'));
+
+        if ($mediaType === 'movie') {
+            $qb->andWhere($qb->expr()->isNotNull('movie_id'));
+        } elseif ($mediaType === 'series') {
+            $qb->andWhere($qb->expr()->isNotNull('series_id'))
+                ->andWhere($qb->expr()->isNull('episode_id'));
+        }
+
+        $qb->groupBy('platform_id');
 
         $result = $qb->executeQuery();
         $data = [];
@@ -146,26 +160,45 @@ class MovieWatchMapper extends QBMapper {
     }
 
     /**
-     * Watch count per release year (joins to movies for release_year).
+     * Watch count per release/air year (movies join moviedb_movies for
+     * release_year; TV shows join moviedb_series for first_air_year — a
+     * COALESCE over both LEFT JOINs, rather than a UNION, keeps this one
+     * portable QueryBuilder query across SQLite/MySQL/Postgres).
      *
+     * @param ?string $mediaType Restrict to 'movie' or 'series' watches; null for both.
      * @return array<string, int>
      */
-    public function getCountByYear(int $libraryId): array {
+    public function getCountByYear(int $libraryId, ?string $mediaType = null): array {
         $qb = $this->db->getQueryBuilder();
+        $yearExpr = $qb->createFunction('COALESCE(m.release_year, s.first_air_year)');
 
-        $qb->select('m.release_year')
+        $qb->selectAlias($yearExpr, 'year')
             ->selectAlias($qb->func()->count('*'), 'count')
             ->from($this->getTableName(), 'w')
-            ->innerJoin('w', 'moviedb_movies', 'm', $qb->expr()->eq('w.movie_id', 'm.id'))
-            ->where($qb->expr()->eq('w.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
-            ->andWhere($qb->expr()->isNotNull('m.release_year'))
-            ->groupBy('m.release_year')
-            ->orderBy('m.release_year', 'DESC');
+            ->leftJoin('w', 'moviedb_movies', 'm', $qb->expr()->eq('w.movie_id', 'm.id'))
+            ->leftJoin('w', 'moviedb_series', 's', $qb->expr()->andX(
+                $qb->expr()->eq('w.series_id', 's.id'),
+                $qb->expr()->isNull('w.episode_id')
+            ))
+            ->where($qb->expr()->eq('w.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
+
+        if ($mediaType === 'movie') {
+            $qb->andWhere($qb->expr()->isNotNull('w.movie_id'));
+        } elseif ($mediaType === 'series') {
+            $qb->andWhere($qb->expr()->isNotNull('w.series_id'))
+                ->andWhere($qb->expr()->isNull('w.episode_id'));
+        }
+
+        $qb->groupBy($yearExpr)
+            ->orderBy($yearExpr, 'DESC');
 
         $result = $qb->executeQuery();
         $data = [];
         while ($row = $result->fetch()) {
-            $data[(string)$row['release_year']] = (int)$row['count'];
+            if ($row['year'] === null) {
+                continue;
+            }
+            $data[(string)$row['year']] = (int)$row['count'];
         }
         $result->closeCursor();
 
