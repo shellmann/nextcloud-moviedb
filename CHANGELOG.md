@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.1] - 2026-09-20
+
+### Fixed
+- The v1.5.0 release tarball contained stray macOS AppleDouble (`._*`) files
+  and extended-attribute metadata (from `com.apple.provenance`, newly applied
+  to files by macOS 26/27), which broke the Nextcloud App Store installer's
+  "exactly one top-level folder" check on some upgrades
+  (`Extracted app moviedb has more than 1 folder`). This release is
+  content-identical to 1.5.0, repackaged with `COPYFILE_DISABLE=1` and
+  explicit xattr/AppleDouble stripping.
+
 ## [1.5.0] - 2026-09-20
 
 ### Added
