@@ -105,16 +105,20 @@ export default {
 </script>
 
 <style lang="scss" scoped>
+@use '../assets/design-tokens' as tokens;
+
 .series-card {
     cursor: pointer;
-    border-radius: 8px;
+    border-radius: tokens.$radius-md;
     overflow: hidden;
     background: var(--color-background-dark);
-    transition: transform 0.2s, box-shadow 0.2s;
+    box-shadow: tokens.$shadow-sm;
+    transition: transform tokens.$transition-base, box-shadow tokens.$transition-base;
 
-    &:hover {
+    &:hover,
+    &:focus-visible {
         transform: translateY(-4px);
-        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.2);
+        box-shadow: tokens.$shadow-md;
     }
 }
 
@@ -126,6 +130,14 @@ export default {
         width: 100%;
         height: 100%;
         object-fit: cover;
+    }
+
+    &::after {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(to bottom, transparent 60%, rgba(0, 0, 0, 0.65) 100%);
+        pointer-events: none;
     }
 
     .no-poster {
@@ -151,6 +163,8 @@ export default {
     display: flex;
     align-items: center;
     justify-content: center;
+    box-shadow: tokens.$shadow-sm;
+    z-index: 1;
 }
 
 .type-badge {
@@ -159,12 +173,13 @@ export default {
     left: 8px;
     background: rgba(0, 0, 0, 0.6);
     color: white;
-    border-radius: 4px;
+    border-radius: tokens.$radius-sm;
     padding: 2px 6px;
     font-size: 11px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.3px;
+    z-index: 1;
 }
 
 .rating-badge {
@@ -173,10 +188,12 @@ export default {
     right: 8px;
     background: var(--color-primary);
     color: white;
-    border-radius: 4px;
+    border-radius: tokens.$radius-sm;
     padding: 2px 8px;
     font-size: 14px;
     font-weight: bold;
+    box-shadow: tokens.$shadow-sm;
+    z-index: 1;
 }
 
 .info {
@@ -207,7 +224,7 @@ export default {
     .genre-pill {
         font-size: 10px;
         padding: 1px 6px;
-        border-radius: 8px;
+        border-radius: tokens.$radius-md;
         background: var(--color-primary-element-light);
         color: var(--color-primary-element-light-text);
         white-space: nowrap;

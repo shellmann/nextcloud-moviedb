@@ -5,6 +5,63 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.0] - 2026-09-20
+
+### Added
+- Dashboard now includes "Watches by Year" and "Watches by Platform" charts,
+  including TV show watches (previously excluded from these stats). Both
+  charts share a new "Show" filter to view All / Movies / TV Shows only.
+- Watchlist pagination (`page`/`limit` params, matching Movie/Series), fixing
+  the previously unbounded `/api/watchlist` response.
+
+### Changed
+- Visual polish pass: consistent card hover/shadow treatment across
+  MovieCard/SeriesCard/Dashboard stat cards (shared radius/shadow/transition
+  values), a subtle poster gradient scrim for badge legibility, per-stat
+  accent colors on the Dashboard, and richer chart styling — gradient-filled
+  bars with a grow-in animation on Watches by Year, gradient fills and a
+  smoother track on Watches by Platform.
+
+### Fixed
+- Recently Watched and Top Rated cards on the Dashboard no longer collapse
+  into unreadable narrow strips on mobile viewports.
+- The Dashboard chart filter control no longer overflows the screen on narrow
+  viewports.
+- `/api/watchlist`, `/api/movies`, and `/api/series` no longer throw a
+  division-by-zero error on `limit=0`, or accept a negative `page`/`limit`
+  that produced a negative offset — all three now clamp to sane minimums.
+  `totalPages` is now consistently returned as an integer.
+- The watchlist's media-type filter no longer silently returns zero results
+  on an unrecognized `mediaType` value — invalid values are now treated as
+  "no filter", matching the stats endpoints' existing behavior.
+- Changing sort order on the watchlist while on a later page no longer leaves
+  the user on a now out-of-range page; sorting resets to page 1.
+- The Dashboard's media-type "Show" filter is now visibly grouped with both
+  charts it affects (under one "Watch Statistics" section) instead of
+  appearing to apply only to "Watches by Year".
+- Switching the active shared library no longer leaves stale watchlist
+  pagination/filter state behind — a page number or type filter left over
+  from a previous library (which may have far more or fewer items) could
+  point past the end of the new library's results and show a false empty
+  state. Movies/TV filters are reset the same way.
+- The sidebar's watchlist counter badge now always reflects the library's
+  true total, not a search/media-type-filtered count — previously applying a
+  filter on the Watchlist page made the badge appear to shrink until the
+  filter was cleared.
+- Opening the Watchlist page no longer fires two competing API requests (one
+  before the active library was known, one after) — the first could return
+  data for the wrong library depending on response timing.
+- Rapidly switching the Dashboard's "Show" chart filter no longer risks
+  displaying stale data if an earlier request resolves after a later one.
+
+### Changed
+- Extracted the duplicated `mediaType` query-param validation from
+  `StatsController`/`WatchlistController` into a shared helper on
+  `AuthenticatedController`.
+- Added a `resetFilters()` action to the watchlist store (mirroring
+  Movies/Series) so sort/type-filter/pagination resets follow one consistent
+  pattern across `Watchlist.vue` and the shared-library switcher.
+
 ## [1.4.2] - 2026-09-19
 
 ### Maintenance

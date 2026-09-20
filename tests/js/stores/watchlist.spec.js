@@ -56,35 +56,6 @@ describe('Watchlist Store', () => {
 			store.items = [{ id: 1, title: 'Test' }]
 			expect(store.hasItems).toBe(true)
 		})
-
-		it('filteredItems returns all items when typeFilter is "all"', () => {
-			store.items = [
-				{ id: 1, mediaType: 'movie' },
-				{ id: 2, mediaType: 'series' },
-			]
-			store.typeFilter = 'all'
-			expect(store.filteredItems).toHaveLength(2)
-		})
-
-		it('filteredItems returns only movies when typeFilter is "movie"', () => {
-			store.items = [
-				{ id: 1, mediaType: 'movie' },
-				{ id: 2, mediaType: 'series' },
-				{ id: 3 }, // legacy row without mediaType → treated as movie
-			]
-			store.typeFilter = 'movie'
-			const ids = store.filteredItems.map(i => i.id)
-			expect(ids).toEqual([1, 3])
-		})
-
-		it('filteredItems returns only series when typeFilter is "series"', () => {
-			store.items = [
-				{ id: 1, mediaType: 'movie' },
-				{ id: 2, mediaType: 'series' },
-			]
-			store.typeFilter = 'series'
-			expect(store.filteredItems.map(i => i.id)).toEqual([2])
-		})
 	})
 
 	describe('fetchAll action', () => {
@@ -106,7 +77,7 @@ describe('Watchlist Store', () => {
 				{ id: 2, title: 'Movie 2' },
 			]
 			api.getWatchlist.mockResolvedValue({
-				data: { items: mockItems, total: 2 },
+				data: { items: mockItems, total: 2, totalUnfiltered: 2, page: 1, totalPages: 1 },
 			})
 
 			await store.fetchAll()
@@ -115,9 +86,20 @@ describe('Watchlist Store', () => {
 			expect(store.total).toBe(2)
 		})
 
-		it('should pass sort and dir to API call', async () => {
+		it('should store totalUnfiltered separately from the filtered total', async () => {
 			api.getWatchlist.mockResolvedValue({
-				data: { items: [], total: 0 },
+				data: { items: [], total: 3, totalUnfiltered: 50, page: 1, totalPages: 1 },
+			})
+
+			await store.fetchAll()
+
+			expect(store.total).toBe(3)
+			expect(store.totalUnfiltered).toBe(50)
+		})
+
+		it('should pass sort, dir, page and limit to API call', async () => {
+			api.getWatchlist.mockResolvedValue({
+				data: { items: [], total: 0, page: 1, totalPages: 0 },
 			})
 
 			store.sort = 'added_at'
@@ -127,7 +109,45 @@ describe('Watchlist Store', () => {
 			expect(api.getWatchlist).toHaveBeenCalledWith({
 				sort: 'added_at',
 				dir: 'ASC',
+				page: 1,
+				limit: 50,
 			})
+		})
+
+		it('should include mediaType in params when a type filter is active', async () => {
+			api.getWatchlist.mockResolvedValue({
+				data: { items: [], total: 0, page: 1, totalPages: 0 },
+			})
+
+			store.typeFilter = 'series'
+			await store.fetchAll()
+
+			expect(api.getWatchlist).toHaveBeenCalledWith(
+				expect.objectContaining({ mediaType: 'series' }),
+			)
+		})
+
+		it('should not include mediaType in params when typeFilter is "all"', async () => {
+			api.getWatchlist.mockResolvedValue({
+				data: { items: [], total: 0, page: 1, totalPages: 0 },
+			})
+
+			await store.fetchAll()
+
+			expect(api.getWatchlist).toHaveBeenCalledWith(
+				expect.not.objectContaining({ mediaType: expect.anything() }),
+			)
+		})
+
+		it('should update page and totalPages from the response', async () => {
+			api.getWatchlist.mockResolvedValue({
+				data: { items: [], total: 120, page: 2, totalPages: 3 },
+			})
+
+			await store.fetchAll()
+
+			expect(store.page).toBe(2)
+			expect(store.totalPages).toBe(3)
 		})
 
 		it('should handle API errors gracefully', async () => {
@@ -144,7 +164,7 @@ describe('Watchlist Store', () => {
 	describe('setSort action', () => {
 		it('should update sort and dir', async () => {
 			api.getWatchlist.mockResolvedValue({
-				data: { items: [], total: 0 },
+				data: { items: [], total: 0, page: 1, totalPages: 0 },
 			})
 
 			await store.setSort('added_at', 'ASC')
@@ -155,7 +175,7 @@ describe('Watchlist Store', () => {
 
 		it('should trigger a fetch', async () => {
 			api.getWatchlist.mockResolvedValue({
-				data: { items: [], total: 0 },
+				data: { items: [], total: 0, page: 1, totalPages: 0 },
 			})
 
 			await store.setSort('title', 'DESC')
@@ -163,7 +183,23 @@ describe('Watchlist Store', () => {
 			expect(api.getWatchlist).toHaveBeenCalledWith({
 				sort: 'title',
 				dir: 'DESC',
+				page: 1,
+				limit: 50,
 			})
+		})
+
+		it('should reset to page 1 when changing sort from a later page', async () => {
+			api.getWatchlist.mockResolvedValue({
+				data: { items: [], total: 0, page: 1, totalPages: 0 },
+			})
+			store.page = 3
+
+			await store.setSort('title', 'DESC')
+
+			expect(store.page).toBe(1)
+			expect(api.getWatchlist).toHaveBeenCalledWith(
+				expect.objectContaining({ page: 1 }),
+			)
 		})
 	})
 
@@ -185,6 +221,34 @@ describe('Watchlist Store', () => {
 		})
 	})
 
+	describe('resetFilters action', () => {
+		it('should reset sort, type filter, and page to defaults', () => {
+			store.sort = 'added_at'
+			store.dir = 'ASC'
+			store.typeFilter = 'series'
+			store.page = 3
+
+			store.resetFilters()
+
+			expect(store.sort).toBe('priority')
+			expect(store.dir).toBe('DESC')
+			expect(store.typeFilter).toBe('all')
+			expect(store.page).toBe(1)
+		})
+
+		it('should not trigger a fetch on its own', () => {
+			// Watchlist.vue::created() and App.vue::onLibraryChange rely on
+			// resetFilters() being synchronous and fetch-free — the caller
+			// awaits librariesStore.whenReady() and calls fetchAll() itself,
+			// exactly once, after the active library is known. If resetFilters()
+			// ever fetched internally, that fetch could race ahead of
+			// whenReady() and query the wrong (or no) library.
+			store.resetFilters()
+
+			expect(api.getWatchlist).not.toHaveBeenCalled()
+		})
+	})
+
 	describe('create action', () => {
 		it('should add new item to the beginning of the list', async () => {
 			const newItem = { id: 1, title: 'New Movie' }
@@ -195,6 +259,7 @@ describe('Watchlist Store', () => {
 			expect(result).toEqual({ item: newItem, alreadyWatched: false })
 			expect(store.items[0]).toEqual(newItem)
 			expect(store.total).toBe(1)
+			expect(store.totalUnfiltered).toBe(1)
 		})
 
 		it('should return null on error', async () => {
@@ -240,6 +305,7 @@ describe('Watchlist Store', () => {
 		it('should remove item from the list', async () => {
 			store.items = [{ id: 1 }, { id: 2 }]
 			store.total = 2
+			store.totalUnfiltered = 2
 			api.removeFromWatchlist.mockResolvedValue({})
 
 			await store.delete(1)
@@ -247,6 +313,7 @@ describe('Watchlist Store', () => {
 			expect(store.items).toHaveLength(1)
 			expect(store.items[0].id).toBe(2)
 			expect(store.total).toBe(1)
+			expect(store.totalUnfiltered).toBe(1)
 		})
 
 		it('should return true on success', async () => {
@@ -267,9 +334,32 @@ describe('Watchlist Store', () => {
 	})
 
 	describe('setTypeFilter action', () => {
-		it('should set the type filter', () => {
-			store.setTypeFilter('series')
+		it('should set the type filter and reset to page 1', async () => {
+			api.getWatchlist.mockResolvedValue({
+				data: { items: [], total: 0, page: 1, totalPages: 0 },
+			})
+			store.page = 3
+
+			await store.setTypeFilter('series')
+
 			expect(store.typeFilter).toBe('series')
+			expect(api.getWatchlist).toHaveBeenCalledWith(
+				expect.objectContaining({ mediaType: 'series', page: 1 }),
+			)
+		})
+	})
+
+	describe('setPage action', () => {
+		it('should set the page and trigger a fetch', async () => {
+			api.getWatchlist.mockResolvedValue({
+				data: { items: [], total: 0, page: 2, totalPages: 3 },
+			})
+
+			await store.setPage(2)
+
+			expect(api.getWatchlist).toHaveBeenCalledWith(
+				expect.objectContaining({ page: 2 }),
+			)
 		})
 	})
 
@@ -277,6 +367,7 @@ describe('Watchlist Store', () => {
 		it('should remove item from list and return the movie payload', async () => {
 			store.items = [{ id: 1, title: 'Test' }, { id: 2, title: 'Other' }]
 			store.total = 2
+			store.totalUnfiltered = 2
 			const movie = { id: 10, title: 'Test', rating: 8 }
 			api.moveToWatched.mockResolvedValue({ data: { movie } })
 
@@ -286,6 +377,7 @@ describe('Watchlist Store', () => {
 			expect(store.items).toHaveLength(1)
 			expect(store.items[0].id).toBe(2)
 			expect(store.total).toBe(1)
+			expect(store.totalUnfiltered).toBe(1)
 		})
 
 		it('should return the series payload when a series is imported', async () => {

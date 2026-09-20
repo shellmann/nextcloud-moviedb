@@ -66,4 +66,16 @@ abstract class AuthenticatedController extends Controller {
         $p = $this->request->getParam('libraryId');
         return $p !== null ? (int)$p : null;
     }
+
+    /**
+     * Reads and validates the optional `mediaType` request param used to
+     * restrict a listing/stat query to movies or TV shows only. Any value
+     * other than 'movie'/'series' is treated as "no filter" — this is a
+     * display filter, not a mutation, so invalid input should fall back to
+     * the unfiltered result rather than a 400 or a confusing empty response.
+     */
+    protected function mediaTypeParam(): ?string {
+        $value = $this->request->getParam('mediaType');
+        return in_array($value, ['movie', 'series'], true) ? $value : null;
+    }
 }

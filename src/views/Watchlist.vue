@@ -121,6 +121,20 @@
 			</template>
 		</NcEmptyContent>
 
+		<div v-if="totalPages > 1" class="pagination">
+			<NcButton
+				:disabled="page <= 1"
+				@click="goToPage(page - 1)">
+				{{ t('moviedb', 'Previous') }}
+			</NcButton>
+			<span class="page-info">{{ t('moviedb', 'Page {page} of {total}', { page: page, total: totalPages }) }}</span>
+			<NcButton
+				:disabled="page >= totalPages"
+				@click="goToPage(page + 1)">
+				{{ t('moviedb', 'Next') }}
+			</NcButton>
+		</div>
+
 		<!-- Mark as Watched Modal -->
 		<NcModal v-if="showWatchedModal" @close="showWatchedModal = false">
 			<div class="watched-modal">
@@ -292,11 +306,19 @@ export default {
 
 	computed: {
 		items() {
-			return this.watchlistStore.filteredItems
+			return this.watchlistStore.items
 		},
 
 		loading() {
 			return this.watchlistStore.loading
+		},
+
+		page() {
+			return this.watchlistStore.page
+		},
+
+		totalPages() {
+			return this.watchlistStore.totalPages
 		},
 
 		platforms() {
@@ -315,8 +337,7 @@ export default {
 	async created() {
 		this.selectedSort = this.sortOptions[0]
 		this.selectedType = this.typeOptions[0]
-		this.watchlistStore.resetSort()
-		this.watchlistStore.setTypeFilter('all')
+		this.watchlistStore.resetFilters()
 		// Wait for libraries so the active library id is known before fetching.
 		await this.librariesStore.whenReady()
 		this.watchlistStore.fetchAll()
@@ -338,6 +359,10 @@ export default {
 
 		onTypeChange(selected) {
 			this.watchlistStore.setTypeFilter(selected ? selected.id : 'all')
+		},
+
+		goToPage(page) {
+			this.watchlistStore.setPage(page)
 		},
 
 		pickRandom() {
@@ -664,5 +689,17 @@ export default {
     justify-content: flex-end;
     gap: 8px;
     margin-top: 20px;
+}
+
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 16px;
+    margin-top: 32px;
+
+    .page-info {
+        color: var(--color-text-lighter);
+    }
 }
 </style>

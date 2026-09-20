@@ -62,12 +62,12 @@ class StatsService {
         ];
     }
 
-    public function getStatsByYear(string $userId, int $libraryId): array {
-        return $this->watchMapper->getCountByYear($libraryId);
+    public function getStatsByYear(string $userId, int $libraryId, ?string $mediaType = null): array {
+        return $this->watchMapper->getCountByYear($libraryId, $mediaType);
     }
 
-    public function getStatsByPlatform(string $userId, int $libraryId): array {
-        $countByPlatform = $this->watchMapper->getCountByPlatform($libraryId);
+    public function getStatsByPlatform(string $userId, int $libraryId, ?string $mediaType = null): array {
+        $countByPlatform = $this->watchMapper->getCountByPlatform($libraryId, $mediaType);
 
         $result = [];
         foreach ($countByPlatform as $platformId => $count) {

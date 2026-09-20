@@ -1,6 +1,6 @@
 {
     "name": "nextcloud-moviedb",
-    "version": "1.4.2",
+    "version": "1.5.0",
     "description": "Personal movie database for Nextcloud",
     "main": "index.js",
     "engines": {

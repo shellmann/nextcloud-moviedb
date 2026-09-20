@@ -19,7 +19,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Watch History**: Full watch history per title, including per-viewing platform, language, and date
 - **Watchlist**: Maintain a mixed movie + TV watchlist with priorities and a random picker
 - **Filtering & Sorting**: Filter by genre, platform, and favorites, and sort in either direction
-- **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime
+- **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime, plus year- and platform-breakdown charts (including TV shows) with a movies/TV filter
 - **Shared Libraries**: Create named libraries and share your collection with other Nextcloud users — assign viewer or editor roles, manage members, and switch between libraries from one account
 
 ## Getting Started
@@ -28,7 +28,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 2. Enter your API key in the app settings
 3. Start adding movies and TV shows to your collection!
     ]]></description>
-    <version>1.4.2</version>
+    <version>1.5.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author>shellmann</author>
     <namespace>MovieDB</namespace>
@@ -36,6 +36,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
     <bugs>https://github.com/shellmann/nextcloud-moviedb/issues</bugs>
     <repository type="git">https://github.com/shellmann/nextcloud-moviedb.git</repository>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/dashboard.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/dashboard-charts.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/my-movies.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/movie-detail.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/libraries.png</screenshot>

@@ -61,18 +61,38 @@ class WatchlistController extends AuthenticatedController {
 
         $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
 
+        $page = max(1, (int)$this->request->getParam('page', 1));
+        $limit = max(1, min((int)$this->request->getParam('limit', 50), 100));
+        $offset = ($page - 1) * $limit;
+
         $filters = [
             'search' => $this->request->getParam('search'),
+            'mediaType' => $this->mediaTypeParam(),
             'sort' => $this->request->getParam('sort', 'priority'),
             'dir' => $this->request->getParam('dir', 'DESC'),
         ];
 
-        $items = $this->service->findAll($libraryId, $filters);
-        $total = $this->service->count($libraryId);
+        $items = $this->service->findAll($libraryId, $filters, $limit, $offset);
+        $total = $this->service->count($libraryId, $filters);
+
+        // Separate from the (possibly filtered) `total` used for pagination:
+        // the sidebar's watchlist counter badge needs the library's true,
+        // unfiltered count so it doesn't appear to shrink whenever the user
+        // applies a search/mediaType filter on the Watchlist page. Only
+        // `search`/`mediaType` narrow the result set (sort/dir never do), so
+        // only those two are checked here to avoid an unnecessary extra count().
+        $hasActiveFilter = !empty($filters['search']) || $filters['mediaType'] !== null;
+        $totalUnfiltered = $hasActiveFilter
+            ? $this->service->count($libraryId, [])
+            : $total;
 
         return new JSONResponse([
             'items' => $items,
             'total' => $total,
+            'totalUnfiltered' => $totalUnfiltered,
+            'page' => $page,
+            'limit' => $limit,
+            'totalPages' => (int)ceil($total / $limit),
         ]);
     }
 

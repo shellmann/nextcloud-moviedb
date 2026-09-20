@@ -175,12 +175,14 @@ export default {
 		const params = libraryId !== undefined ? { libraryId } : {}
 		return axios.get(`${baseUrl}/stats`, { params })
 	},
-	getStatsByYear(libraryId = undefined) {
+	getStatsByYear(libraryId = undefined, mediaType = undefined) {
 		const params = libraryId !== undefined ? { libraryId } : {}
+		if (mediaType) { params.mediaType = mediaType }
 		return axios.get(`${baseUrl}/stats/years`, { params })
 	},
-	getStatsByPlatform(libraryId = undefined) {
+	getStatsByPlatform(libraryId = undefined, mediaType = undefined) {
 		const params = libraryId !== undefined ? { libraryId } : {}
+		if (mediaType) { params.mediaType = mediaType }
 		return axios.get(`${baseUrl}/stats/platforms`, { params })
 	},
 	getStatsByGenre(libraryId = undefined) {

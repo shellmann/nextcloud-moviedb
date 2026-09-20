@@ -38,22 +38,14 @@ class WatchlistMapper extends QBMapper {
     /**
      * @return WatchlistItem[]
      */
-    public function findAll(int $libraryId, array $filters = []): array {
+    public function findAll(int $libraryId, array $filters = [], int $limit = 50, int $offset = 0): array {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
 
-        if (!empty($filters['search'])) {
-            $qb->andWhere($qb->expr()->iLike('title',
-                $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search']) . '%')));
-        }
-
-        if (!empty($filters['mediaType'])) {
-            $qb->andWhere($qb->expr()->eq('media_type',
-                $qb->createNamedParameter($filters['mediaType'])));
-        }
+        $this->applyFilters($qb, $filters);
 
         // Sorting
         $sortField = $filters['sort'] ?? 'priority';
@@ -65,21 +57,41 @@ class WatchlistMapper extends QBMapper {
             $qb->orderBy('priority', 'DESC');
         }
 
+        $qb->setMaxResults($limit)
+            ->setFirstResult($offset);
+
         return $this->findEntities($qb);
     }
 
-    public function countAll(int $libraryId): int {
+    public function countAll(int $libraryId, array $filters = []): int {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select($qb->func()->count('*', 'count'))
             ->from($this->getTableName())
             ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
 
+        $this->applyFilters($qb, $filters);
+
         $result = $qb->executeQuery();
         $row = $result->fetch();
         $result->closeCursor();
 
         return (int)($row['count'] ?? 0);
+    }
+
+    /**
+     * Apply shared filter logic to a query builder (search, mediaType).
+     */
+    private function applyFilters(IQueryBuilder $qb, array $filters): void {
+        if (!empty($filters['search'])) {
+            $qb->andWhere($qb->expr()->iLike('title',
+                $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search']) . '%')));
+        }
+
+        if (!empty($filters['mediaType'])) {
+            $qb->andWhere($qb->expr()->eq('media_type',
+                $qb->createNamedParameter($filters['mediaType'])));
+        }
     }
 
     public function findByTmdbId(int $libraryId, int $tmdbId, ?string $mediaType = null): ?WatchlistItem {

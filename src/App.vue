@@ -127,7 +127,7 @@ export default {
 
 	computed: {
 		watchlistCount() {
-			return this.watchlistStore.total
+			return this.watchlistStore.totalUnfiltered
 		},
 
 		libraries() {
@@ -168,9 +168,15 @@ export default {
 		onLibraryChange(option) {
 			if (!option) { return }
 			this.librariesStore.setActive(option.id)
-			// Re-fetch data for the newly active library
+			// Reset pagination/filters before refetching — otherwise a page
+			// number or filter left over from the previous library (which may
+			// have far more/fewer items) can point past the end of the new
+			// library's results and show a false empty state.
+			this.watchlistStore.resetFilters()
 			this.watchlistStore.fetchAll()
+			this.moviesStore.resetFilters()
 			this.moviesStore.fetchAll()
+			this.seriesStore.resetFilters()
 			this.seriesStore.fetchAll()
 			// Reload current route's data if on dashboard
 			if (this.$route.name === 'dashboard') {

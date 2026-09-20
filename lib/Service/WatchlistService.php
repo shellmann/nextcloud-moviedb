@@ -26,12 +26,12 @@ class WatchlistService {
     /**
      * @return WatchlistItem[]
      */
-    public function findAll(int $libraryId, array $filters = []): array {
-        return $this->mapper->findAll($libraryId, $filters);
+    public function findAll(int $libraryId, array $filters = [], int $limit = 50, int $offset = 0): array {
+        return $this->mapper->findAll($libraryId, $filters, $limit, $offset);
     }
 
-    public function count(int $libraryId): int {
-        return $this->mapper->countAll($libraryId);
+    public function count(int $libraryId, array $filters = []): int {
+        return $this->mapper->countAll($libraryId, $filters);
     }
 
     public function create(string $userId, int $libraryId, array $data): WatchlistItem {
