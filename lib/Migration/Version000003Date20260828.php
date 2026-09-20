@@ -169,7 +169,7 @@ class Version000003Date20260828 extends SimpleMigrationStep {
             // watch row); episode-level metadata does not exist. Default false so
             // freshly imported episodes start unwatched.
             $table->addColumn('watched', Types::BOOLEAN, [
-                'notnull' => true,
+                'notnull' => false,
                 'default' => false,
             ]);
             $table->addColumn('created_at', Types::DATETIME, [

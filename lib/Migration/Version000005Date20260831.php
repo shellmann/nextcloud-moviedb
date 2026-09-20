@@ -56,7 +56,7 @@ class Version000005Date20260831 extends SimpleMigrationStep {
                 'length' => 128,
             ]);
             $table->addColumn('is_personal', Types::BOOLEAN, [
-                'notnull' => true,
+                'notnull' => false,
                 'default' => false,
             ]);
             $table->addColumn('created_at', Types::DATETIME, [
@@ -86,14 +86,16 @@ class Version000005Date20260831 extends SimpleMigrationStep {
                 'length' => 64,
             ]);
             $table->addColumn('permission_edit', Types::BOOLEAN, [
-                'notnull' => true,
+                'notnull' => false,
                 'default' => false,
             ]);
             $table->addColumn('created_at', Types::DATETIME, [
                 'notnull' => true,
             ]);
 
-            $table->setPrimaryKey(['id']);
+            // Explicit short PK name — the table name is at NC's identifier-length
+            // limit for an auto-generated default primary key name.
+            $table->setPrimaryKey(['id'], 'moviedb_libmem_pk');
             $table->addUniqueIndex(['library_id', 'user_id'], 'moviedb_libmem_lib_uid_idx');
             $table->addIndex(['user_id'], 'moviedb_libmem_uid_idx');
         }
