@@ -1,4 +1,16 @@
-# MovieDB - Personal Movie & TV Database for Nextcloud
+<p align="center">
+  <img src="screenshots/dashboard.png" alt="MovieDB dashboard screenshot" width="800">
+</p>
+
+<h1 align="center">MovieDB: Movie &amp; TV Tracking for Nextcloud</h1>
+
+<p align="center">
+  <a href="https://apps.nextcloud.com/apps/moviedb"><img src="https://img.shields.io/badge/Nextcloud%20Store-MovieDB-blue" alt="Nextcloud App Store"></a>
+  <a href="https://github.com/shellmann/nextcloud-moviedb/blob/main/LICENSE"><img src="https://img.shields.io/github/license/shellmann/nextcloud-moviedb" alt="License"></a>
+  <a href="https://github.com/shellmann/nextcloud-moviedb/actions/workflows/ci.yml"><img src="https://img.shields.io/github/actions/workflow/status/shellmann/nextcloud-moviedb/ci.yml?branch=main&label=ci" alt="CI status"></a>
+  <a href="https://github.com/shellmann/nextcloud-moviedb/issues"><img src="https://img.shields.io/github/issues/shellmann/nextcloud-moviedb" alt="Open issues"></a>
+  <a href="https://github.com/shellmann/nextcloud-moviedb/stargazers"><img src="https://img.shields.io/github/stars/shellmann/nextcloud-moviedb" alt="GitHub stars"></a>
+</p>
 
 Track all the movies and TV shows you've watched with rich metadata from TMDB.
 
@@ -32,7 +44,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 1. Clone this repository into your Nextcloud apps directory:
    ```bash
    cd /path/to/nextcloud/apps
-   git clone https://github.com/yourusername/nextcloud-moviedb.git moviedb
+   git clone https://github.com/shellmann/nextcloud-moviedb.git moviedb
    ```
 
 2. Install PHP dependencies:
@@ -233,6 +245,18 @@ The app exposes the following REST API endpoints:
 | `/api/watchlist/{id}/watched` | POST | Move to watched |
 | `/api/tmdb/search` | GET | Search TMDB |
 | `/api/stats` | GET | Get statistics |
+
+## Contributing
+
+Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, and PR guidelines. For testing (including PHP unit tests), see [TESTING.md](TESTING.md). For translation workflow, see [TRANSLATIONS.md](TRANSLATIONS.md).
+
+## Security
+
+Found a vulnerability? Please see [SECURITY.md](SECURITY.md) for the reporting process — do not open a public issue.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for release history.
 
 ## License
 
