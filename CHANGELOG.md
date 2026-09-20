@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Fresh installs on Nextcloud 32 no longer fail during `occ app:enable`.
+  Three boolean columns (`episodes.watched`, `libraries.is_personal`,
+  `library_members.permission_edit`) were declared `NOT NULL` in a way NC
+  32's migration validator rejects, and the `moviedb_library_members` table
+  name hit NC's identifier-length limit for an auto-generated primary key
+  name. Existing installs (including upgrades) are unaffected.
+
 ## [1.5.2] - 2026-09-20
 
 ### Fixed

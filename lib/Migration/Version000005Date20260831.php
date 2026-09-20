@@ -93,6 +93,8 @@ class Version000005Date20260831 extends SimpleMigrationStep {
                 'notnull' => true,
             ]);
 
+            // Explicit short PK name — the table name is at NC's identifier-length
+            // limit for an auto-generated default primary key name.
             $table->setPrimaryKey(['id'], 'moviedb_libmem_pk');
             $table->addUniqueIndex(['library_id', 'user_id'], 'moviedb_libmem_lib_uid_idx');
             $table->addIndex(['user_id'], 'moviedb_libmem_uid_idx');
