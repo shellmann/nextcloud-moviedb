@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.5.4] - 2026-09-21
+
+### Fixed
+- Several UI strings (search placeholders, "Enter movie/TV show title...",
+  "Importing episodes...", "Write your thoughts...") had their trailing
+  `...` normalized to a proper ellipsis character (`…`) in an earlier
+  change, but the translation files still keyed on the old three-dot
+  strings. Non-English users were seeing raw English fallbacks for these.
+  All five locales (`de`, `es`, `fr`, `it`, `nl`) are now back in sync.
+- Added the missing translation for "Failed to leave library. Please try
+  again." across all locales.
+- Fixed a typo in the Spanish translation of that message
+  ("abandonador" → "abandonar").
+
+Thanks to @ba3r for reporting and fixing the translation drift (#47).
+
 ## [1.5.3] - 2026-09-20
 
 ### Fixed
