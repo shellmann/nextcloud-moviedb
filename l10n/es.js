@@ -296,6 +296,6 @@ OC.L10N.register(
         "Leave {name}?": "¿Abandonar {name}?",
         "Leave": "Abandonar",
         "You have left the library.": "Has abandonado la biblioteca.",
-        "Failed to leave library. Please try again.": "No se pudo abandonador la biblioteca. Inténtalo de nuevo."
+        "Failed to leave library. Please try again.": "No se pudo abandonar la biblioteca. Inténtalo de nuevo."
     },
 "nplurals=2; plural=(n != 1);");
