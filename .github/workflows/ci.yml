@@ -29,6 +29,18 @@ jobs:
           php-version: '8.1'
       - run: find lib/ -name "*.php" -print0 | xargs -0 -n1 php -l
 
+  check-translations:
+    name: Translation Audit
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 26
+          cache: npm
+      - run: npm ci
+      - run: npm run check:translations
+
   test-js:
     name: JavaScript Tests
     runs-on: ubuntu-latest

@@ -13,6 +13,7 @@
         "lint": "eslint src",
         "lint:fix": "eslint src --fix",
         "l10n": "node l10n/build-l10n.js",
+        "check:translations": "node l10n/check-translations.js",
         "test": "vitest run",
         "test:watch": "vitest",
         "test:coverage": "vitest run --coverage"

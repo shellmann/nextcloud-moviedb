@@ -29,44 +29,17 @@ If you add a new locale, create `l10n/<code>.json` with the same keys.
 2. Add the exact same source string as a key to **every** file in `l10n/*.json`
    with a proper translation for that language (do not leave English fallbacks).
 3. Run `npm run l10n` to regenerate the `.js` files.
-4. Run the audit below to confirm nothing is missing.
+4. Run `npm run check:translations` to confirm nothing is missing.
 5. Rebuild (`npm run build`) and commit the changed `l10n/*.json` **and**
    `l10n/*.js` files together.
 
 ## Audit: find missing translations
 
-Run this from the repo root to list any source string not yet present in each
-locale JSON. It should print `Missing keys: 0` for every locale.
-
-```bash
-node - << 'EOF'
-const fs = require('fs');
-const path = require('path');
-const { execSync } = require('child_process');
-const files = execSync("grep -rl \"t('moviedb'\" src/", {encoding:'utf8'}).trim().split('\n');
-const keys = new Set();
-const re = /t\(\s*'moviedb'\s*,\s*'((?:[^'\\]|\\.)*)'/g;
-for (const f of files) {
-  const content = fs.readFileSync(f, 'utf8');
-  let m;
-  while ((m = re.exec(content)) !== null) {
-    keys.add(m[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\'));
-  }
-}
-const allKeys = [...keys].sort();
-console.log(`Total unique source strings: ${allKeys.length}\n`);
-for (const loc of ['de','es','fr','it','nl']) {
-  const trans = JSON.parse(fs.readFileSync(path.join('l10n', loc + '.json'),'utf8')).translations || {};
-  const missing = allKeys.filter(k => !(k in trans));
-  const empty = allKeys.filter(k => k in trans && !trans[k]);
-  console.log(`=== ${loc.toUpperCase()} === (${Object.keys(trans).length} translated)`);
-  console.log(`  Missing keys: ${missing.length}`);
-  missing.forEach(k => console.log(`    - "${k}"`));
-  if (empty.length) { console.log(`  Empty: ${empty.length}`); empty.forEach(k => console.log(`    ~ "${k}"`)); }
-  console.log('');
-}
-EOF
-```
+`npm run check:translations` (runs `l10n/check-translations.js`) lists any
+source string not yet present, or present but empty, in each locale JSON. It
+exits non-zero if anything is missing, and **CI runs it on every PR** (see
+`.github/workflows/ci.yml`, job `check-translations`) — a PR that introduces
+or leaves untranslated keys will fail CI.
 
 > Note: the audit uses a simple regex and only detects single-quoted
 > `t('moviedb', '...')` calls (the convention used throughout this codebase).
