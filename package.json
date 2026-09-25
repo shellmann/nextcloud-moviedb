@@ -35,7 +35,7 @@
         "@nextcloud/browserslist-config": "^3.0.0",
         "@nextcloud/eslint-config": "^9.0.1",
         "@nextcloud/webpack-vue-config": "^7.0.4",
-        "@typescript-eslint/eslint-plugin": "^8.70.0",
+        "@typescript-eslint/eslint-plugin": "^8.70.1",
         "@typescript-eslint/parser": "^8.69.0",
         "@vitejs/plugin-vue": "^6.0.8",
         "@vitest/coverage-v8": "^4.1.11",
