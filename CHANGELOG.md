@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- An "About" section in Settings with the TMDB logo and the attribution
+  notice required by TMDB's API terms, translated into all five locales.
+  The same notice is now in the App Store description and the README.
+
 ## [1.5.4] - 2026-09-21
 
 ### Fixed

@@ -296,6 +296,8 @@ OC.L10N.register(
         "Leave {name}?": "Abbandonare {name}?",
         "Leave": "Abbandona",
         "You have left the library.": "Hai abbandonato la libreria.",
-        "Failed to leave library. Please try again.": "Impossibile abbandonare la libreria. Riprova."
+        "Failed to leave library. Please try again.": "Impossibile abbandonare la libreria. Riprova.",
+        "About": "Informazioni",
+        "This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.": "Questa applicazione utilizza TMDB e le API di TMDB, ma non è approvata, certificata o altrimenti autorizzata da TMDB."
     },
 "nplurals=2; plural=(n != 1);");

@@ -296,6 +296,8 @@ OC.L10N.register(
         "Leave {name}?": "Quitter {name}?",
         "Leave": "Quitter",
         "You have left the library.": "Vous avez quitté la bibliothèque.",
-        "Failed to leave library. Please try again.": "Impossible de quitter la bibliothèque. Veuillez réessayer."
+        "Failed to leave library. Please try again.": "Impossible de quitter la bibliothèque. Veuillez réessayer.",
+        "About": "À propos",
+        "This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.": "Cette application utilise TMDB et les API de TMDB, mais n’est ni approuvée, ni certifiée, ni validée d’une autre manière par TMDB."
     },
 "nplurals=2; plural=(n > 1);");

@@ -264,5 +264,6 @@ AGPL-3.0-or-later
 
 ## Credits
 
-- Movie data provided by [The Movie Database (TMDB)](https://www.themoviedb.org/)
+- Movie and TV show data provided by [The Movie Database (TMDB)](https://www.themoviedb.org/).
+  This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
 - Built with [Vue 3](https://vuejs.org/), [Pinia](https://pinia.vuejs.org/), and [Nextcloud Vue](https://github.com/nextcloud/nextcloud-vue)

@@ -27,6 +27,10 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 1. Get a free API key from [TMDB](https://www.themoviedb.org/settings/api)
 2. Enter your API key in the app settings
 3. Start adding movies and TV shows to your collection!
+
+## Data source
+
+Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.themoviedb.org/). This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
     ]]></description>
     <version>1.5.4</version>
     <licence>AGPL-3.0-or-later</licence>

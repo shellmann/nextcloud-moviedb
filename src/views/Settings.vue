@@ -97,6 +97,20 @@
 			</div>
 		</div>
 
+		<div class="settings-section">
+			<h3>{{ t('moviedb', 'About') }}</h3>
+			<a
+				href="https://www.themoviedb.org/"
+				target="_blank"
+				rel="noopener noreferrer"
+				class="tmdb-logo-link">
+				<img :src="tmdbLogoUrl" alt="The Movie Database (TMDB)" class="tmdb-logo">
+			</a>
+			<p class="section-description tmdb-notice">
+				{{ t('moviedb', 'This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.') }}
+			</p>
+		</div>
+
 		<div class="app-version">
 			<p>MovieDB v{{ appVersion }}</p>
 		</div>
@@ -138,6 +152,7 @@
 <script>
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
+import { imagePath } from '@nextcloud/router'
 import { NcButton, NcDialog, NcSelect, NcTextField } from '@nextcloud/vue'
 import ContentSave from 'vue-material-design-icons/ContentSave.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
@@ -190,6 +205,10 @@ export default {
 
 		customPlatforms() {
 			return this.platformsStore.customPlatforms
+		},
+
+		tmdbLogoUrl() {
+			return imagePath('moviedb', 'tmdb-logo.svg')
 		},
 
 		hasApiKey() {
@@ -387,6 +406,21 @@ export default {
     background: var(--color-warning);
     color: #000;
     font-weight: bold;
+}
+
+.tmdb-logo-link {
+    display: inline-block;
+    margin: 8px 0 12px;
+}
+
+.tmdb-logo {
+    display: block;
+    height: 14px;
+    width: auto;
+}
+
+.settings-section .section-description.tmdb-notice {
+    margin-bottom: 0;
 }
 
 .app-version {

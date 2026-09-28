@@ -295,7 +295,9 @@
 		"Leave {name}?": "{name} verlaten?",
 		"Leave": "Verlaten",
 		"You have left the library.": "Je hebt de bibliotheek verlaten.",
-		"Failed to leave library. Please try again.": "Bibliotheek verlaten mislukt. Probeer opnieuw."
+		"Failed to leave library. Please try again.": "Bibliotheek verlaten mislukt. Probeer opnieuw.",
+		"About": "Over",
+		"This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.": "Deze applicatie gebruikt TMDB en de TMDB-API’s, maar wordt niet door TMDB onderschreven, gecertificeerd of anderszins goedgekeurd."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
