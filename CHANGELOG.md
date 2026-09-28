@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Fixed
+- Saving settings showed the "Settings saved" message twice, and removing
+  the API key showed both "Settings saved" and "API key removed". A failed
+  save could also show an error followed by a success message. Each action
+  now shows exactly one message matching the outcome.
+
 ## [1.5.5] - 2026-09-28
 
 ### Added

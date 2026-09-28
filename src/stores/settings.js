@@ -1,4 +1,4 @@
-import { showError, showSuccess } from '@nextcloud/dialogs'
+import { showError } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
@@ -41,25 +41,19 @@ export const useSettingsStore = defineStore('settings', {
 		},
 
 		/**
-		 * Updates user settings.
+		 * Updates user settings. Callers show the success/error message,
+		 * so they can word it for the action (save vs. remove key).
 		 *
 		 * @param {object} data - Settings to update
-		 * @param {string} [data.apiKey] - TMDB API key
+		 * @param {string} [data.tmdbApiKey] - TMDB API key
 		 * @param {string} [data.defaultLanguage] - Default TMDB language
 		 * @param {string} [data.appLanguage] - App UI language
-		 * @return {Promise<boolean>} True if updated successfully
+		 * @return {Promise<void>}
+		 * @throws {Error} When the API request fails
 		 */
 		async update(data) {
-			try {
-				await api.updateSettings(data)
-				await this.fetch()
-				showSuccess(t('moviedb', 'Settings saved successfully.'))
-				return true
-			} catch (error) {
-				console.error('Failed to update settings:', error)
-				showError(t('moviedb', 'Failed to save settings. Please try again.'))
-				return false
-			}
+			await api.updateSettings(data)
+			await this.fetch()
 		},
 	},
 })
