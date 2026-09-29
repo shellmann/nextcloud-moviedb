@@ -151,6 +151,31 @@ class EpisodeMapper extends QBMapper {
     }
 
     /**
+     * All episodes of a library's series, unpaginated (used by export).
+     *
+     * @return Episode[]
+     */
+    public function findAllByLibrary(int $libraryId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $sub = $this->db->getQueryBuilder();
+        $sub->select('id')
+            ->from('moviedb_series')
+            ->where('library_id = :ep_lib_id');
+
+        $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT, ':ep_lib_id');
+
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->in('series_id', $qb->createFunction('(' . $sub->getSQL() . ')')))
+            ->orderBy('series_id', 'ASC')
+            ->addOrderBy('season_number', 'ASC')
+            ->addOrderBy('episode_number', 'ASC');
+
+        return $this->findEntities($qb);
+    }
+
+    /**
      * Delete all episodes belonging to a library (via their parent series).
      * Used on library cascade delete — deletes episodes whose series_id is in
      * the set of series owned by that library.

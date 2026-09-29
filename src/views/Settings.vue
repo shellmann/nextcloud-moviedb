@@ -98,6 +98,38 @@
 		</div>
 
 		<div class="settings-section">
+			<h3>{{ t('moviedb', 'Import / Export') }}</h3>
+			<p class="section-description">
+				{{ t('moviedb', 'Export the active library as a JSON file to back it up or move it to another Nextcloud instance. The file contains your ratings and reviews, but not your TMDB API key.') }}
+			</p>
+			<NcButton :disabled="exporting" @click="exportLibrary">
+				<template #icon>
+					<Download :size="20" />
+				</template>
+				{{ t('moviedb', 'Export library') }}
+			</NcButton>
+
+			<p class="section-description import-description">
+				{{ t('moviedb', 'Import a file that was exported from MovieDB into the active library. Titles that are already in the library are skipped.') }}
+			</p>
+			<NcButton :disabled="importing || !canEdit" @click="chooseImportFile">
+				<template #icon>
+					<Upload :size="20" />
+				</template>
+				{{ importing ? t('moviedb', 'Importing…') : t('moviedb', 'Import library') }}
+			</NcButton>
+			<p v-if="!canEdit" class="section-description">
+				{{ t('moviedb', 'You need edit permission for this library to import.') }}
+			</p>
+			<input
+				ref="importInput"
+				type="file"
+				accept=".json,application/json"
+				class="import-input"
+				@change="onImportFileChosen">
+		</div>
+
+		<div class="settings-section">
 			<h3>{{ t('moviedb', 'About') }}</h3>
 			<p class="app-version">
 				MovieDB v{{ appVersion }}
@@ -151,6 +183,63 @@
 				</NcButton>
 			</template>
 		</NcDialog>
+
+		<!-- Import Confirmation Dialog -->
+		<NcDialog
+			:open="showImportDialog"
+			:name="t('moviedb', 'Import into {library}?', { library: activeLibraryName })"
+			@update:open="onImportDialogToggle">
+			<div v-if="importSummary" class="import-dialog">
+				<p>{{ t('moviedb', 'This file contains:') }}</p>
+				<ul class="import-counts">
+					<li>{{ t('moviedb', 'Movies: {count}', { count: importSummary.movies }) }}</li>
+					<li>{{ t('moviedb', 'TV shows: {count}, episodes: {episodes}', { count: importSummary.series, episodes: importSummary.episodes }) }}</li>
+					<li>{{ t('moviedb', 'Watchlist items: {count}', { count: importSummary.watchlist }) }}</li>
+				</ul>
+				<p>{{ t('moviedb', 'Titles that already exist in this library are skipped. The import cannot be undone automatically.') }}</p>
+				<p v-if="isSharedLibrary" class="import-warning">
+					{{ t('moviedb', 'This library may be shared: other members will see the imported items.') }}
+				</p>
+				<p class="hint">
+					{{ t('moviedb', 'Only import files that you exported from MovieDB yourself.') }}
+				</p>
+			</div>
+			<template #actions>
+				<NcButton @click="cancelImport">
+					{{ t('moviedb', 'Cancel') }}
+				</NcButton>
+				<NcButton variant="primary" :disabled="importing" @click="confirmImport">
+					{{ t('moviedb', 'Import') }}
+				</NcButton>
+			</template>
+		</NcDialog>
+
+		<!-- Import Result Dialog -->
+		<NcDialog
+			:open="importResult !== null"
+			:name="t('moviedb', 'Import finished')"
+			@update:open="importResult = null">
+			<div v-if="importResult" class="import-dialog">
+				<p>{{ t('moviedb', 'Imported:') }}</p>
+				<ul class="import-counts">
+					<li>{{ t('moviedb', 'Movies: {count}', { count: importResult.imported.movies }) }}</li>
+					<li>{{ t('moviedb', 'TV shows: {count}, episodes: {episodes}', { count: importResult.imported.series, episodes: importResult.imported.episodes }) }}</li>
+					<li>{{ t('moviedb', 'Watchlist items: {count}', { count: importResult.imported.watchlist }) }}</li>
+					<li>{{ t('moviedb', 'Watches: {count}', { count: importResult.imported.watches }) }}</li>
+				</ul>
+				<p v-if="skippedCount > 0">
+					{{ t('moviedb', 'Skipped (already in the library): {count}', { count: skippedCount }) }}
+				</p>
+				<p v-if="invalidCount > 0">
+					{{ t('moviedb', 'Ignored invalid entries: {count}', { count: invalidCount }) }}
+				</p>
+			</div>
+			<template #actions>
+				<NcButton variant="primary" @click="importResult = null">
+					{{ t('moviedb', 'Close') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 	</div>
 </template>
 
@@ -161,12 +250,20 @@ import { imagePath } from '@nextcloud/router'
 import { NcButton, NcDialog, NcSelect, NcTextField } from '@nextcloud/vue'
 import ContentSave from 'vue-material-design-icons/ContentSave.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
+import Download from 'vue-material-design-icons/Download.vue'
 import Eye from 'vue-material-design-icons/Eye.vue'
 import EyeOff from 'vue-material-design-icons/EyeOff.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
+import Upload from 'vue-material-design-icons/Upload.vue'
 import { getTmdbLanguageOptions } from '../constants.js'
+import api from '../services/api.js'
+import { useLibrariesStore } from '../stores/libraries.js'
+import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
+import { useSeriesStore } from '../stores/series.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { useWatchlistStore } from '../stores/watchlist.js'
+import { downloadBlob, filenameFromDisposition, LibraryFileError, summarizeExport } from '../utils/libraryFile.js'
 
 export default {
 	name: 'Settings',
@@ -179,13 +276,19 @@ export default {
 		EyeOff,
 		ContentSave,
 		Delete,
+		Download,
 		Plus,
+		Upload,
 	},
 
 	setup() {
 		const settingsStore = useSettingsStore()
 		const platformsStore = usePlatformsStore()
-		return { settingsStore, platformsStore }
+		const librariesStore = useLibrariesStore()
+		const moviesStore = useMoviesStore()
+		const seriesStore = useSeriesStore()
+		const watchlistStore = useWatchlistStore()
+		return { settingsStore, platformsStore, librariesStore, moviesStore, seriesStore, watchlistStore }
 	},
 
 	data() {
@@ -200,6 +303,12 @@ export default {
 			showDeletePlatformDialog: false,
 			showRemoveApiKeyDialog: false,
 			pendingDeletePlatformId: null,
+			exporting: false,
+			importing: false,
+			importFile: null,
+			importSummary: null,
+			showImportDialog: false,
+			importResult: null,
 		}
 	},
 
@@ -219,6 +328,29 @@ export default {
 
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
+		},
+
+		canEdit() {
+			return this.librariesStore.activeCanEdit
+		},
+
+		activeLibraryName() {
+			return this.librariesStore.activeLibrary?.name ?? ''
+		},
+
+		isSharedLibrary() {
+			const lib = this.librariesStore.activeLibrary
+			return lib !== null && !lib.isPersonal
+		},
+
+		skippedCount() {
+			const skipped = this.importResult?.skippedDuplicates ?? {}
+			return Object.values(skipped).reduce((sum, n) => sum + n, 0)
+		},
+
+		invalidCount() {
+			const invalid = this.importResult?.invalid ?? {}
+			return Object.values(invalid).reduce((sum, n) => sum + n, 0)
 		},
 	},
 
@@ -274,6 +406,91 @@ export default {
 				this.showDeletePlatformDialog = false
 				this.pendingDeletePlatformId = null
 			}
+		},
+
+		async exportLibrary() {
+			this.exporting = true
+			try {
+				const libraryId = this.librariesStore.activeLibraryId
+				const response = await api.exportLibrary(libraryId !== null ? libraryId : undefined)
+				downloadBlob(response.data, filenameFromDisposition(response.headers?.['content-disposition']))
+				showSuccess(t('moviedb', 'Library exported.'))
+			} catch {
+				showError(t('moviedb', 'Failed to export the library. Please try again.'))
+			} finally {
+				this.exporting = false
+			}
+		},
+
+		chooseImportFile() {
+			this.$refs.importInput.click()
+		},
+
+		async onImportFileChosen(event) {
+			const input = event.target
+			const file = input.files?.[0]
+			// Reset so choosing the same file again still fires change.
+			input.value = ''
+			if (!file) { return }
+
+			try {
+				this.importSummary = summarizeExport(JSON.parse(await file.text()))
+				this.importFile = file
+				this.showImportDialog = true
+			} catch (error) {
+				if (error instanceof LibraryFileError && error.code === 'newerVersion') {
+					showError(t('moviedb', 'This file was created by a newer version of MovieDB. Please update the app first.'))
+				} else {
+					showError(t('moviedb', 'This is not a MovieDB export file.'))
+				}
+			}
+		},
+
+		onImportDialogToggle(open) {
+			if (!open) { this.cancelImport() }
+		},
+
+		cancelImport() {
+			this.showImportDialog = false
+			this.importFile = null
+			this.importSummary = null
+		},
+
+		async confirmImport() {
+			if (!this.importFile) { return }
+			this.importing = true
+			try {
+				const libraryId = this.librariesStore.activeLibraryId
+				const response = await api.importLibrary(this.importFile, libraryId !== null ? libraryId : undefined)
+				this.importResult = response.data
+				await this.refreshAfterImport()
+			} catch (error) {
+				const status = error.response?.status
+				if (status === 413) {
+					showError(t('moviedb', 'The file is too large.'))
+				} else if (status === 429) {
+					showError(t('moviedb', 'Too many imports. Please try again later.'))
+				} else if (status === 400) {
+					showError(t('moviedb', 'The file is not a valid MovieDB export.'))
+				} else {
+					showError(t('moviedb', 'The import failed. Nothing was changed.'))
+				}
+			} finally {
+				this.importing = false
+				this.cancelImport()
+			}
+		},
+
+		async refreshAfterImport() {
+			this.moviesStore.resetFilters()
+			this.seriesStore.resetFilters()
+			this.watchlistStore.resetFilters()
+			await Promise.all([
+				this.moviesStore.fetchAll(),
+				this.seriesStore.fetchAll(),
+				this.watchlistStore.fetchAll(),
+				this.platformsStore.fetchAll(),
+			])
 		},
 
 		async removeApiKey() {
@@ -440,5 +657,30 @@ export default {
     flex-wrap: wrap;
     gap: 4px 16px;
     margin-bottom: 16px;
+}
+.import-description {
+    margin-top: 20px;
+}
+
+.import-input {
+    display: none;
+}
+
+.import-dialog {
+    padding: 0 8px 8px;
+
+    .import-counts {
+        margin: 4px 0 12px 20px;
+        list-style: disc;
+    }
+
+    .import-warning {
+        font-weight: bold;
+    }
+
+    .hint {
+        font-size: 12px;
+        color: var(--color-text-maxcontrast);
+    }
 }
 </style>

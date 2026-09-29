@@ -24,6 +24,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Shared Libraries**: Create named libraries and share your collection with other Nextcloud users — assign viewer or editor roles, manage members, and switch between libraries
 - **Watchlist**: Mixed movie + TV watchlist with priorities and a random picker
 - **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime
+- **Import / Export**: Back up a library or move it to another Nextcloud instance as a single JSON file — ratings, reviews, rewatches, episode progress and watchlist included
 - **Multilingual**: Full internationalization support (German, Spanish, French, Italian, Dutch)
 
 ## Requirements
@@ -229,6 +230,14 @@ composer test
 3. Enter your TMDB API key (Read Access Token)
 4. Select your preferred language for movie metadata
 
+### Moving a library to another instance
+
+1. On the old instance, select the library and choose **Settings → Import / Export → Export library**. This downloads a JSON file with your movies, TV shows (including episode progress), rewatches, ratings, reviews, watchlist and custom platforms. Your TMDB API key is not included.
+2. On the new instance, select the target library and choose **Import library**, then pick the file. You need edit permission for the library.
+3. Titles that are already in the library are skipped, so importing the same file twice is safe.
+
+Only import files you exported yourself. Import never touches other users' data or sharing settings, and it needs no TMDB API key.
+
 ## API
 
 The app exposes the following REST API endpoints:
@@ -245,6 +254,8 @@ The app exposes the following REST API endpoints:
 | `/api/watchlist/{id}/watched` | POST | Move to watched |
 | `/api/tmdb/search` | GET | Search TMDB |
 | `/api/stats` | GET | Get statistics |
+| `/api/export` | GET | Download the active library as JSON |
+| `/api/import` | POST | Import an exported JSON file (multipart field `file`) |
 
 ## Contributing
 

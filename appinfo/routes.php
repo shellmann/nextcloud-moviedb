@@ -79,6 +79,10 @@ return [
         ['name' => 'library#removeMember', 'url' => '/api/libraries/{id}/members/{userId}',    'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
         ['name' => 'library#leave',        'url' => '/api/libraries/{id}/leave',               'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
 
+        // Library export / import (JSON file)
+        ['name' => 'import_export#export', 'url' => '/api/export', 'verb' => 'GET'],
+        ['name' => 'import_export#import', 'url' => '/api/import', 'verb' => 'POST'],
+
         // Settings
         ['name' => 'settings#get', 'url' => '/api/settings', 'verb' => 'GET'],
         ['name' => 'settings#update', 'url' => '/api/settings', 'verb' => 'PUT'],

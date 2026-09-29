@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- Export and import of a library as a single JSON file (Settings →
+  Import / Export), for backups and for moving a collection to another
+  Nextcloud instance (#62). It covers movies, TV shows with episode
+  progress, rewatches, ratings, reviews, the watchlist and custom
+  platforms, but not the TMDB API key. Import needs edit permission,
+  skips titles that are already in the library, runs in one transaction
+  and needs no TMDB requests. The uploaded file is validated field by
+  field, and a confirmation dialog shows what will be imported.
 - Settings "About" section now shows the app version and links to the source
   code, issue tracker, App Store page and license. `info.xml` gained a
   `<website>` entry.

@@ -236,6 +236,18 @@ export default {
 		return axios.delete(`${baseUrl}/libraries/${id}/leave`)
 	},
 
+	// Library export / import
+	exportLibrary(libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/export`, { params, responseType: 'blob' })
+	},
+	importLibrary(file, libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		const formData = new FormData()
+		formData.append('file', file)
+		return axios.post(`${baseUrl}/import`, formData, { params })
+	},
+
 	// Sharee search
 	searchSharees(query) {
 		return axios.get(`${baseUrl}/libraries/sharees`, { params: { search: query } })

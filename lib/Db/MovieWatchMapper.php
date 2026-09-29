@@ -264,6 +264,25 @@ class MovieWatchMapper extends QBMapper {
     }
 
     /**
+     * Movie watches and series-level watches (episode_id NULL) of a library,
+     * unpaginated (used by export).
+     *
+     * @return MovieWatch[]
+     */
+    public function findAllByLibrary(int $libraryId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->isNull('episode_id'))
+            ->orderBy('watched_at', 'ASC')
+            ->addOrderBy('id', 'ASC');
+
+        return $this->findEntities($qb);
+    }
+
+    /**
      * Delete all watch rows for a series (used on cascade delete). Ownership is
      * verified by the caller before invoking this.
      */

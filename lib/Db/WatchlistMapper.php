@@ -115,6 +115,22 @@ class WatchlistMapper extends QBMapper {
     }
 
     /**
+     * All watchlist items of a library, unpaginated (used by export and import dedup).
+     *
+     * @return WatchlistItem[]
+     */
+    public function findAllByLibrary(int $libraryId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->orderBy('id', 'ASC');
+
+        return $this->findEntities($qb);
+    }
+
+    /**
      * Delete all watchlist rows belonging to a library (used on library cascade delete).
      */
     public function deleteByLibrary(int $libraryId): void {

@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\TmdbService;
+use OCA\MovieDB\Util\TmdbPath;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -259,7 +260,7 @@ class TmdbController extends AuthenticatedController {
 
         // Validate path: must be a valid TMDB image filename (alphanumeric + extension)
         $decodedPath = urldecode($path);
-        if (!preg_match('/^[a-zA-Z0-9_-]+\.(jpg|jpeg|png|webp|svg)$/', ltrim($decodedPath, '/'))) {
+        if (!TmdbPath::isValid($decodedPath)) {
             $this->logger->warning('Invalid TMDB image path requested', ['path' => $decodedPath]);
             return new DataDownloadResponse('', 'image', 'image/jpeg');
         }
