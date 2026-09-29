@@ -266,7 +266,7 @@ import { usePlatformsStore } from '../stores/platforms.js'
 import { useSeriesStore } from '../stores/series.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
-import { downloadBlob, filenameFromDisposition, LibraryFileError, summarizeExport } from '../utils/libraryFile.js'
+import { downloadBlob, filenameFromDisposition, LibraryFileError, MAX_FILE_SIZE, summarizeExport } from '../utils/libraryFile.js'
 
 export default {
 	name: 'Settings',
@@ -445,6 +445,13 @@ export default {
 			// Reset so choosing the same file again still fires change.
 			input.value = ''
 			if (!file) { return }
+
+			// Check the size first: reading a huge file into memory could freeze
+			// the tab before the server gets a chance to refuse it.
+			if (file.size > MAX_FILE_SIZE) {
+				showError(t('moviedb', 'The file is too large.'))
+				return
+			}
 
 			try {
 				this.importSummary = summarizeExport(JSON.parse(await file.text()))

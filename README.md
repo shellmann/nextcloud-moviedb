@@ -236,7 +236,7 @@ composer test
 2. On the new instance, select the target library and choose **Import library**, then pick the file. You need edit permission for the library.
 3. Titles that are already in the library are skipped, so importing the same file twice is safe.
 
-Only import files you exported yourself. Import never touches other users' data or sharing settings, and it needs no TMDB API key.
+Only import files you exported yourself. An export of a shared library contains everything its members' watches, ratings and reviews show, so treat the file like the library itself and don't pass it on carelessly. Import never touches other users' data or sharing settings, and it needs no TMDB API key.
 
 ## API
 

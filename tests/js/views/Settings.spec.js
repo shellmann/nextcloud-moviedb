@@ -116,6 +116,24 @@ describe('Settings import / export', () => {
 		expect(wrapper.find('.dialog').text()).toContain('other members will see the imported items')
 	})
 
+	it('refuses an oversized file without reading it', async () => {
+		const text = vi.fn()
+		await wrapper.vm.onImportFileChosen({ target: { files: [{ size: 25 * 1024 * 1024 + 1, text }], value: 'x' } })
+		await flushPromises()
+
+		expect(text).not.toHaveBeenCalled()
+		expect(showError).toHaveBeenCalledWith('The file is too large.')
+		expect(wrapper.find('.dialog').exists()).toBe(false)
+	})
+
+	it('accepts a file exactly at the size limit', async () => {
+		const file = { size: 25 * 1024 * 1024, text: async () => JSON.stringify(exportFile()) }
+		await wrapper.vm.onImportFileChosen({ target: { files: [file], value: 'x' } })
+		await flushPromises()
+
+		expect(wrapper.find('.dialog').exists()).toBe(true)
+	})
+
 	it('rejects a file that is not a MovieDB export without opening the dialog', async () => {
 		await chooseFile({ foo: 'bar' })
 		expect(wrapper.find('.dialog').exists()).toBe(false)

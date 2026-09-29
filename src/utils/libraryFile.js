@@ -6,6 +6,9 @@
 
 export const SUPPORTED_FORMAT_VERSION = 1
 
+/** Same limit as the server (ImportExportController::MAX_FILE_SIZE), in bytes. */
+export const MAX_FILE_SIZE = 25 * 1024 * 1024
+
 /**
  * Error thrown for files that cannot be imported. `code` is one of
  * 'notMoviedb' | 'newerVersion'.
