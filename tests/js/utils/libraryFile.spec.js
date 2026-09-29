@@ -11,12 +11,36 @@ describe('libraryFile', () => {
 				series: [{ episodes: [{}, {}] }, { episodes: [{}] }, {}],
 				watchlist: [{}],
 			})
-			expect(summary).toEqual({ movies: 3, series: 3, episodes: 3, watchlist: 1 })
+			expect(summary).toMatchObject({ movies: 3, series: 3, episodes: 3, watchlist: 1 })
 		})
 
 		it('treats missing sections as empty', () => {
 			expect(summarizeExport({ app: 'moviedb', formatVersion: 1 }))
-				.toEqual({ movies: 0, series: 0, episodes: 0, watchlist: 0 })
+				.toMatchObject({ movies: 0, series: 0, episodes: 0, watchlist: 0, libraryName: null, exportedAt: null })
+		})
+
+		it('reads the source library name and export time', () => {
+			const summary = summarizeExport({
+				app: 'moviedb',
+				formatVersion: 1,
+				library: { name: '  Family  ' },
+				exportedAt: '2026-09-29T19:36:12+02:00',
+			})
+			expect(summary.libraryName).toBe('Family')
+			expect(summary.exportedAt).toBeInstanceOf(Date)
+			expect(summary.exportedAt.toISOString()).toBe('2026-09-29T17:36:12.000Z')
+		})
+
+		it('ignores a missing, blank or malformed library name and date', () => {
+			const summary = summarizeExport({ app: 'moviedb', formatVersion: 1, library: { name: '   ' }, exportedAt: 'yesterday' })
+			expect(summary.libraryName).toBeNull()
+			expect(summary.exportedAt).toBeNull()
+			expect(summarizeExport({ app: 'moviedb', formatVersion: 1, library: { name: 42 }, exportedAt: 5 }).libraryName).toBeNull()
+		})
+
+		it('caps a very long library name', () => {
+			const summary = summarizeExport({ app: 'moviedb', formatVersion: 1, library: { name: 'x'.repeat(500) } })
+			expect(summary.libraryName).toHaveLength(128)
 		})
 
 		it.each([

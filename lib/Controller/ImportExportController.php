@@ -15,6 +15,7 @@ use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\JSONResponse;
+use OCP\IDateTimeZone;
 use OCP\IRequest;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
@@ -37,6 +38,7 @@ class ImportExportController extends AuthenticatedController {
         private ImportService $importService,
         private ImportValidator $validator,
         private LibraryService $libraryService,
+        private IDateTimeZone $dateTimeZone,
         IUserSession $userSession,
         private LoggerInterface $logger,
     ) {
@@ -60,8 +62,10 @@ class ImportExportController extends AuthenticatedController {
             return new JSONResponse(['error' => 'Library not found.'], Http::STATUS_NOT_FOUND);
         }
 
-        $name = trim((string)preg_replace('/[^A-Za-z0-9_-]+/', '-', $data['library']['name']), '-');
-        $filename = 'moviedb-' . ($name !== '' ? $name : 'library') . '-' . date('Y-m-d') . '.json';
+        $filename = ExportService::filename(
+            $data['library']['name'],
+            new \DateTimeImmutable('now', $this->dateTimeZone->getTimeZone())
+        );
 
         return new DataDownloadResponse(
             json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR),

@@ -330,7 +330,9 @@
 		"Imported:": "Importado:",
 		"Watches: {count}": "Visionados: {count}",
 		"Skipped (already in the library): {count}": "Omitidos (ya en la biblioteca): {count}",
-		"Ignored invalid entries: {count}": "Entradas no válidas ignoradas: {count}"
+		"Ignored invalid entries: {count}": "Entradas no válidas ignoradas: {count}",
+		"Exported from {library}": "Exportado desde {library}",
+		"Exported from {library} on {date}": "Exportado desde {library} el {date}"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

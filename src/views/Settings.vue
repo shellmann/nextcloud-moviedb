@@ -190,6 +190,9 @@
 			:name="t('moviedb', 'Import into {library}?', { library: activeLibraryName })"
 			@update:open="onImportDialogToggle">
 			<div v-if="importSummary" class="import-dialog">
+				<p v-if="importSource" class="import-source">
+					{{ importSource }}
+				</p>
 				<p>{{ t('moviedb', 'This file contains:') }}</p>
 				<ul class="import-counts">
 					<li>{{ t('moviedb', 'Movies: {count}', { count: importSummary.movies }) }}</li>
@@ -328,6 +331,16 @@ export default {
 
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
+		},
+
+		importSource() {
+			const summary = this.importSummary
+			if (!summary?.libraryName) { return '' }
+			if (!summary.exportedAt) {
+				return t('moviedb', 'Exported from {library}', { library: summary.libraryName })
+			}
+			const date = summary.exportedAt.toLocaleString(undefined, { dateStyle: 'medium', timeStyle: 'short' })
+			return t('moviedb', 'Exported from {library} on {date}', { library: summary.libraryName, date })
 		},
 
 		canEdit() {
@@ -668,6 +681,10 @@ export default {
 
 .import-dialog {
     padding: 0 8px 8px;
+
+    .import-source {
+        color: var(--color-text-maxcontrast);
+    }
 
     .import-counts {
         margin: 4px 0 12px 20px;

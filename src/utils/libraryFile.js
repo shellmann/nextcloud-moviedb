@@ -23,7 +23,7 @@ const count = (value) => (Array.isArray(value) ? value.length : 0)
  * Summarize a parsed export file for the confirmation dialog.
  *
  * @param {object} data Parsed JSON
- * @return {{movies: number, series: number, episodes: number, watchlist: number}}
+ * @return {{movies: number, series: number, episodes: number, watchlist: number, libraryName: string | null, exportedAt: Date | null}}
  * @throws {LibraryFileError} when the file is not a usable MovieDB export
  */
 export function summarizeExport(data) {
@@ -40,7 +40,23 @@ export function summarizeExport(data) {
 		series: series.length,
 		episodes: series.reduce((sum, s) => sum + count(s?.episodes), 0),
 		watchlist: count(data.watchlist),
+		libraryName: typeof data.library?.name === 'string' && data.library.name.trim() !== ''
+			? data.library.name.trim().slice(0, 128)
+			: null,
+		exportedAt: parseDate(data.exportedAt),
 	}
+}
+
+/**
+ * Parse an ISO date string, or null when missing or malformed.
+ *
+ * @param {unknown} value Raw value from the file
+ * @return {Date | null}
+ */
+function parseDate(value) {
+	if (typeof value !== 'string') { return null }
+	const date = new Date(value)
+	return Number.isNaN(date.getTime()) ? null : date
 }
 
 /**

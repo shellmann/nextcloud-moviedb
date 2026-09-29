@@ -3,9 +3,12 @@
  */
 import { vi } from 'vitest'
 
+// Substitute {placeholders} like the real translate() does
+const interpolate = (text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? vars[key] : match)) : text)
+
 // Mock @nextcloud/l10n
 vi.mock('@nextcloud/l10n', () => ({
-	translate: (app, text) => text,
+	translate: (app, text, vars) => interpolate(text, vars),
 	translatePlural: (app, singular, plural, count) => (count === 1 ? singular : plural),
 	t: (app, text) => text,
 	n: (app, singular, plural, count) => (count === 1 ? singular : plural),

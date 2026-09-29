@@ -331,6 +331,8 @@ OC.L10N.register(
         "Imported:": "Importé :",
         "Watches: {count}": "Visionnages : {count}",
         "Skipped (already in the library): {count}": "Ignorés (déjà dans la bibliothèque) : {count}",
-        "Ignored invalid entries: {count}": "Entrées invalides ignorées : {count}"
+        "Ignored invalid entries: {count}": "Entrées invalides ignorées : {count}",
+        "Exported from {library}": "Exporté depuis {library}",
+        "Exported from {library} on {date}": "Exporté depuis {library} le {date}"
     },
 "nplurals=2; plural=(n > 1);");

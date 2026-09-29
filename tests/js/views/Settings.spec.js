@@ -95,6 +95,19 @@ describe('Settings import / export', () => {
 		expect(dialog.text()).not.toContain('may be shared')
 	})
 
+	it('names the source library and export time when the file has them', async () => {
+		await chooseFile(exportFile({ library: { name: 'Family' }, exportedAt: '2026-09-29T19:36:12+02:00' }))
+		expect(wrapper.find('.import-source').text()).toMatch(/^Exported from Family on .+2026/)
+
+		await chooseFile(exportFile({ library: { name: 'Family' } }))
+		expect(wrapper.find('.import-source').text()).toBe('Exported from Family')
+	})
+
+	it('omits the source line for files without a library name', async () => {
+		await chooseFile(exportFile())
+		expect(wrapper.find('.import-source').exists()).toBe(false)
+	})
+
 	it('warns that other members will see items in a shared library', async () => {
 		libraries.libraries = [{ id: 2, name: 'Family', isPersonal: false, role: 'editor', permissionEdit: true }]
 		libraries.activeLibraryId = 2

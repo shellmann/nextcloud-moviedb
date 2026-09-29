@@ -166,6 +166,26 @@ class ExportService {
         ];
     }
 
+    /**
+     * Download filename: "moviedb-<library>-<YYYY-MM-DD_HH-mm>.json".
+     *
+     * The library name is reduced to ASCII (umlauts and accents transliterated)
+     * so the Content-Disposition header is safe in every browser, and capped
+     * in length. The timestamp avoids colons, which Windows rejects.
+     */
+    public static function filename(string $libraryName, \DateTimeInterface $at): string {
+        $name = strtr($libraryName, [
+            'ä' => 'ae', 'ö' => 'oe', 'ü' => 'ue', 'Ä' => 'Ae', 'Ö' => 'Oe', 'Ü' => 'Ue', 'ß' => 'ss',
+        ]);
+        if (function_exists('transliterator_transliterate')) {
+            $name = transliterator_transliterate('Any-Latin; Latin-ASCII', $name) ?: $name;
+        }
+        $name = trim((string)preg_replace('/[^A-Za-z0-9_-]+/', '-', $name), '-');
+        $name = trim(substr($name, 0, 60), '-');
+
+        return 'moviedb-' . ($name !== '' ? $name . '-' : '') . $at->format('Y-m-d_H-i') . '.json';
+    }
+
     private function watchRow(MovieWatch $w, callable $platformName): array {
         return [
             'watchedAt' => $this->date($w->getWatchedAt()),
