@@ -54,7 +54,14 @@ class ImportExportController extends AuthenticatedController {
             return $error;
         }
 
-        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+        // Unlike ordinary reads, do not fall back silently to the personal
+        // library: a backup of a different library than requested is worse
+        // than an error.
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
 
         try {
             $data = $this->exportService->export($libraryId);

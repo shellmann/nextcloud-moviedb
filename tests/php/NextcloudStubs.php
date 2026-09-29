@@ -14,6 +14,10 @@ namespace OCP {
     interface IRequest {
         public function getParam(string $key, $default = null);
         public function getParams(): array;
+        public function getUploadedFile(string $key);
+    }
+    interface IDateTimeZone {
+        public function getTimeZone($timestamp = null): \DateTimeZone;
     }
     interface IUser {
         public function getUID(): ?string;
@@ -52,6 +56,7 @@ namespace OCP\AppFramework {
         public const STATUS_FORBIDDEN = 403;
         public const STATUS_NOT_FOUND = 404;
         public const STATUS_CONFLICT = 409;
+        public const STATUS_REQUEST_ENTITY_TOO_LARGE = 413;
         public const STATUS_INTERNAL_SERVER_ERROR = 500;
     }
 }
@@ -106,6 +111,11 @@ namespace OCP\AppFramework\Http\Attribute {
 
     #[\Attribute(\Attribute::TARGET_METHOD)]
     class NoCSRFRequired {}
+
+    #[\Attribute(\Attribute::TARGET_METHOD | \Attribute::IS_REPEATABLE)]
+    class UserRateLimit {
+        public function __construct(private int $limit = 0, private int $period = 0) {}
+    }
 }
 
 namespace OCP {
