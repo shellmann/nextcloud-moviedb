@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.6.0-beta.1] - 2026-09-29
+
+Pre-release for testing the new export/import. It is only offered to servers
+that allow pre-releases (`occ app:update --allow-unstable moviedb`) or can be
+installed from the GitHub pre-release. There is no database migration, so it
+can be replaced by 1.6.0 without any extra steps.
+
 ### Added
 - Export and import of a library as a single JSON file (Settings →
   Import / Export), for backups and for moving a collection to another
@@ -15,7 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   platforms, but not the TMDB API key. Import needs edit permission,
   skips titles that are already in the library, runs in one transaction
   and needs no TMDB requests. The uploaded file is validated field by
-  field, and a confirmation dialog shows what will be imported.
+  field, and a confirmation dialog shows what will be imported, including
+  the library and time the file was exported from. Export files are named
+  `moviedb-<library>-<YYYY-MM-DD_HH-mm>.json`.
 - Settings "About" section now shows the app version and links to the source
   code, issue tracker, App Store page and license. `info.xml` gained a
   `<website>` entry.
