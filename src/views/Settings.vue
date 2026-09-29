@@ -99,6 +99,15 @@
 
 		<div class="settings-section">
 			<h3>{{ t('moviedb', 'About') }}</h3>
+			<p class="app-version">
+				MovieDB v{{ appVersion }}
+			</p>
+			<p class="about-links">
+				<a :href="repoUrl" target="_blank" rel="noopener noreferrer">{{ t('moviedb', 'Source code') }}</a>
+				<a :href="repoUrl + '/issues'" target="_blank" rel="noopener noreferrer">{{ t('moviedb', 'Report an issue') }}</a>
+				<a href="https://apps.nextcloud.com/apps/moviedb" target="_blank" rel="noopener noreferrer">{{ t('moviedb', 'App Store') }}</a>
+				<a :href="repoUrl + '/blob/main/LICENSE'" target="_blank" rel="noopener noreferrer">{{ t('moviedb', 'License') }} (AGPL-3.0-or-later)</a>
+			</p>
 			<a
 				href="https://www.themoviedb.org/"
 				target="_blank"
@@ -109,10 +118,6 @@
 			<p class="section-description tmdb-notice">
 				{{ t('moviedb', 'This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.') }}
 			</p>
-		</div>
-
-		<div class="app-version">
-			<p>MovieDB v{{ appVersion }}</p>
 		</div>
 
 		<!-- Delete Platform Confirmation Dialog -->
@@ -187,6 +192,7 @@ export default {
 		return {
 			tmdbApiKey: '',
 			showApiKey: false,
+			repoUrl: 'https://github.com/shellmann/nextcloud-moviedb',
 			selectedLanguage: null,
 			languageOptions: getTmdbLanguageOptions(),
 			newPlatformName: '',
@@ -424,10 +430,15 @@ export default {
 }
 
 .app-version {
-    margin-top: 32px;
-    padding-top: 16px;
-    border-top: 1px solid var(--color-border);
     color: var(--color-text-maxcontrast);
     font-size: 13px;
+    margin-bottom: 8px;
+}
+
+.about-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 16px;
+    margin-bottom: 16px;
 }
 </style>

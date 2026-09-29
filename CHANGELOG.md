@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- Settings "About" section now shows the app version and links to the source
+  code, issue tracker, App Store page and license. `info.xml` gained a
+  `<website>` entry.
+
 ### Fixed
 - Saving settings showed the "Settings saved" message twice, and removing
   the API key showed both "Settings saved" and "API key removed". A failed

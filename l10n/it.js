@@ -298,6 +298,10 @@ OC.L10N.register(
         "You have left the library.": "Hai abbandonato la libreria.",
         "Failed to leave library. Please try again.": "Impossibile abbandonare la libreria. Riprova.",
         "About": "Informazioni",
-        "This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.": "Questa applicazione utilizza TMDB e le API di TMDB, ma non è approvata, certificata o altrimenti autorizzata da TMDB."
+        "This application uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.": "Questa applicazione utilizza TMDB e le API di TMDB, ma non è approvata, certificata o altrimenti autorizzata da TMDB.",
+        "Source code": "Codice sorgente",
+        "Report an issue": "Segnala un problema",
+        "App Store": "App Store",
+        "License": "Licenza"
     },
 "nplurals=2; plural=(n != 1);");
