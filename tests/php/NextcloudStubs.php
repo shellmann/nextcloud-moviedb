@@ -264,6 +264,12 @@ namespace OCP {
     }
 }
 
+namespace OCP\App {
+    interface IAppManager {
+        public function getAppVersion(string $appId, bool $useCache = true): string;
+    }
+}
+
 namespace OCP\AppFramework\Bootstrap {
     interface IBootstrap {
         public function register(IRegistrationContext $context): void;

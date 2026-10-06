@@ -183,4 +183,95 @@ class ImportValidatorTest extends TestCase {
         sort($names);
         $this->assertSame(['Disney+', 'My Cinema'], $names);
     }
+
+    /**
+     * @dataProvider sectionLimitProvider
+     */
+    public function testRejectsTooManyEntriesPerSection(string $section, int $limit): void {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->validator->validate($this->file([$section => array_fill(0, $limit + 1, ['title' => 'x', 'name' => 'x'])]));
+    }
+
+    public static function sectionLimitProvider(): array {
+        return [
+            'series' => ['series', ImportValidator::MAX_SERIES],
+            'watchlist' => ['watchlist', ImportValidator::MAX_WATCHLIST],
+            'platforms' => ['platforms', ImportValidator::MAX_PLATFORMS],
+        ];
+    }
+
+    public function testSectionExactlyAtTheLimitIsAccepted(): void {
+        $r = $this->validator->validate($this->file([
+            'platforms' => array_fill(0, ImportValidator::MAX_PLATFORMS, ['name' => 'x']),
+        ]));
+        $this->assertCount(1, $r['platforms']); // same name, merged
+    }
+
+    public function testRejectsShowWithTooManyEpisodes(): void {
+        $this->expectException(\InvalidArgumentException::class);
+        $this->validator->validate($this->file(['series' => [[
+            'title' => 'Endless',
+            'episodes' => array_fill(0, ImportValidator::MAX_EPISODES_PER_SERIES + 1, ['season' => 1, 'episode' => 1]),
+        ]]]));
+    }
+
+    public function testRejectsTooManyEpisodesAcrossAllShows(): void {
+        // Validating ~200k episodes needs far more than the 128 MB CLI default.
+        // Not restored afterwards: PHP refuses to lower it below current usage.
+        ini_set('memory_limit', '1G');
+        $show = [
+            'title' => 'Big',
+            'episodes' => array_fill(0, ImportValidator::MAX_EPISODES_PER_SERIES, ['season' => 1, 'episode' => 1]),
+        ];
+        $shows = intdiv(ImportValidator::MAX_EPISODES_TOTAL, ImportValidator::MAX_EPISODES_PER_SERIES) + 1;
+
+        $this->expectException(\InvalidArgumentException::class);
+        $this->expectExceptionMessage('too many episodes');
+        $this->validator->validate($this->file(['series' => array_fill(0, $shows, $show)]));
+    }
+
+    public function testExtraWatchesBeyondTheLimitAreDroppedNotFatal(): void {
+        $r = $this->validator->validate($this->file(['movies' => [[
+            'title' => 'Rewatched',
+            'watches' => array_fill(0, ImportValidator::MAX_WATCHES_PER_MOVIE + 5, ['rating' => 5]),
+        ]]]));
+        $this->assertCount(ImportValidator::MAX_WATCHES_PER_MOVIE, $r['movies'][0]['watches']);
+    }
+
+    public function testGenreIdsKeepOnlyPositiveIntegersAndAreCapped(): void {
+        $r = $this->validator->validate($this->file(['movies' => [
+            ['title' => 'Mixed', 'genreIds' => [28, '12', 0, -3, 1.5, null, 878]],
+            ['title' => 'Many', 'genreIds' => range(1, 80)],
+            ['title' => 'Object', 'genreIds' => ['a' => 1]],
+            ['title' => 'Scalar', 'genreIds' => 28],
+        ]]));
+        $this->assertSame([28, 878], $r['movies'][0]['genreIds']);
+        $this->assertCount(50, $r['movies'][1]['genreIds']);
+        $this->assertNull($r['movies'][2]['genreIds']);
+        $this->assertNull($r['movies'][3]['genreIds']);
+    }
+
+    public function testCastKeepsValidActorsOnlyAndIsCapped(): void {
+        $actors = [
+            ['name' => 'Keanu Reeves', 'character' => 'Neo', 'profilePath' => '/abc.jpg', 'extra' => 'dropped'],
+            ['character' => 'No Name'],
+            'not an actor',
+            ['name' => 'Evil', 'profilePath' => '../../etc/passwd'],
+        ];
+        $r = $this->validator->validate($this->file(['movies' => [
+            ['title' => 'Cast', 'castData' => $actors],
+            ['title' => 'Crowd', 'castData' => array_fill(0, 80, ['name' => 'Extra'])],
+            ['title' => 'Object', 'castData' => ['name' => 'Solo']],
+        ]]));
+
+        $this->assertSame(
+            [
+                ['name' => 'Keanu Reeves', 'character' => 'Neo', 'profilePath' => '/abc.jpg'],
+                ['name' => 'Evil', 'character' => null, 'profilePath' => null],
+            ],
+            $r['movies'][0]['castData']
+        );
+        $this->assertCount(50, $r['movies'][1]['castData']);
+        $this->assertNull($r['movies'][2]['castData']);
+    }
 }

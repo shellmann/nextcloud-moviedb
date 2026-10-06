@@ -226,4 +226,14 @@ describe('Settings import / export', () => {
 		expect(createObjectURL).toHaveBeenCalled()
 		expect(showSuccess).toHaveBeenCalledWith('Library exported.')
 	})
+
+	it('shows an error and re-enables export when the export fails', async () => {
+		api.exportLibrary.mockRejectedValue(new Error('network'))
+
+		await wrapper.vm.exportLibrary()
+
+		expect(showError).toHaveBeenCalledWith('Failed to export the library. Please try again.')
+		expect(showSuccess).not.toHaveBeenCalled()
+		expect(wrapper.vm.exporting).toBe(false)
+	})
 })
