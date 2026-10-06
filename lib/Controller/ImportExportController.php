@@ -9,6 +9,7 @@ use OCA\MovieDB\Service\ExportService;
 use OCA\MovieDB\Service\ImportService;
 use OCA\MovieDB\Service\ImportValidator;
 use OCA\MovieDB\Service\LibraryService;
+use OCA\MovieDB\Util\JsonComplexity;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -116,6 +117,11 @@ class ImportExportController extends AuthenticatedController {
         $content = file_get_contents($file['tmp_name'], false, null, 0, self::MAX_FILE_SIZE + 1);
         if ($content === false || strlen($content) > self::MAX_FILE_SIZE) {
             return new JSONResponse(['error' => 'The file could not be read.'], Http::STATUS_BAD_REQUEST);
+        }
+
+        // The byte cap does not bound json_decode's memory use; see JsonComplexity.
+        if (JsonComplexity::isTooComplex($content)) {
+            return new JSONResponse(['error' => 'The file contains too many entries.'], Http::STATUS_REQUEST_ENTITY_TOO_LARGE);
         }
 
         try {

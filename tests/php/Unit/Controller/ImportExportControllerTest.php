@@ -9,6 +9,7 @@ use OCA\MovieDB\Service\ExportService;
 use OCA\MovieDB\Service\ImportService;
 use OCA\MovieDB\Service\ImportValidator;
 use OCA\MovieDB\Service\LibraryService;
+use OCA\MovieDB\Util\JsonComplexity;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\DataDownloadResponse;
@@ -150,6 +151,19 @@ class ImportExportControllerTest extends TestCase {
         $this->upload('', UPLOAD_ERR_INI_SIZE);
 
         $this->assertSame(Http::STATUS_REQUEST_ENTITY_TOO_LARGE, $this->controller->import()->getStatus());
+    }
+
+    public function testImportRejectsFileWithTooManyEntriesBeforeDecoding(): void {
+        $this->libraryService->method('resolveLibraryId')->willReturn(3);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        // Far below the byte cap, but would decode to hundreds of MB.
+        $this->upload('[' . str_repeat('{},', JsonComplexity::MAX_OBJECTS + 1) . '{}]');
+        $this->importService->expects($this->never())->method('import');
+
+        $response = $this->controller->import();
+
+        $this->assertSame(Http::STATUS_REQUEST_ENTITY_TOO_LARGE, $response->getStatus());
+        $this->assertSame('The file contains too many entries.', $response->getData()['error']);
     }
 
     public function testImportRejectsInvalidJson(): void {
