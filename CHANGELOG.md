@@ -7,12 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.6.0-beta.1] - 2026-09-29
-
-Pre-release for testing the new export/import. It is only offered to servers
-that allow pre-releases (`occ app:update --allow-unstable moviedb`) or can be
-installed from the GitHub pre-release. There is no database migration, so it
-can be replaced by 1.6.0 without any extra steps.
+## [1.6.0] - 2026-10-06
 
 ### Added
 - Export and import of a library as a single JSON file (Settings →
@@ -34,6 +29,22 @@ can be replaced by 1.6.0 without any extra steps.
   the API key showed both "Settings saved" and "API key removed". A failed
   save could also show an error followed by a success message. Each action
   now shows exactly one message matching the outcome.
+- Importing a file made of a huge number of tiny entries could exhaust the
+  server's memory while the file was being read, even though it was below
+  the 25 MB size limit. Such files are now rejected up front.
+- Control characters (such as a NUL byte) in an imported file are removed
+  from text fields. PostgreSQL silently cut the text at a NUL byte, so a
+  title could end up shortened.
+
+### Maintenance
+- Tests for the export (including an export → import round trip) and for the
+  remaining import limits. The import and export were also tested on
+  PostgreSQL.
+
+## [1.6.0-beta.1] - 2026-09-29
+
+Pre-release of 1.6.0 for testing the new export/import; its changes are listed
+under 1.6.0. It was only offered to servers that allow pre-releases.
 
 ## [1.5.5] - 2026-09-28
 
