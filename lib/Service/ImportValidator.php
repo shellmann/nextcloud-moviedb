@@ -283,12 +283,18 @@ class ImportValidator {
         ];
     }
 
-    /** Trimmed non-empty string, capped to $max characters, or null. */
+    /**
+     * Trimmed non-empty string, capped to $max characters, or null.
+     *
+     * Control characters other than tab, newline and carriage return are
+     * removed: PostgreSQL's driver silently truncates text at a NUL byte, and
+     * none of them belong in titles or reviews.
+     */
     private function str(mixed $v, int $max): ?string {
         if (!is_string($v)) {
             return null;
         }
-        $v = trim($v);
+        $v = trim((string)preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/', '', $v));
         if ($v === '') {
             return null;
         }

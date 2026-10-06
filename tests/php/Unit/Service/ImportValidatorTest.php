@@ -274,4 +274,22 @@ class ImportValidatorTest extends TestCase {
         $this->assertCount(50, $r['movies'][1]['castData']);
         $this->assertNull($r['movies'][2]['castData']);
     }
+
+    public function testControlCharactersAreStrippedButLayoutIsKept(): void {
+        $r = $this->validator->validate($this->file(['movies' => [
+            [
+                'title' => "Nul\0Byte\x07",
+                'overview' => "line one\nline two\ttabbed\r\nwindows \x1B[31mred\x7F",
+                'watches' => [['review' => "a\0b", 'platform' => "Net\0flix"]],
+            ],
+            ['title' => "\0\0"],
+        ]]));
+
+        $this->assertCount(1, $r['movies']);
+        $this->assertSame('NulByte', $r['movies'][0]['title']);
+        $this->assertSame("line one\nline two\ttabbed\r\nwindows [31mred", $r['movies'][0]['overview']);
+        $this->assertSame('ab', $r['movies'][0]['watches'][0]['review']);
+        $this->assertSame('Netflix', $r['movies'][0]['watches'][0]['platform']);
+        $this->assertSame(1, $r['invalid']['movies']);
+    }
 }
