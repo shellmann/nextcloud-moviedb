@@ -192,9 +192,12 @@ export default {
     height: 100%;
 }
 
-// Offset content to avoid overlapping with the navigation toggle button
+// Offset content to avoid overlapping with the navigation toggle button.
+// Positioned so absolutely placed children, like the detail backdrops, stay
+// inside the content area instead of covering the navigation (#69).
 #app-content-vue {
     padding-left: 36px;
+    position: relative;
 }
 </style>
 

@@ -46,7 +46,7 @@
 			</div>
 
 			<div class="form-group">
-				<label>
+				<label class="favorite-toggle">
 					<input v-model="formData.isFavorite" type="checkbox">
 					{{ t('moviedb', 'Mark as Favorite') }}
 				</label>
@@ -203,8 +203,16 @@ export default {
             font-weight: 500;
         }
 
-        input[type="checkbox"] {
-            margin-right: 8px;
+        // NcSelect has a top margin that NcTextField lacks, which pushes a
+        // select below a text field in the same row (#70).
+        :deep(.nc-select.v-select.select) {
+            margin-top: 0;
+        }
+
+        label.favorite-toggle {
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
     }
 

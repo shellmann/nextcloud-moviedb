@@ -383,6 +383,12 @@ export default {
 			margin-bottom: 4px;
 			font-size: 14px;
 		}
+
+		// NcSelect has a top margin that NcTextField lacks, which pushes a
+		// select below a text field in the same row (#70).
+		:deep(.nc-select.v-select.select) {
+			margin-top: 0;
+		}
 	}
 }
 
