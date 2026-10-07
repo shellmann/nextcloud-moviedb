@@ -21,6 +21,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Filtering & Sorting**: Filter by genre, platform, and favorites, and sort in either direction
 - **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime, plus year- and platform-breakdown charts (including TV shows) with a movies/TV filter
 - **Shared Libraries**: Create named libraries and share your collection with other Nextcloud users — assign viewer or editor roles, manage members, and switch between libraries from one account
+- **Import / Export**: Back up a library or move it to another Nextcloud instance as a single JSON file — ratings, reviews, rewatches, episode progress and watchlist included
 
 ## Getting Started
 
