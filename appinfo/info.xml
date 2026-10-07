@@ -33,7 +33,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 
 Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.themoviedb.org/). This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
     ]]></description>
-    <version>1.6.0</version>
+    <version>1.6.1</version>
     <licence>AGPL-3.0-or-later</licence>
     <author>shellmann</author>
     <namespace>MovieDB</namespace>
