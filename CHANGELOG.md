@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - The App Store description now lists the library import / export
   feature from 1.6.0.
 
+### Fixed
+- On wide screens, the backdrop of a movie or TV show page no longer
+  covers the navigation (#69).
+- In the add and edit forms, selects now line up with the date field
+  next to them, and the "Mark as Favorite" checkbox lines up with its
+  label (#70).
+
 ## [1.6.0] - 2026-10-06
 
 ### Added
