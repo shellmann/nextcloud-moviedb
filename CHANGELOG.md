@@ -17,6 +17,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   administrator can set one up for everyone; administrators get a link
   to the setting.
 
+### Changed
+- Requires Nextcloud 33 or later and PHP 8.2 or later. Nextcloud 32
+  reached end of life in September 2026; servers still on it keep
+  MovieDB 1.6.1.
+
 ### Fixed
 - Saving settings no longer stores the TMDB API key when another
   setting in the same request is invalid.

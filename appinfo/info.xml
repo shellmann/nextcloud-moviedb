@@ -52,7 +52,7 @@ Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.th
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/search_add-movie.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/settings.png</screenshot>
     <dependencies>
-        <nextcloud min-version="32" max-version="35"/>
+        <nextcloud min-version="33" max-version="35"/>
     </dependencies>
     <settings>
         <admin>OCA\MovieDB\Settings\Admin</admin>

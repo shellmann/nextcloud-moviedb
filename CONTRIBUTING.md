@@ -9,8 +9,8 @@ Please be respectful and constructive in all interactions. We aim to maintain a 
 ## Getting Started
 
 ### Prerequisites
-- Nextcloud 32+ development environment
-- PHP 8.0 or higher
+- Nextcloud 33+ development environment
+- PHP 8.2 or higher
 - Node.js 26+ and npm (see `.nvmrc`; CI runs on Node 26)
 - Composer
 - Git
