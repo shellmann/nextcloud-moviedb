@@ -20,6 +20,7 @@
 					</router-link>
 					{{ t('moviedb', 'to search for movies.') }}
 				</p>
+				<ApiKeyAdminHint />
 			</NcNoteCard>
 		</div>
 
@@ -98,6 +99,7 @@ import { showError } from '@nextcloud/dialogs'
 import { NcButton, NcNoteCard, NcSelect } from '@nextcloud/vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import PlaylistPlus from 'vue-material-design-icons/PlaylistPlus.vue'
+import ApiKeyAdminHint from '../components/ApiKeyAdminHint.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getPriorityOptions, MEDIA_TYPE } from '../constants.js'
@@ -116,6 +118,7 @@ export default {
 		ArrowLeft,
 		PlaylistPlus,
 		TmdbSearchSection,
+		ApiKeyAdminHint,
 	},
 
 	setup() {

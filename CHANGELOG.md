@@ -6,6 +6,24 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
+### Added
+- Administrators can set one TMDB API key for all users under
+  Administration settings → MovieDB. A personal key still takes
+  precedence (#24).
+- MovieDB checks a new TMDB API key with TMDB before saving it, and
+  explains when TMDB rejects it, for example when the short API key was
+  entered instead of the API Read Access Token.
+- When no TMDB API key is set, the message now mentions that an
+  administrator can set one up for everyone; administrators get a link
+  to the setting.
+
+### Fixed
+- Saving settings no longer stores the TMDB API key when another
+  setting in the same request is invalid.
+- The "TMDB API Key Required" message no longer flashes briefly while
+  the app loads.
+- An API key with a trailing line break is no longer accepted.
+- The API key status label in the settings is readable in dark theme.
 
 ## [1.6.1] - 2026-10-07
 

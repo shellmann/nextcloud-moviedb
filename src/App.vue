@@ -161,7 +161,7 @@ export default {
 		// Now load data that depends on the active library
 		this.watchlistStore.fetchAll()
 		this.platformsStore.fetchAll()
-		this.settingsStore.fetch()
+		// Settings come with the page (initial state), no fetch needed here
 	},
 
 	methods: {

@@ -19,6 +19,7 @@
 						{{ t('moviedb', 'Settings') }}
 					</router-link>
 				</p>
+				<ApiKeyAdminHint />
 			</NcNoteCard>
 		</div>
 
@@ -136,6 +137,7 @@
 import { showError } from '@nextcloud/dialogs'
 import { NcButton, NcDialog, NcLoadingIcon, NcNoteCard, NcSelect, NcTextField } from '@nextcloud/vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
+import ApiKeyAdminHint from '../components/ApiKeyAdminHint.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getRatingOptions, LANGUAGE_OPTIONS } from '../constants.js'
@@ -156,6 +158,7 @@ export default {
 		NcTextField,
 		ArrowLeft,
 		TmdbSearchSection,
+		ApiKeyAdminHint,
 	},
 
 	setup() {

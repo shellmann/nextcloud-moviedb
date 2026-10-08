@@ -31,7 +31,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 
 - Nextcloud 32-35
 - PHP 8.0 or higher
-- A free TMDB API key ([Get one here](https://www.themoviedb.org/settings/api))
+- A free TMDB API key ([Get one here](https://www.themoviedb.org/settings/api)), either per user or one for the whole instance
 
 ## Installation
 
@@ -227,8 +227,18 @@ composer test
 
 1. Open the MovieDB app in Nextcloud
 2. Go to Settings
-3. Enter your TMDB API key (Read Access Token)
+3. Enter your TMDB API key (Read Access Token). MovieDB checks the key with TMDB before saving it.
 4. Select your preferred language for movie metadata
+
+### One TMDB API key for all users
+
+Administrators can set one key for the whole instance under **Administration settings → MovieDB**, so users don't need their own. A user's personal key always takes precedence over it. All TMDB requests from users without a personal key are sent with this key, so make sure this use is covered by the [TMDB API terms of use](https://www.themoviedb.org/api-terms-of-use).
+
+The key can also be set with occ. This skips the check with TMDB:
+
+```bash
+php occ config:app:set moviedb tmdb_api_key --value="<Read Access Token>" --sensitive
+```
 
 ### Moving a library to another instance
 

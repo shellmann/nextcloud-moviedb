@@ -26,7 +26,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 ## Getting Started
 
 1. Get a free API key from [TMDB](https://www.themoviedb.org/settings/api)
-2. Enter your API key in the app settings
+2. Enter your API key in the app settings, or as an administrator set one key for all users under Administration settings → MovieDB
 3. Start adding movies and TV shows to your collection!
 
 ## Data source
@@ -54,6 +54,10 @@ Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.th
     <dependencies>
         <nextcloud min-version="32" max-version="35"/>
     </dependencies>
+    <settings>
+        <admin>OCA\MovieDB\Settings\Admin</admin>
+        <admin-section>OCA\MovieDB\Settings\AdminSection</admin-section>
+    </settings>
     <navigations>
         <navigation>
             <name>MovieDB</name>

@@ -43,6 +43,51 @@ class TmdbService {
         return !empty($this->getApiKey($userId));
     }
 
+    public function hasInstanceApiKey(): bool {
+        return $this->appConfig->getValueString(Application::APP_ID, 'tmdb_api_key', '') !== '';
+    }
+
+    public function setInstanceApiKey(string $apiKey): void {
+        // Sensitive values are encrypted at rest and hidden from config listings
+        $this->appConfig->setValueString(Application::APP_ID, 'tmdb_api_key', $apiKey, lazy: false, sensitive: true);
+    }
+
+    public function deleteInstanceApiKey(): void {
+        $this->appConfig->deleteKey(Application::APP_ID, 'tmdb_api_key');
+    }
+
+    /**
+     * Ask TMDB whether it accepts a key before it is saved.
+     *
+     * @return bool true if TMDB accepts the key, false if it rejects it
+     * @throws \RuntimeException if TMDB can't be reached or gives any other answer
+     */
+    public function verifyApiKey(string $apiKey): bool {
+        $client = $this->clientService->newClient();
+
+        try {
+            $response = $client->get(self::BASE_URL . '/authentication', [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $apiKey,
+                    'Accept' => 'application/json',
+                ],
+                'timeout' => 10,
+                'http_errors' => false,
+            ]);
+        } catch (\Exception $e) {
+            throw new \RuntimeException('Could not reach TMDB', 0, $e);
+        }
+
+        $status = $response->getStatusCode();
+        if ($status === 200) {
+            return true;
+        }
+        if ($status === 401) {
+            return false;
+        }
+        throw new \RuntimeException('Unexpected TMDB response: HTTP ' . $status);
+    }
+
     /**
      * @throws \Exception
      */

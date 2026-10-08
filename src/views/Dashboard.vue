@@ -13,6 +13,7 @@
 						{{ t('moviedb', 'Settings') }}
 					</router-link>.
 				</p>
+				<ApiKeyAdminHint />
 			</NcNoteCard>
 		</div>
 
@@ -147,6 +148,7 @@
 
 <script>
 import { NcNoteCard, NcSelect } from '@nextcloud/vue'
+import ApiKeyAdminHint from '../components/ApiKeyAdminHint.vue'
 import MovieCard from '../components/MovieCard.vue'
 import PlatformChart from '../components/PlatformChart.vue'
 import SeriesCard from '../components/SeriesCard.vue'
@@ -164,6 +166,7 @@ export default {
 		SeriesCard,
 		YearChart,
 		PlatformChart,
+		ApiKeyAdminHint,
 	},
 
 	setup() {

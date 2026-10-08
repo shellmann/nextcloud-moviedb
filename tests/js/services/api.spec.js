@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('@nextcloud/axios', () => ({
-	default: { get: vi.fn(), post: vi.fn() },
+	default: { get: vi.fn(), post: vi.fn(), put: vi.fn() },
 }))
 
 import axios from '@nextcloud/axios'
@@ -35,5 +35,19 @@ describe('api library export / import', () => {
 		expect(body.get('file')).toBeInstanceOf(File)
 		expect(body.get('file').name).toBe('x.json')
 		expect(options).toEqual({ params: { libraryId: 7 } })
+	})
+})
+
+describe('api admin settings', () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it('sends the instance-wide key with PUT', () => {
+		api.updateAdminSettings({ tmdbApiKey: 'new-key' })
+		expect(axios.put).toHaveBeenCalledWith(
+			'/index.php/apps/moviedb/api/admin/settings',
+			{ tmdbApiKey: 'new-key' },
+		)
 	})
 })

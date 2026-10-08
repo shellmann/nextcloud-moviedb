@@ -16,6 +16,7 @@
 					<strong>{{ t('moviedb', 'TMDB API Key Required') }}</strong><br>
 					{{ t('moviedb', 'To search for movies and fetch metadata, you need a free TMDB API key.') }}
 				</p>
+				<ApiKeyAdminHint />
 				<NcButton variant="primary" @click="$router.push({ name: 'settings' })">
 					<template #icon>
 						<Cog :size="20" />
@@ -73,6 +74,7 @@ import { showError } from '@nextcloud/dialogs'
 import { NcButton, NcDialog, NcNoteCard } from '@nextcloud/vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import Cog from 'vue-material-design-icons/Cog.vue'
+import ApiKeyAdminHint from '../components/ApiKeyAdminHint.vue'
 import MovieForm from '../components/MovieForm.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
 import api from '../services/api.js'
@@ -91,6 +93,7 @@ export default {
 		Cog,
 		MovieForm,
 		TmdbSearchSection,
+		ApiKeyAdminHint,
 	},
 
 	setup() {
