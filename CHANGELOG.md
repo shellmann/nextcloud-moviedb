@@ -30,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the app loads.
 - An API key with a trailing line break is no longer accepted.
 - The API key status label in the settings is readable in dark theme.
+- Movie cards and sorting by rating use the rating of the latest watch,
+  like the movie's page. Before, a rewatched movie showed its best
+  rating on the card.
 - The "Mark as Favorite" checkbox in the add and edit forms is now
   Nextcloud's own checkbox; hovering it no longer shows a tall outline
   around the box.
