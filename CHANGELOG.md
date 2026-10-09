@@ -19,6 +19,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   and a link to manage the key for all users.
 
 ### Changed
+- New App Store screenshots with real TMDB covers, now including
+  sharing a library, import / export and the key for all users.
 - Requires Nextcloud 33 or later and PHP 8.2 or later. Nextcloud 32
   reached end of life in September 2026; servers still on it keep
   MovieDB 1.6.1.

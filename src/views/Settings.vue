@@ -582,6 +582,11 @@ export default {
             color: var(--color-primary);
         }
     }
+
+    // Hint about the key for all users, between the description and the key field
+    .api-key-admin-hint {
+        margin: -8px 0 16px;
+    }
 }
 
 .form-group {
