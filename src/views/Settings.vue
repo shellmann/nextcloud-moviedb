@@ -10,6 +10,7 @@
 				{{ apiKeyDescription }}
 				<a href="https://www.themoviedb.org/settings/api" target="_blank">{{ t('moviedb', 'Get your API key here') }}</a>.
 			</p>
+			<ApiKeyAdminHint />
 
 			<div class="form-group api-key-group">
 				<div class="api-key-field">
@@ -257,6 +258,7 @@ import Eye from 'vue-material-design-icons/Eye.vue'
 import EyeOff from 'vue-material-design-icons/EyeOff.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import Upload from 'vue-material-design-icons/Upload.vue'
+import ApiKeyAdminHint from '../components/ApiKeyAdminHint.vue'
 import { getTmdbLanguageOptions } from '../constants.js'
 import api from '../services/api.js'
 import { useLibrariesStore } from '../stores/libraries.js'
@@ -271,6 +273,7 @@ import { tmdbApiKeyErrorMessage } from '../utils/tmdbApiKey.js'
 export default {
 	name: 'Settings',
 	components: {
+		ApiKeyAdminHint,
 		NcTextField,
 		NcSelect,
 		NcButton,
@@ -338,9 +341,13 @@ export default {
 		},
 
 		apiKeyDescription() {
-			return this.hasInstanceApiKey
-				? t('moviedb', 'Your administrator has set up a TMDB API key for everyone. You only need your own key if you want to use a different one.')
-				: t('moviedb', 'To search for movies and fetch metadata, you need a free TMDB API key.')
+			if (!this.hasInstanceApiKey) {
+				return t('moviedb', 'To search for movies and fetch metadata, you need a free TMDB API key.')
+			}
+			// Admins set up the instance-wide key themselves, so don't refer to "your administrator"
+			return this.settingsStore.isAdmin
+				? t('moviedb', 'A TMDB API key for all users is set up on this instance. You only need your own key if you want to use a different one.')
+				: t('moviedb', 'Your administrator has set up a TMDB API key for everyone. You only need your own key if you want to use a different one.')
 		},
 
 		importSource() {

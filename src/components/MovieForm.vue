@@ -48,10 +48,9 @@
 				</div>
 
 				<div class="form-group">
-					<label class="favorite-toggle">
-						<input v-model="formData.isFavorite" type="checkbox">
+					<NcCheckboxRadioSwitch v-model="formData.isFavorite">
 						{{ t('moviedb', 'Mark as Favorite') }}
-					</label>
+					</NcCheckboxRadioSwitch>
 				</div>
 
 				<div class="form-group">
@@ -77,7 +76,7 @@
 
 <script>
 import { showError } from '@nextcloud/dialogs'
-import { NcButton, NcSelect, NcTextField } from '@nextcloud/vue'
+import { NcButton, NcCheckboxRadioSwitch, NcSelect, NcTextField } from '@nextcloud/vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getRatingOptions, LANGUAGE_OPTIONS } from '../constants.js'
 import api from '../services/api.js'
@@ -92,6 +91,7 @@ export default {
 		NcTextField,
 		NcSelect,
 		NcButton,
+		NcCheckboxRadioSwitch,
 	},
 
 	props: {
@@ -304,12 +304,6 @@ export default {
         // select below a text field in the same row (#70).
         :deep(.nc-select.v-select.select) {
             margin-top: 0;
-        }
-
-        label.favorite-toggle {
-            display: flex;
-            align-items: center;
-            gap: 8px;
         }
     }
 

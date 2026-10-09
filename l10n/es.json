@@ -343,7 +343,9 @@
 		"Users who have not set their own TMDB API key use this one. A personal key always takes precedence.": "Los usuarios que no han configurado su propia clave API de TMDB usan esta. Una clave personal siempre tiene prioridad.",
 		"TMDB requests from all these users are sent with this key. Make sure this use is covered by the TMDB API terms of use.": "Las solicitudes a TMDB de todos estos usuarios se envían con esta clave. Asegúrate de que este uso está cubierto por los términos de uso de la API de TMDB.",
 		"Read the TMDB API terms of use": "Leer los términos de uso de la API de TMDB",
-		"Users without their own key will no longer be able to search TMDB.": "Los usuarios sin clave propia ya no podrán buscar en TMDB."
+		"Users without their own key will no longer be able to search TMDB.": "Los usuarios sin clave propia ya no podrán buscar en TMDB.",
+		"Manage the key for all users": "Gestionar la clave para todos los usuarios",
+		"A TMDB API key for all users is set up on this instance. You only need your own key if you want to use a different one.": "En esta instancia hay una clave API de TMDB configurada para todos los usuarios. Solo necesitas tu propia clave si quieres usar otra."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

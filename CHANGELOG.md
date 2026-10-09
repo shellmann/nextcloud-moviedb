@@ -15,7 +15,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   entered instead of the API Read Access Token.
 - When no TMDB API key is set, the message now mentions that an
   administrator can set one up for everyone; administrators get a link
-  to the setting.
+  to the setting. In the settings, administrators see their own wording
+  and a link to manage the key for all users.
 
 ### Changed
 - Requires Nextcloud 33 or later and PHP 8.2 or later. Nextcloud 32
@@ -29,6 +30,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the app loads.
 - An API key with a trailing line break is no longer accepted.
 - The API key status label in the settings is readable in dark theme.
+- The "Mark as Favorite" checkbox in the add and edit forms is now
+  Nextcloud's own checkbox; hovering it no longer shows a tall outline
+  around the box.
 
 ## [1.6.1] - 2026-10-07
 

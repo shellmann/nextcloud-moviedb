@@ -49,10 +49,9 @@
 					<p v-if="selectedSeries.overview" class="preview-overview">
 						{{ selectedSeries.overview }}
 					</p>
-					<label class="favorite-toggle">
-						<input v-model="isFavorite" type="checkbox">
+					<NcCheckboxRadioSwitch v-model="isFavorite" class="favorite-toggle">
 						{{ t('moviedb', 'Mark as Favorite') }}
-					</label>
+					</NcCheckboxRadioSwitch>
 
 					<!-- Series-level watch metadata (the show owns these, like a movie). -->
 					<div class="watch-meta">
@@ -135,7 +134,7 @@
 
 <script>
 import { showError } from '@nextcloud/dialogs'
-import { NcButton, NcDialog, NcLoadingIcon, NcNoteCard, NcSelect, NcTextField } from '@nextcloud/vue'
+import { NcButton, NcCheckboxRadioSwitch, NcDialog, NcLoadingIcon, NcNoteCard, NcSelect, NcTextField } from '@nextcloud/vue'
 import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import ApiKeyAdminHint from '../components/ApiKeyAdminHint.vue'
 import TmdbSearchSection from '../components/TmdbSearchSection.vue'
@@ -152,6 +151,7 @@ export default {
 	components: {
 		NcNoteCard,
 		NcButton,
+		NcCheckboxRadioSwitch,
 		NcDialog,
 		NcLoadingIcon,
 		NcSelect,
@@ -356,9 +356,6 @@ export default {
 	}
 
 	.favorite-toggle {
-		display: flex;
-		align-items: center;
-		gap: 8px;
 		margin-bottom: 16px;
 	}
 }

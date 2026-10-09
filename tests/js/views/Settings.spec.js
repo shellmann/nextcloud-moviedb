@@ -289,6 +289,29 @@ describe('Settings TMDB API key', () => {
 		expect(removeButton()).toBeUndefined()
 	})
 
+	it('does not refer admins to their administrator', async () => {
+		settings.isAdmin = true
+		await givenKeys({ instance: true })
+
+		const description = wrapper.find('.section-description').text()
+		expect(description).toContain('A TMDB API key for all users is set up on this instance.')
+		expect(description).not.toContain('Your administrator')
+		expect(wrapper.find('.api-key-admin-hint a').text()).toBe('Manage the key for all users')
+	})
+
+	it('offers admins to set up a key for all users', async () => {
+		settings.isAdmin = true
+		await givenKeys({})
+
+		expect(wrapper.find('.api-key-admin-hint a').text()).toBe('Set up a key for all users')
+	})
+
+	it('tells users without any key that their administrator can set one up', async () => {
+		await givenKeys({})
+
+		expect(wrapper.find('.api-key-admin-hint').text()).toBe('Your administrator can also set up a key for everyone.')
+	})
+
 	it('shows that no key is set', async () => {
 		await givenKeys({})
 

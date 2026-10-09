@@ -1,6 +1,8 @@
 <template>
-	<p class="api-key-admin-hint">
-		<a v-if="isAdmin" :href="adminSettingsUrl">{{ t('moviedb', 'Set up a key for all users') }}</a>
+	<p v-if="isAdmin || !hasInstanceApiKey" class="api-key-admin-hint">
+		<a v-if="isAdmin" :href="adminSettingsUrl">
+			{{ hasInstanceApiKey ? t('moviedb', 'Manage the key for all users') : t('moviedb', 'Set up a key for all users') }}
+		</a>
 		<template v-else>
 			{{ t('moviedb', 'Your administrator can also set up a key for everyone.') }}
 		</template>
@@ -12,8 +14,9 @@ import { generateUrl } from '@nextcloud/router'
 import { useSettingsStore } from '../stores/settings.js'
 
 /**
- * Hint under the "TMDB API Key Required" messages: admins get a link to set
- * an instance-wide key, everyone else learns they can ask for one.
+ * Hint about the instance-wide TMDB key, shown under the "TMDB API Key
+ * Required" messages and in Settings: admins get a link to set up or manage
+ * the key, everyone else learns they can ask for one (unless it already exists).
  */
 export default {
 	name: 'ApiKeyAdminHint',
@@ -26,6 +29,10 @@ export default {
 	computed: {
 		isAdmin() {
 			return this.settingsStore.isAdmin
+		},
+
+		hasInstanceApiKey() {
+			return this.settingsStore.hasInstanceApiKey
 		},
 
 		adminSettingsUrl() {

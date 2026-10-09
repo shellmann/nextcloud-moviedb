@@ -344,6 +344,8 @@ OC.L10N.register(
         "Users who have not set their own TMDB API key use this one. A personal key always takes precedence.": "Benutzer ohne eigenen TMDB API-Schlüssel verwenden diesen. Ein persönlicher Schlüssel hat immer Vorrang.",
         "TMDB requests from all these users are sent with this key. Make sure this use is covered by the TMDB API terms of use.": "TMDB-Anfragen all dieser Benutzer werden mit diesem Schlüssel gesendet. Stelle sicher, dass diese Nutzung von den TMDB API-Nutzungsbedingungen gedeckt ist.",
         "Read the TMDB API terms of use": "TMDB API-Nutzungsbedingungen lesen",
-        "Users without their own key will no longer be able to search TMDB.": "Benutzer ohne eigenen Schlüssel können dann nicht mehr in TMDB suchen."
+        "Users without their own key will no longer be able to search TMDB.": "Benutzer ohne eigenen Schlüssel können dann nicht mehr in TMDB suchen.",
+        "Manage the key for all users": "Schlüssel für alle Benutzer verwalten",
+        "A TMDB API key for all users is set up on this instance. You only need your own key if you want to use a different one.": "Auf dieser Instanz ist ein TMDB API-Schlüssel für alle Benutzer eingerichtet. Einen eigenen Schlüssel brauchst du nur, wenn du einen anderen verwenden möchtest."
     },
 "nplurals=2; plural=(n != 1);");

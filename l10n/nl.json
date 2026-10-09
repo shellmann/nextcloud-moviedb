@@ -343,7 +343,9 @@
 		"Users who have not set their own TMDB API key use this one. A personal key always takes precedence.": "Gebruikers zonder eigen TMDB API-sleutel gebruiken deze. Een persoonlijke sleutel heeft altijd voorrang.",
 		"TMDB requests from all these users are sent with this key. Make sure this use is covered by the TMDB API terms of use.": "TMDB-verzoeken van al deze gebruikers worden met deze sleutel verstuurd. Zorg dat dit gebruik onder de gebruiksvoorwaarden van de TMDB API valt.",
 		"Read the TMDB API terms of use": "Lees de gebruiksvoorwaarden van de TMDB API",
-		"Users without their own key will no longer be able to search TMDB.": "Gebruikers zonder eigen sleutel kunnen dan niet meer in TMDB zoeken."
+		"Users without their own key will no longer be able to search TMDB.": "Gebruikers zonder eigen sleutel kunnen dan niet meer in TMDB zoeken.",
+		"Manage the key for all users": "Sleutel voor alle gebruikers beheren",
+		"A TMDB API key for all users is set up on this instance. You only need your own key if you want to use a different one.": "Op deze instantie is een TMDB API-sleutel voor alle gebruikers ingesteld. Je hebt alleen een eigen sleutel nodig als je een andere wilt gebruiken."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
