@@ -333,6 +333,19 @@ OC.L10N.register(
         "Skipped (already in the library): {count}": "Omitidos (ya en la biblioteca): {count}",
         "Ignored invalid entries: {count}": "Entradas no válidas ignoradas: {count}",
         "Exported from {library}": "Exportado desde {library}",
-        "Exported from {library} on {date}": "Exportado desde {library} el {date}"
+        "Exported from {library} on {date}": "Exportado desde {library} el {date}",
+        "Your administrator has set up a TMDB API key for everyone. You only need your own key if you want to use a different one.": "Tu administrador ha configurado una clave API de TMDB para todos. Solo necesitas tu propia clave si quieres usar otra.",
+        "Using the instance-wide API key": "Usando la clave API de toda la instancia",
+        "TMDB did not accept this API key. Make sure you use the API Read Access Token.": "TMDB no ha aceptado esta clave API. Asegúrate de usar el API Read Access Token.",
+        "Could not reach TMDB to check the API key. Please try again.": "No se pudo contactar con TMDB para comprobar la clave API. Inténtalo de nuevo.",
+        "Set up a key for all users": "Configurar una clave para todos los usuarios",
+        "Your administrator can also set up a key for everyone.": "Tu administrador también puede configurar una clave para todos.",
+        "Instance-wide TMDB API key": "Clave API de TMDB para toda la instancia",
+        "Users who have not set their own TMDB API key use this one. A personal key always takes precedence.": "Los usuarios que no han configurado su propia clave API de TMDB usan esta. Una clave personal siempre tiene prioridad.",
+        "TMDB requests from all these users are sent with this key. Make sure this use is covered by the TMDB API terms of use.": "Las solicitudes a TMDB de todos estos usuarios se envían con esta clave. Asegúrate de que este uso está cubierto por los términos de uso de la API de TMDB.",
+        "Read the TMDB API terms of use": "Leer los términos de uso de la API de TMDB",
+        "Users without their own key will no longer be able to search TMDB.": "Los usuarios sin clave propia ya no podrán buscar en TMDB.",
+        "Manage the key for all users": "Gestionar la clave para todos los usuarios",
+        "A TMDB API key for all users is set up on this instance. You only need your own key if you want to use a different one.": "En esta instancia hay una clave API de TMDB configurada para todos los usuarios. Solo necesitas tu propia clave si quieres usar otra."
     },
 "nplurals=2; plural=(n != 1);");

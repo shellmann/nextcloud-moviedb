@@ -31,6 +31,59 @@ namespace OCP {
         public function getUser(): ?IUser;
     }
     interface IConfig {}
+    interface IAppConfig {
+        public function getValueString(string $app, string $key, string $default = '', bool $lazy = false): string;
+        public function setValueString(string $app, string $key, string $value, bool $lazy = false, bool $sensitive = false): bool;
+        public function deleteKey(string $app, string $key): void;
+    }
+    interface IGroupManager {
+        public function isAdmin(string $userId): bool;
+    }
+    interface IURLGenerator {
+        public function imagePath(string $appName, string $file): string;
+    }
+}
+
+namespace OCP\Config {
+    interface IUserConfig {
+        public const FLAG_SENSITIVE = 1;
+        public function getValueString(string $userId, string $app, string $key, string $default = '', bool $lazy = false): string;
+        public function setValueString(string $userId, string $app, string $key, string $value, bool $lazy = false, int $flags = 0): bool;
+        public function deleteUserConfig(string $userId, string $app, string $key): void;
+    }
+}
+
+namespace OCP\Http\Client {
+    interface IResponse {
+        public function getBody();
+        public function getStatusCode(): int;
+    }
+    interface IClient {
+        public function get(string $uri, array $options = []): IResponse;
+    }
+    interface IClientService {
+        public function newClient(): IClient;
+    }
+}
+
+namespace OCP\AppFramework\Services {
+    interface IInitialState {
+        public function provideInitialState(string $key, $data): void;
+    }
+}
+
+namespace OCP\Settings {
+    interface ISettings {
+        public function getForm();
+        public function getSection();
+        public function getPriority();
+    }
+    interface IIconSection {
+        public function getID();
+        public function getName();
+        public function getPriority();
+        public function getIcon();
+    }
 }
 
 namespace OCP\AppFramework {
@@ -57,7 +110,9 @@ namespace OCP\AppFramework {
         public const STATUS_NOT_FOUND = 404;
         public const STATUS_CONFLICT = 409;
         public const STATUS_REQUEST_ENTITY_TOO_LARGE = 413;
+        public const STATUS_UNPROCESSABLE_ENTITY = 422;
         public const STATUS_INTERNAL_SERVER_ERROR = 500;
+        public const STATUS_BAD_GATEWAY = 502;
     }
 }
 
@@ -72,6 +127,8 @@ namespace OCP\AppFramework\Http {
         public function setStatus(int $status): void {
             $this->status = $status;
         }
+
+        public function setContentSecurityPolicy($csp): void {}
     }
 
     class JSONResponse extends Response {
@@ -89,9 +146,33 @@ namespace OCP\AppFramework\Http {
 
     class DataDownloadResponse extends Response {}
 
-    class ContentSecurityPolicy {}
+    class ContentSecurityPolicy {
+        public function addAllowedImageDomain(string $domain): void {}
+    }
 
-    class TemplateResponse extends Response {}
+    class TemplateResponse extends Response {
+        public const RENDER_AS_BLANK = '';
+        public const RENDER_AS_USER = 'user';
+
+        public function __construct(
+            private string $appName = '',
+            private string $templateName = '',
+            private array $params = [],
+            private string $renderAs = self::RENDER_AS_USER,
+        ) {}
+
+        public function getTemplateName(): string {
+            return $this->templateName;
+        }
+
+        public function getParams(): array {
+            return $this->params;
+        }
+
+        public function getRenderAs(): string {
+            return $this->renderAs;
+        }
+    }
 
     class Http {
         public const STATUS_OK = 200;

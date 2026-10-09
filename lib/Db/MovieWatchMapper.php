@@ -45,7 +45,8 @@ class MovieWatchMapper extends QBMapper {
             ->from($this->getTableName())
             ->where($qb->expr()->eq('movie_id', $qb->createNamedParameter($movieId, IQueryBuilder::PARAM_INT)))
             ->andWhere($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
-            ->orderBy('watched_at', 'DESC');
+            ->orderBy('watched_at', 'DESC')
+            ->addOrderBy('id', 'DESC');
 
         return $this->findEntities($qb);
     }

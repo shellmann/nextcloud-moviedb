@@ -207,6 +207,9 @@ export default {
 	updateSettings(data) {
 		return axios.put(`${baseUrl}/settings`, data)
 	},
+	updateAdminSettings(data) {
+		return axios.put(`${baseUrl}/admin/settings`, data)
+	},
 
 	// Libraries
 	getLibraries() {

@@ -86,5 +86,8 @@ return [
         // Settings
         ['name' => 'settings#get', 'url' => '/api/settings', 'verb' => 'GET'],
         ['name' => 'settings#update', 'url' => '/api/settings', 'verb' => 'PUT'],
+
+        // Admin settings (admin only, see AdminSettingsController)
+        ['name' => 'admin_settings#update', 'url' => '/api/admin/settings', 'verb' => 'PUT'],
     ],
 ];

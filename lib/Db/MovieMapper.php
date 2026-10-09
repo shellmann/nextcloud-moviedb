@@ -72,14 +72,25 @@ class MovieMapper extends QBMapper {
         $sub = $this->db->getQueryBuilder();
         $sub->select('w.movie_id')
             ->selectAlias($sub->func()->max('w.watched_at'), 'watched_at')
-            ->selectAlias($sub->func()->max('w.rating'), 'rating')
             ->from('moviedb_movie_watches', 'w')
             ->where('w.library_id = :lw_library_id')
             ->groupBy('w.movie_id');
 
+        // Rating of the latest watch (same order as MovieWatchMapper::findByMovie,
+        // which the detail page uses), not the best rating across all watches.
+        // Built on a nested builder like $sub; correlated on the outer m.id.
+        $ratingSub = $this->db->getQueryBuilder();
+        $ratingSub->select('wr.rating')
+            ->from('moviedb_movie_watches', 'wr')
+            ->where('wr.movie_id = m.id')
+            ->andWhere('wr.library_id = :lw_library_id')
+            ->orderBy('wr.watched_at', 'DESC')
+            ->addOrderBy('wr.id', 'DESC')
+            ->setMaxResults(1);
+
         $qb->select(array_map(static fn (string $c): string => 'm.' . $c, self::COLUMNS))
             ->addSelect('lw.watched_at AS last_watched_at')
-            ->addSelect('lw.rating AS last_rating')
+            ->selectAlias($qb->createFunction('(' . $ratingSub->getSQL() . ')'), 'last_rating')
             ->from($this->getTableName(), 'm')
             ->leftJoin(
                 'm',
@@ -98,7 +109,7 @@ class MovieMapper extends QBMapper {
         if ($sortField === 'date_watched') {
             $qb->orderBy('lw.watched_at', $sortDir);
         } elseif ($sortField === 'rating') {
-            $qb->orderBy('lw.rating', $sortDir);
+            $qb->orderBy('last_rating', $sortDir);
         } elseif (in_array($sortField, $allowedSortFields)) {
             $qb->orderBy('m.' . $sortField, $sortDir);
         } else {

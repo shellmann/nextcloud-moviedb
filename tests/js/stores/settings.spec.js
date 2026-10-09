@@ -11,6 +11,7 @@ vi.mock('@/services/api.js', () => ({
 
 import api from '@/services/api.js'
 import { showError, showSuccess } from '@nextcloud/dialogs'
+import { loadState } from '@nextcloud/initial-state'
 
 describe('Settings Store', () => {
 	let store
@@ -21,6 +22,40 @@ describe('Settings Store', () => {
 		vi.clearAllMocks()
 	})
 
+	describe('initial state', () => {
+		it('should start from the settings sent with the page', () => {
+			loadState.mockReturnValueOnce({
+				hasApiKey: true,
+				hasUserApiKey: false,
+				hasInstanceApiKey: true,
+				isAdmin: true,
+				defaultLanguage: 'en-US',
+				appLanguage: 'fr',
+			})
+			setActivePinia(createPinia())
+
+			const fresh = useSettingsStore()
+
+			expect(loadState).toHaveBeenCalledWith('moviedb', 'settings', {})
+			expect(fresh.hasApiKey).toBe(true)
+			expect(fresh.hasUserApiKey).toBe(false)
+			expect(fresh.hasInstanceApiKey).toBe(true)
+			expect(fresh.isAdmin).toBe(true)
+			expect(fresh.defaultLanguage).toBe('en-US')
+			expect(fresh.appLanguage).toBe('fr')
+			expect(api.getSettings).not.toHaveBeenCalled()
+		})
+
+		it('should fall back to defaults without initial state', () => {
+			expect(store.hasApiKey).toBe(false)
+			expect(store.hasUserApiKey).toBe(false)
+			expect(store.hasInstanceApiKey).toBe(false)
+			expect(store.isAdmin).toBe(false)
+			expect(store.defaultLanguage).toBe('de-DE')
+			expect(store.appLanguage).toBe('auto')
+		})
+	})
+
 	describe('fetch', () => {
 		it('should load settings', async () => {
 			api.getSettings.mockResolvedValue({ data: { hasApiKey: true, defaultLanguage: 'en-US', appLanguage: 'auto' } })
@@ -29,6 +64,16 @@ describe('Settings Store', () => {
 
 			expect(store.hasApiKey).toBe(true)
 			expect(store.defaultLanguage).toBe('en-US')
+		})
+
+		it('should load which key is in use', async () => {
+			api.getSettings.mockResolvedValue({ data: { hasApiKey: true, hasUserApiKey: false, hasInstanceApiKey: true, isAdmin: false } })
+
+			await store.fetch()
+
+			expect(store.hasUserApiKey).toBe(false)
+			expect(store.hasInstanceApiKey).toBe(true)
+			expect(store.isAdmin).toBe(false)
 		})
 
 		it('should show an error when loading fails', async () => {

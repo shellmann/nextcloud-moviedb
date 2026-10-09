@@ -7,23 +7,23 @@
 		<div class="settings-section">
 			<h3>{{ t('moviedb', 'TMDB API Configuration') }}</h3>
 			<p class="section-description">
-				{{ t('moviedb', 'To search for movies and fetch metadata, you need a free TMDB API key.') }}
+				{{ apiKeyDescription }}
 				<a href="https://www.themoviedb.org/settings/api" target="_blank">{{ t('moviedb', 'Get your API key here') }}</a>.
 			</p>
+			<ApiKeyAdminHint />
 
 			<div class="form-group api-key-group">
 				<div class="api-key-field">
 					<label>{{ t('moviedb', 'TMDB API Key (Read Access Token)') }}</label>
-					<div v-if="hasApiKey" class="api-key-status">
-						<span class="status-indicator status-saved">{{ t('moviedb', 'API key configured') }}</span>
-					</div>
-					<div v-else class="api-key-status">
-						<span class="status-indicator status-missing">{{ t('moviedb', 'No API key') }}</span>
+					<div class="api-key-status">
+						<span v-if="hasUserApiKey" class="status-indicator status-saved">{{ t('moviedb', 'API key configured') }}</span>
+						<span v-else-if="hasInstanceApiKey" class="status-indicator status-saved">{{ t('moviedb', 'Using the instance-wide API key') }}</span>
+						<span v-else class="status-indicator status-missing">{{ t('moviedb', 'No API key') }}</span>
 					</div>
 					<NcTextField
 						v-model="tmdbApiKey"
 						:type="showApiKey ? 'text' : 'password'"
-						:placeholder="hasApiKey ? t('moviedb', 'Enter new key to update') : t('moviedb', 'Enter your TMDB API key')" />
+						:placeholder="hasUserApiKey ? t('moviedb', 'Enter new key to update') : t('moviedb', 'Enter your TMDB API key')" />
 				</div>
 				<NcButton @click="showApiKey = !showApiKey">
 					<template #icon>
@@ -32,7 +32,7 @@
 					</template>
 				</NcButton>
 				<NcButton
-					v-if="hasApiKey"
+					v-if="hasUserApiKey"
 					variant="error"
 					@click="removeApiKey">
 					<template #icon>
@@ -258,6 +258,7 @@ import Eye from 'vue-material-design-icons/Eye.vue'
 import EyeOff from 'vue-material-design-icons/EyeOff.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import Upload from 'vue-material-design-icons/Upload.vue'
+import ApiKeyAdminHint from '../components/ApiKeyAdminHint.vue'
 import { getTmdbLanguageOptions } from '../constants.js'
 import api from '../services/api.js'
 import { useLibrariesStore } from '../stores/libraries.js'
@@ -267,10 +268,12 @@ import { useSeriesStore } from '../stores/series.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
 import { downloadBlob, filenameFromDisposition, LibraryFileError, MAX_FILE_SIZE, summarizeExport } from '../utils/libraryFile.js'
+import { tmdbApiKeyErrorMessage } from '../utils/tmdbApiKey.js'
 
 export default {
 	name: 'Settings',
 	components: {
+		ApiKeyAdminHint,
 		NcTextField,
 		NcSelect,
 		NcButton,
@@ -329,8 +332,22 @@ export default {
 			return imagePath('moviedb', 'tmdb-logo.svg')
 		},
 
-		hasApiKey() {
-			return this.settingsStore.hasApiKey
+		hasUserApiKey() {
+			return this.settingsStore.hasUserApiKey
+		},
+
+		hasInstanceApiKey() {
+			return this.settingsStore.hasInstanceApiKey
+		},
+
+		apiKeyDescription() {
+			if (!this.hasInstanceApiKey) {
+				return t('moviedb', 'To search for movies and fetch metadata, you need a free TMDB API key.')
+			}
+			// Admins set up the instance-wide key themselves, so don't refer to "your administrator"
+			return this.settingsStore.isAdmin
+				? t('moviedb', 'A TMDB API key for all users is set up on this instance. You only need your own key if you want to use a different one.')
+				: t('moviedb', 'Your administrator has set up a TMDB API key for everyone. You only need your own key if you want to use a different one.')
 		},
 
 		importSource() {
@@ -383,8 +400,8 @@ export default {
 				})
 				showSuccess(t('moviedb', 'Settings saved successfully.'))
 				this.tmdbApiKey = '' // Clear the field after save
-			} catch {
-				showError(t('moviedb', 'Failed to save settings. Please try again.'))
+			} catch (error) {
+				showError(tmdbApiKeyErrorMessage(error) ?? t('moviedb', 'Failed to save settings. Please try again.'))
 			} finally {
 				this.saving = false
 			}
@@ -565,6 +582,11 @@ export default {
             color: var(--color-primary);
         }
     }
+
+    // Hint about the key for all users, between the description and the key field
+    .api-key-admin-hint {
+        margin: -8px 0 16px;
+    }
 }
 
 .form-group {
@@ -639,15 +661,17 @@ export default {
     font-weight: bold;
 }
 
+// Each *-text color is the readable text color for its background, in
+// light and dark theme alike
 .status-saved {
     background: var(--color-success);
-    color: #000;
+    color: var(--color-success-text);
     font-weight: bold;
 }
 
 .status-missing {
     background: var(--color-warning);
-    color: #000;
+    color: var(--color-warning-text);
     font-weight: bold;
 }
 

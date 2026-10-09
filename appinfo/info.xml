@@ -26,14 +26,14 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 ## Getting Started
 
 1. Get a free API key from [TMDB](https://www.themoviedb.org/settings/api)
-2. Enter your API key in the app settings
+2. Enter your API key in the app settings, or as an administrator set one key for all users under Administration settings → MovieDB
 3. Start adding movies and TV shows to your collection!
 
 ## Data source
 
 Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.themoviedb.org/). This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
     ]]></description>
-    <version>1.6.1</version>
+    <version>1.7.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author>shellmann</author>
     <namespace>MovieDB</namespace>
@@ -42,18 +42,22 @@ Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.th
     <bugs>https://github.com/shellmann/nextcloud-moviedb/issues</bugs>
     <repository type="git">https://github.com/shellmann/nextcloud-moviedb.git</repository>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/dashboard.png</screenshot>
-    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/dashboard-charts.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/my-movies.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/movie-detail.png</screenshot>
-    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/libraries.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/my-tv-shows.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/tv-show-detail.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/watchlist.png</screenshot>
-    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/search_add-movie.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/libraries.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/import-export.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/settings.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/admin-settings.png</screenshot>
     <dependencies>
-        <nextcloud min-version="32" max-version="35"/>
+        <nextcloud min-version="33" max-version="35"/>
     </dependencies>
+    <settings>
+        <admin>OCA\MovieDB\Settings\Admin</admin>
+        <admin-section>OCA\MovieDB\Settings\AdminSection</admin-section>
+    </settings>
     <navigations>
         <navigation>
             <name>MovieDB</name>

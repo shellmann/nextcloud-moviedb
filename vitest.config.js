@@ -12,7 +12,7 @@ export default defineConfig({
 			provider: 'v8',
 			reporter: ['text', 'html'],
 			include: ['src/**/*.{js,vue}'],
-			exclude: ['src/main.js'],
+			exclude: ['src/main.js', 'src/admin.js'],
 		},
 		setupFiles: ['tests/js/setup.js'],
 	},

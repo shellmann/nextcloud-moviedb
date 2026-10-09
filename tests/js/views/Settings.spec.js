@@ -32,6 +32,7 @@ import { useLibrariesStore } from '@/stores/libraries.js'
 import { useMoviesStore } from '@/stores/movies.js'
 import { usePlatformsStore } from '@/stores/platforms.js'
 import { useSeriesStore } from '@/stores/series.js'
+import { useSettingsStore } from '@/stores/settings.js'
 import { useWatchlistStore } from '@/stores/watchlist.js'
 
 const IconStub = { template: '<span />' }
@@ -235,5 +236,124 @@ describe('Settings import / export', () => {
 		expect(showError).toHaveBeenCalledWith('Failed to export the library. Please try again.')
 		expect(showSuccess).not.toHaveBeenCalled()
 		expect(wrapper.vm.exporting).toBe(false)
+	})
+})
+
+describe('Settings TMDB API key', () => {
+	let wrapper
+	let settings
+
+	const mountSettings = () => mount(Settings, {
+		global: {
+			stubs: {
+				Eye: IconStub, EyeOff: IconStub, ContentSave: IconStub, Delete: IconStub,
+				Download: IconStub, Upload: IconStub, Plus: IconStub,
+			},
+			mocks: { t: (app, text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (_, k) => vars[k]) : text) },
+		},
+	})
+
+	const givenKeys = async ({ user = false, instance = false }) => {
+		settings.hasUserApiKey = user
+		settings.hasInstanceApiKey = instance
+		settings.hasApiKey = user || instance
+		await wrapper.vm.$nextTick()
+	}
+
+	const removeButton = () => wrapper.findAll('button').find((b) => b.text() === 'Remove API Key')
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		vi.clearAllMocks()
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		settings = useSettingsStore()
+		settings.update = vi.fn().mockResolvedValue()
+		wrapper = mountSettings()
+	})
+
+	it('shows the own key with a remove button', async () => {
+		await givenKeys({ user: true, instance: true })
+
+		expect(wrapper.find('.api-key-status').text()).toBe('API key configured')
+		expect(removeButton()).toBeTruthy()
+	})
+
+	it('shows the instance-wide key without a remove button', async () => {
+		await givenKeys({ instance: true })
+
+		expect(wrapper.find('.api-key-status').text()).toBe('Using the instance-wide API key')
+		expect(wrapper.find('.section-description').text()).toContain('Your administrator has set up a TMDB API key for everyone.')
+		expect(wrapper.find('.section-description').text()).toContain('a different one. Get your API key here')
+		expect(removeButton()).toBeUndefined()
+	})
+
+	it('does not refer admins to their administrator', async () => {
+		settings.isAdmin = true
+		await givenKeys({ instance: true })
+
+		const description = wrapper.find('.section-description').text()
+		expect(description).toContain('A TMDB API key for all users is set up on this instance.')
+		expect(description).not.toContain('Your administrator')
+		expect(wrapper.find('.api-key-admin-hint a').text()).toBe('Manage the key for all users')
+	})
+
+	it('offers admins to set up a key for all users', async () => {
+		settings.isAdmin = true
+		await givenKeys({})
+
+		expect(wrapper.find('.api-key-admin-hint a').text()).toBe('Set up a key for all users')
+	})
+
+	it('tells users without any key that their administrator can set one up', async () => {
+		await givenKeys({})
+
+		expect(wrapper.find('.api-key-admin-hint').text()).toBe('Your administrator can also set up a key for everyone.')
+	})
+
+	it('shows that no key is set', async () => {
+		await givenKeys({})
+
+		expect(wrapper.find('.api-key-status').text()).toBe('No API key')
+		expect(wrapper.find('.section-description').text()).toContain('you need a free TMDB API key. Get your API key here')
+		expect(removeButton()).toBeUndefined()
+	})
+
+	it('saves a new key and clears the field', async () => {
+		wrapper.vm.tmdbApiKey = 'new-key'
+
+		await wrapper.vm.saveSettings()
+
+		expect(settings.update).toHaveBeenCalledWith(expect.objectContaining({ tmdbApiKey: 'new-key' }))
+		expect(showSuccess).toHaveBeenCalledWith('Settings saved successfully.')
+		expect(wrapper.vm.tmdbApiKey).toBe('')
+	})
+
+	it('explains a key that TMDB did not accept', async () => {
+		settings.update = vi.fn().mockRejectedValue({ response: { status: 422 } })
+		wrapper.vm.tmdbApiKey = 'wrong-key'
+
+		await wrapper.vm.saveSettings()
+
+		expect(showError).toHaveBeenCalledWith('TMDB did not accept this API key. Make sure you use the API Read Access Token.')
+		expect(wrapper.vm.tmdbApiKey).toBe('wrong-key')
+	})
+
+	it('explains when TMDB could not be reached', async () => {
+		settings.update = vi.fn().mockRejectedValue({ response: { status: 502 } })
+		wrapper.vm.tmdbApiKey = 'new-key'
+
+		await wrapper.vm.saveSettings()
+
+		expect(showError).toHaveBeenCalledWith('Could not reach TMDB to check the API key. Please try again.')
+	})
+
+	it('falls back to the generic message for other errors', async () => {
+		settings.update = vi.fn().mockRejectedValue({ response: { status: 400 } })
+
+		await wrapper.vm.saveSettings()
+
+		expect(showError).toHaveBeenCalledWith('Failed to save settings. Please try again.')
 	})
 })

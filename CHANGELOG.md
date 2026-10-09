@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-10-09
+
+### Added
+- Administrators can set one TMDB API key for all users under
+  Administration settings → MovieDB. A personal key still takes
+  precedence (#24).
+- MovieDB checks a new TMDB API key with TMDB before saving it, and
+  explains when TMDB rejects it, for example when the short API key was
+  entered instead of the API Read Access Token.
+- When no TMDB API key is set, the message now mentions that an
+  administrator can set one up for everyone; administrators get a link
+  to the setting. In the settings, administrators see their own wording
+  and a link to manage the key for all users.
+
+### Changed
+- New App Store screenshots with real TMDB covers, now including
+  sharing a library, import / export and the key for all users.
+- Requires Nextcloud 33 or later and PHP 8.2 or later. Nextcloud 32
+  reached end of life in September 2026; servers still on it keep
+  MovieDB 1.6.1.
+
+### Fixed
+- Saving settings no longer stores the TMDB API key when another
+  setting in the same request is invalid.
+- The "TMDB API Key Required" message no longer flashes briefly while
+  the app loads.
+- An API key with a trailing line break is no longer accepted.
+- The API key status label in the settings is readable in dark theme.
+- Movie cards and sorting by rating use the rating of the latest watch,
+  like the movie's page. Before, a rewatched movie showed its best
+  rating on the card.
+- The "Mark as Favorite" checkbox in the add and edit forms is now
+  Nextcloud's own checkbox; hovering it no longer shows a tall outline
+  around the box.
+
 ## [1.6.1] - 2026-10-07
 
 ### Changed

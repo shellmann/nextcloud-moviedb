@@ -3,6 +3,9 @@ const webpack = require('webpack')
 const webpackConfig = require('@nextcloud/webpack-vue-config')
 const packageJson = require('./package.json')
 
+// Second bundle for the admin settings page (Administration settings → MovieDB)
+webpackConfig.entry.admin = path.resolve(path.join('src', 'admin.js'))
+
 // Disable code splitting to avoid chunk loading issues
 webpackConfig.optimization = {
     ...webpackConfig.optimization,
