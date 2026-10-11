@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   just the page on screen. Filter by movie or TV show, genre and high
   priority, and spin again for another suggestion.
 
+### Changed
+- New App Store screenshots of the quiz, its results and history, and the watchlist prize wheel.
+
 ### Fixed
 - When a Nextcloud user is deleted, their MovieDB data is now removed as
   well. A shared library of the deleted user passes to one of its members

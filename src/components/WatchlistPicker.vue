@@ -2,7 +2,7 @@
 	<NcDialog
 		:open="open"
 		:name="t('moviedb', 'What should we watch tonight?')"
-		size="normal"
+		size="large"
 		@update:open="$emit('update:open', $event)">
 		<div class="watchlist-picker">
 			<div class="picker-filters">
@@ -32,48 +32,51 @@
 				</NcCheckboxRadioSwitch>
 			</div>
 
-			<div v-if="loading" class="picker-loading">
-				<NcLoadingIcon :size="32" />
-			</div>
-
-			<template v-else-if="items.length">
-				<WatchlistWheel
-					ref="wheel"
-					:items="items"
-					@wheelClick="spin" />
-				<p class="picker-hint">
-					{{ t('moviedb', 'Click the wheel or press the button to spin.') }}
-				</p>
-			</template>
-
-			<p v-else-if="searched" class="picker-empty">
-				{{ t('moviedb', 'No title on your watchlist matches these filters.') }}
-			</p>
-
-			<!-- Persistent live region so the outcome is announced to screen readers. -->
-			<div class="picker-live" aria-live="polite" aria-atomic="true">
-				<span v-if="spinning" class="picker-sr-only">{{ t('moviedb', 'Spinning the wheel') }}</span>
-				<div v-else-if="item" :key="item.id" class="picker-result">
-					<img
-						v-if="item.posterPath"
-						class="picker-poster"
-						:src="getPosterUrl(item.posterPath)"
-						alt="">
-					<div v-else class="picker-poster picker-no-poster">
-						{{ t('moviedb', 'No poster') }}
+			<div class="picker-stage">
+				<div class="picker-wheel-side">
+					<div v-if="loading" class="picker-loading">
+						<NcLoadingIcon :size="32" />
 					</div>
-					<div class="picker-info">
-						<h3>{{ item.title }}</h3>
-						<p v-if="year" class="picker-year">
-							{{ year }}
+
+					<template v-else-if="items.length">
+						<WatchlistWheel
+							ref="wheel"
+							:items="items"
+							@wheelClick="spin" />
+						<p class="picker-hint">
+							{{ t('moviedb', 'Click the wheel or press the button to spin.') }}
 						</p>
-						<div class="picker-tags">
-							<span v-for="genreName in genreNames" :key="genreName" class="picker-tag">{{ genreName }}</span>
-							<span v-if="item.priority > 0" class="picker-tag picker-priority">{{ priorityLabel }}</span>
+					</template>
+
+					<p v-else-if="searched" class="picker-empty">
+						{{ t('moviedb', 'No title on your watchlist matches these filters.') }}
+					</p>
+				</div>
+				<!-- Persistent live region so the outcome is announced to screen readers. -->
+				<div class="picker-live" aria-live="polite" aria-atomic="true">
+					<span v-if="spinning" class="picker-sr-only">{{ t('moviedb', 'Spinning the wheel') }}</span>
+					<div v-else-if="item" :key="item.id" class="picker-result">
+						<img
+							v-if="item.posterPath"
+							class="picker-poster"
+							:src="getPosterUrl(item.posterPath)"
+							alt="">
+						<div v-else class="picker-poster picker-no-poster">
+							{{ t('moviedb', 'No poster') }}
 						</div>
-						<p v-if="item.overview" class="picker-overview">
-							{{ item.overview }}
-						</p>
+						<div class="picker-info">
+							<h3>{{ item.title }}</h3>
+							<p v-if="year" class="picker-year">
+								{{ year }}
+							</p>
+							<div class="picker-tags">
+								<span v-for="genreName in genreNames" :key="genreName" class="picker-tag">{{ genreName }}</span>
+								<span v-if="item.priority > 0" class="picker-tag picker-priority">{{ priorityLabel }}</span>
+							</div>
+							<p v-if="item.overview" class="picker-overview">
+								{{ item.overview }}
+							</p>
+						</div>
 					</div>
 				</div>
 			</div>
@@ -273,7 +276,25 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
-	min-height: 320px;
+}
+
+// Wheel and result side by side on wide dialogs, so both fit without scrolling.
+.picker-stage {
+	display: grid;
+	grid-template-columns: minmax(0, 300px) minmax(0, 1fr);
+	align-items: center;
+	gap: 24px;
+	min-height: 330px;
+
+	@media (max-width: 700px) {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.picker-wheel-side {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
 }
 
 .picker-filters {
