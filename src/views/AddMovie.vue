@@ -82,6 +82,7 @@ import { useLibrariesStore } from '../stores/libraries.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { todayLocal } from '../utils/formatters.js'
 
 export default {
 	name: 'AddMovie',
@@ -153,7 +154,7 @@ export default {
 					// User input fields
 					platformId: null,
 					languageWatched: '',
-					dateWatched: new Date().toISOString().split('T')[0],
+					dateWatched: todayLocal(),
 					rating: null,
 					review: '',
 				}

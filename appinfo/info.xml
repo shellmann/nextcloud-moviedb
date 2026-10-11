@@ -17,7 +17,8 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **TMDB Integration**: Automatically fetch posters, cast, plot, and episode data
 - **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews
 - **Watch History**: Full watch history per title, including per-viewing platform, language, and date
-- **Watchlist**: Maintain a mixed movie + TV watchlist with priorities and a random picker
+- **Watchlist**: Maintain a mixed movie + TV watchlist with priorities and a random picker that chooses from the whole list (filter by type, genre, high priority)
+- **Quiz**: Play a quiz about your own library — when you watched a title, when it was released, who directed it — with a question count of your choice, a score history chart and a personal best
 - **Filtering & Sorting**: Filter by genre, platform, and favorites, and sort in either direction
 - **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime, plus year- and platform-breakdown charts (including TV shows) with a movies/TV filter
 - **Shared Libraries**: Create named libraries and share your collection with other Nextcloud users — assign viewer or editor roles, manage members, and switch between libraries from one account
@@ -33,7 +34,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 
 Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.themoviedb.org/). This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
     ]]></description>
-    <version>1.7.0</version>
+    <version>1.8.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author>shellmann</author>
     <namespace>MovieDB</namespace>
@@ -45,12 +46,12 @@ Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.th
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/my-movies.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/movie-detail.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/my-tv-shows.png</screenshot>
-    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/tv-show-detail.png</screenshot>
-    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/watchlist.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/watchlist-wheel.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/quiz.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/quiz-result.png</screenshot>
+    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/quiz-history.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/libraries.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/import-export.png</screenshot>
-    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/settings.png</screenshot>
-    <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/admin-settings.png</screenshot>
     <dependencies>
         <nextcloud min-version="33" max-version="35"/>
     </dependencies>

@@ -294,6 +294,16 @@ class ExportServiceTest extends TestCase {
         $this->assertSame($watchKeys, array_keys($data['series'][0]['watch']));
     }
 
+    /**
+     * Quiz results are personal per user, not library data — they must never
+     * end up in the export file (and thus never travel between instances).
+     */
+    public function testExportDoesNotContainQuizResults(): void {
+        $json = json_encode($this->service->export(1));
+
+        $this->assertStringNotContainsStringIgnoringCase('quiz', $json);
+    }
+
     public function testExportContainsNoDatabaseIdsOrOwners(): void {
         $this->movieMapper->method('findAllByLibrary')->willReturn([
             $this->movie(1, 'A', ['setUserId' => 'alice', 'setLibraryId' => 7]),

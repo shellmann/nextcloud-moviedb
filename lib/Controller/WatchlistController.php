@@ -96,6 +96,35 @@ class WatchlistController extends AuthenticatedController {
         ]);
     }
 
+    /**
+     * One random watchlist item from the whole list, optionally filtered by
+     * mediaType, genre, minPriority and `exclude` (id to skip, for "spin again").
+     */
+    #[NoAdminRequired]
+    public function random(): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+
+        $filters = [
+            'mediaType' => $this->mediaTypeParam(),
+            'genre' => max(0, (int)$this->request->getParam('genre', 0)),
+            'minPriority' => max(0, min(2, (int)$this->request->getParam('minPriority', 0))),
+            'excludeId' => max(0, (int)$this->request->getParam('exclude', 0)),
+        ];
+
+        // `count` > 1 returns a set of candidates for the wheel; `item` stays the first one.
+        $count = max(1, min(12, (int)$this->request->getParam('count', 1)));
+        if ($count > 1) {
+            $items = $this->service->pickRandomSet($libraryId, $filters, $count);
+            return new JSONResponse(['items' => $items, 'item' => $items[0] ?? null]);
+        }
+
+        return new JSONResponse(['item' => $this->service->pickRandom($libraryId, $filters)]);
+    }
+
     #[NoAdminRequired]
     public function show(int $id): JSONResponse {
         if ($error = $this->requireAuth()) {

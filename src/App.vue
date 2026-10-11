@@ -34,6 +34,13 @@
 					</template>
 				</NcAppNavigationItem>
 				<NcAppNavigationItem
+					:name="t('moviedb', 'Quiz')"
+					:to="{ name: 'quiz' }">
+					<template #icon>
+						<TrophyOutline :size="20" />
+					</template>
+				</NcAppNavigationItem>
+				<NcAppNavigationItem
 					:name="t('moviedb', 'Libraries')"
 					:to="{ name: 'libraries' }">
 					<template #icon>
@@ -89,6 +96,7 @@ import EyeOutline from 'vue-material-design-icons/EyeOutline.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
 import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
 import Television from 'vue-material-design-icons/Television.vue'
+import TrophyOutline from 'vue-material-design-icons/TrophyOutline.vue'
 import ViewDashboard from 'vue-material-design-icons/ViewDashboard.vue'
 import { useLibrariesStore } from './stores/libraries.js'
 import { useMoviesStore } from './stores/movies.js'
@@ -110,6 +118,7 @@ export default {
 		Movie,
 		Television,
 		PlaylistPlay,
+		TrophyOutline,
 		Cog,
 		BookshelfIcon,
 		EyeOutline,

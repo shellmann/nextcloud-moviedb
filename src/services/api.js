@@ -27,6 +27,9 @@ export default {
 	getWatchlist(params) {
 		return axios.get(`${baseUrl}/watchlist`, { params })
 	},
+	getRandomWatchlistItem(params) {
+		return axios.get(`${baseUrl}/watchlist/random`, { params })
+	},
 	getWatchlistItem(id, libraryId = undefined) {
 		const params = libraryId !== undefined ? { libraryId } : {}
 		return axios.get(`${baseUrl}/watchlist/${id}`, { params })
@@ -43,6 +46,28 @@ export default {
 	},
 	moveToWatched(id, watchData) {
 		return axios.post(`${baseUrl}/watchlist/${id}/watched`, watchData)
+	},
+
+	// Quiz
+	getQuizMeta(libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/quiz/meta`, { params })
+	},
+	getQuiz(count, libraryId = undefined) {
+		const params = libraryId !== undefined ? { count, libraryId } : { count }
+		return axios.get(`${baseUrl}/quiz`, { params })
+	},
+	getQuizResults(libraryId = undefined) {
+		const params = libraryId !== undefined ? { libraryId } : {}
+		return axios.get(`${baseUrl}/quiz/results`, { params })
+	},
+	saveQuizResult(result, libraryId = undefined) {
+		const data = libraryId !== undefined ? { ...result, libraryId } : result
+		return axios.post(`${baseUrl}/quiz/results`, data)
+	},
+	resetQuizResults(libraryId = undefined) {
+		const data = libraryId !== undefined ? { libraryId } : {}
+		return axios.delete(`${baseUrl}/quiz/results`, { data })
 	},
 
 	// TMDB

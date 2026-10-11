@@ -15,9 +15,9 @@
 				<NcButton
 					:aria-label="t('moviedb', 'Pick Random')"
 					:title="t('moviedb', 'Pick Random')"
-					@click="pickRandom">
+					@click="showPicker = true">
 					<template #icon>
-						<DiceMultiple :size="20" />
+						<FerrisWheel :size="20" />
 					</template>
 				</NcButton>
 			</div>
@@ -47,9 +47,7 @@
 			<div
 				v-for="item in items"
 				:key="item.id"
-				:ref="'item-' + item.id"
-				class="watchlist-item"
-				:class="{ highlighted: highlightedId === item.id }">
+				class="watchlist-item">
 				<div class="item-poster">
 					<img
 						v-if="item.posterPath"
@@ -134,6 +132,11 @@
 				{{ t('moviedb', 'Next') }}
 			</NcButton>
 		</div>
+
+		<WatchlistPicker
+			v-model:open="showPicker"
+			:canEdit="activeCanEdit"
+			@markWatched="openWatchedModal" />
 
 		<!-- Mark as Watched Modal -->
 		<NcModal v-if="showWatchedModal" @close="showWatchedModal = false">
@@ -226,16 +229,18 @@
 import { NcButton, NcDialog, NcEmptyContent, NcLoadingIcon, NcModal, NcSelect, NcTextField } from '@nextcloud/vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
-import DiceMultiple from 'vue-material-design-icons/DiceMultiple.vue'
+import FerrisWheel from 'vue-material-design-icons/FerrisWheel.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
+import WatchlistPicker from '../components/WatchlistPicker.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getGenreOptions, getPriorityColor, getPriorityLabel, getPriorityOptions, getRatingOptions, LANGUAGE_OPTIONS, MEDIA_TYPE } from '../constants.js'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
+import { todayLocal } from '../utils/formatters.js'
 
 export default {
 	name: 'Watchlist',
@@ -247,9 +252,10 @@ export default {
 		NcSelect,
 		NcTextField,
 		NcDialog,
+		WatchlistPicker,
 		Check,
 		Delete,
-		DiceMultiple,
+		FerrisWheel,
 		Pencil,
 		PlaylistPlay,
 		Plus,
@@ -270,13 +276,13 @@ export default {
 			showRemoveDialog: false,
 			selectedItem: null,
 			pendingRemoveId: null,
-			highlightedId: null,
+			showPicker: false,
 			selectedSort: null,
 			selectedType: null,
 			watchedData: {
 				platform: null,
 				language: null,
-				dateWatched: new Date().toISOString().split('T')[0],
+				dateWatched: todayLocal(),
 				rating: null,
 			},
 
@@ -365,22 +371,6 @@ export default {
 			this.watchlistStore.setPage(page)
 		},
 
-		pickRandom() {
-			if (!this.items.length) { return }
-			const randomIndex = Math.floor(Math.random() * this.items.length)
-			const item = this.items[randomIndex]
-			this.highlightedId = item.id
-			this.$nextTick(() => {
-				const el = this.$refs['item-' + item.id]
-				if (el && el[0]) {
-					el[0].scrollIntoView({ behavior: 'smooth', block: 'center' })
-				}
-			})
-			setTimeout(() => {
-				this.highlightedId = null
-			}, 4000)
-		},
-
 		getGenreNames(item) {
 			const genreIds = item.genreIds
 			if (!genreIds) { return [] }
@@ -408,7 +398,7 @@ export default {
 			this.watchedData = {
 				platform: null,
 				language: this.languageOptions[0], // Default to English (first in list)
-				dateWatched: new Date().toISOString().split('T')[0],
+				dateWatched: todayLocal(),
 				rating: null,
 			}
 			this.showWatchedModal = true
@@ -517,23 +507,8 @@ export default {
     padding: 16px;
     transition: box-shadow 0.3s, background-color 0.3s;
 
-    &.highlighted {
-        animation: highlight-pulse 4s ease-out;
-    }
-
     @media (max-width: 600px) {
         flex-direction: column;
-    }
-}
-
-@keyframes highlight-pulse {
-    0% {
-        box-shadow: 0 0 0 3px var(--color-primary);
-        background-color: var(--color-primary-element-light);
-    }
-    100% {
-        box-shadow: 0 0 0 0 transparent;
-        background-color: var(--color-background-dark);
     }
 }
 

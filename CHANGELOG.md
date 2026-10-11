@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-11
+
+### Added
+- Quiz: test your memory with questions about your own library, for example
+  when you first watched a title, when it was released or first aired, who
+  directed it or which actor is in it, and which of two titles you watched
+  first. You choose how many questions to answer, up to the number of
+  titles in the library. Your finished rounds are saved, with a chart of
+  your scores, accuracy per question type and a personal best. The history
+  can be reset at any time.
+- The watchlist's random picker now chooses from the whole watchlist, not
+  just the page on screen. Filter by movie or TV show, genre and high
+  priority, and spin again for another suggestion.
+
+### Changed
+- New App Store screenshots of the quiz, its results and history, and the watchlist prize wheel.
+
+### Fixed
+- When a Nextcloud user is deleted, their MovieDB data is now removed as
+  well. A shared library of the deleted user passes to one of its members
+  (editors first); a library without members is deleted.
+
 ## [1.7.0] - 2026-10-09
 
 ### Added

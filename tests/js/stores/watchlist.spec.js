@@ -1,11 +1,12 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useWatchlistStore } from '@/stores/watchlist.js'
 
 // Mock API module
 vi.mock('@/services/api.js', () => ({
 	default: {
 		getWatchlist: vi.fn(),
+		getRandomWatchlistItem: vi.fn(),
 		addToWatchlist: vi.fn(),
 		updateWatchlistItem: vi.fn(),
 		removeFromWatchlist: vi.fn(),
@@ -122,9 +123,7 @@ describe('Watchlist Store', () => {
 			store.typeFilter = 'series'
 			await store.fetchAll()
 
-			expect(api.getWatchlist).toHaveBeenCalledWith(
-				expect.objectContaining({ mediaType: 'series' }),
-			)
+			expect(api.getWatchlist).toHaveBeenCalledWith(expect.objectContaining({ mediaType: 'series' }))
 		})
 
 		it('should not include mediaType in params when typeFilter is "all"', async () => {
@@ -134,9 +133,7 @@ describe('Watchlist Store', () => {
 
 			await store.fetchAll()
 
-			expect(api.getWatchlist).toHaveBeenCalledWith(
-				expect.not.objectContaining({ mediaType: expect.anything() }),
-			)
+			expect(api.getWatchlist).toHaveBeenCalledWith(expect.not.objectContaining({ mediaType: expect.anything() }))
 		})
 
 		it('should update page and totalPages from the response', async () => {
@@ -197,9 +194,7 @@ describe('Watchlist Store', () => {
 			await store.setSort('title', 'DESC')
 
 			expect(store.page).toBe(1)
-			expect(api.getWatchlist).toHaveBeenCalledWith(
-				expect.objectContaining({ page: 1 }),
-			)
+			expect(api.getWatchlist).toHaveBeenCalledWith(expect.objectContaining({ page: 1 }))
 		})
 	})
 
@@ -275,9 +270,7 @@ describe('Watchlist Store', () => {
 
 			await store.create({ title: 'Show', mediaType: 'series' })
 
-			expect(api.addToWatchlist).toHaveBeenCalledWith(
-				expect.objectContaining({ mediaType: 'series' }),
-			)
+			expect(api.addToWatchlist).toHaveBeenCalledWith(expect.objectContaining({ mediaType: 'series' }))
 		})
 	})
 
@@ -343,9 +336,7 @@ describe('Watchlist Store', () => {
 			await store.setTypeFilter('series')
 
 			expect(store.typeFilter).toBe('series')
-			expect(api.getWatchlist).toHaveBeenCalledWith(
-				expect.objectContaining({ mediaType: 'series', page: 1 }),
-			)
+			expect(api.getWatchlist).toHaveBeenCalledWith(expect.objectContaining({ mediaType: 'series', page: 1 }))
 		})
 	})
 
@@ -357,9 +348,7 @@ describe('Watchlist Store', () => {
 
 			await store.setPage(2)
 
-			expect(api.getWatchlist).toHaveBeenCalledWith(
-				expect.objectContaining({ page: 2 }),
-			)
+			expect(api.getWatchlist).toHaveBeenCalledWith(expect.objectContaining({ page: 2 }))
 		})
 	})
 
@@ -400,6 +389,56 @@ describe('Watchlist Store', () => {
 			const result = await store.moveToWatched(1, {})
 
 			expect(result).toBeNull()
+		})
+	})
+
+	describe('pickRandomSet', () => {
+		it('asks for a number of candidates and returns them', async () => {
+			api.getRandomWatchlistItem.mockResolvedValue({ data: { items: [{ id: 1 }, { id: 2 }], item: { id: 1 } } })
+
+			const result = await store.pickRandomSet({ genre: 28 }, 8)
+
+			expect(result).toEqual([{ id: 1 }, { id: 2 }])
+			expect(api.getRandomWatchlistItem).toHaveBeenCalledWith({ genre: 28, count: 8 })
+		})
+
+		it('returns an empty list when nothing matches', async () => {
+			api.getRandomWatchlistItem.mockResolvedValue({ data: { items: [], item: null } })
+
+			expect(await store.pickRandomSet({}, 8)).toEqual([])
+		})
+
+		it('returns false and shows an error when the request fails', async () => {
+			const { showError } = await import('@nextcloud/dialogs')
+			api.getRandomWatchlistItem.mockRejectedValue(new Error('boom'))
+
+			expect(await store.pickRandomSet({}, 8)).toBe(false)
+			expect(showError).toHaveBeenCalled()
+		})
+	})
+
+	describe('pickRandom', () => {
+		it('returns the picked item and forwards filters', async () => {
+			api.getRandomWatchlistItem.mockResolvedValue({ data: { item: { id: 4 } } })
+
+			const result = await store.pickRandom({ mediaType: 'movie', genre: 28 })
+
+			expect(result).toEqual({ id: 4 })
+			expect(api.getRandomWatchlistItem).toHaveBeenCalledWith({ mediaType: 'movie', genre: 28 })
+		})
+
+		it('returns null when nothing matches', async () => {
+			api.getRandomWatchlistItem.mockResolvedValue({ data: { item: null } })
+
+			expect(await store.pickRandom()).toBeNull()
+		})
+
+		it('returns false and shows an error when the request fails', async () => {
+			const { showError } = await import('@nextcloud/dialogs')
+			api.getRandomWatchlistItem.mockRejectedValue(new Error('boom'))
+
+			expect(await store.pickRandom()).toBe(false)
+			expect(showError).toHaveBeenCalled()
 		})
 	})
 })

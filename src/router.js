@@ -8,6 +8,7 @@ import EditSeries from './views/EditSeries.vue'
 import Libraries from './views/Libraries.vue'
 import MovieDetail from './views/MovieDetail.vue'
 import MovieList from './views/MovieList.vue'
+import Quiz from './views/Quiz.vue'
 import SeriesDetail from './views/SeriesDetail.vue'
 import SeriesList from './views/SeriesList.vue'
 import Settings from './views/Settings.vue'
@@ -72,6 +73,11 @@ const routes = [
 		path: '/watchlist/add',
 		name: 'add-to-watchlist',
 		component: AddToWatchlist,
+	},
+	{
+		path: '/quiz',
+		name: 'quiz',
+		component: Quiz,
 	},
 	{
 		path: '/settings',

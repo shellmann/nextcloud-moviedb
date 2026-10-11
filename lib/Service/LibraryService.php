@@ -12,6 +12,7 @@ use OCA\MovieDB\Db\LibraryMember;
 use OCA\MovieDB\Db\LibraryMemberMapper;
 use OCA\MovieDB\Db\MovieMapper;
 use OCA\MovieDB\Db\MovieWatchMapper;
+use OCA\MovieDB\Db\QuizResultMapper;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Db\WatchlistMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -28,6 +29,7 @@ class LibraryService {
     private WatchlistMapper $watchlistMapper;
     private MovieWatchMapper $watchMapper;
     private EpisodeMapper $episodeMapper;
+    private QuizResultMapper $quizResultMapper;
     private IUserManager $userManager;
     private IDBConnection $db;
 
@@ -39,6 +41,7 @@ class LibraryService {
         WatchlistMapper $watchlistMapper,
         MovieWatchMapper $watchMapper,
         EpisodeMapper $episodeMapper,
+        QuizResultMapper $quizResultMapper,
         IUserManager $userManager,
         IDBConnection $db
     ) {
@@ -49,6 +52,7 @@ class LibraryService {
         $this->watchlistMapper = $watchlistMapper;
         $this->watchMapper     = $watchMapper;
         $this->episodeMapper   = $episodeMapper;
+        $this->quizResultMapper = $quizResultMapper;
         $this->userManager     = $userManager;
         $this->db              = $db;
     }
@@ -233,24 +237,41 @@ class LibraryService {
             throw new \InvalidArgumentException('The personal library cannot be deleted.');
         }
 
-        // Cascade: delete all catalog rows that reference this library.
-        // Order: episodes (via their parent series), then watches, watchlist,
-        // series, movies — then member rows, then the library row itself.
         // Wrap in a transaction so a mid-flight failure leaves no orphan rows.
         $this->db->beginTransaction();
         try {
-            $this->episodeMapper->deleteByLibrary($id);
-            $this->watchMapper->deleteByLibrary($id);
-            $this->watchlistMapper->deleteByLibrary($id);
-            $this->seriesMapper->deleteByLibrary($id);
-            $this->movieMapper->deleteByLibrary($id);
-            $this->memberMapper->deleteByLibrary($id);
-            $this->libraryMapper->delete($library);
+            $this->purgeLibrary($id);
             $this->db->commit();
         } catch (\Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
+    }
+
+    /**
+     * Remove a library and everything that references it, WITHOUT any owner or
+     * personal-library guard. Used by delete() and by the user-deletion cleanup
+     * (personal libraries must go when their user is deleted).
+     *
+     * Does not open a transaction itself — callers wrap it, so it can be part
+     * of a larger all-or-nothing operation.
+     *
+     * Order: episodes (via their parent series), watches, watchlist, series,
+     * movies, quiz results, member rows, then the library row itself.
+     *
+     * @throws DoesNotExistException
+     */
+    public function purgeLibrary(int $id): void {
+        $library = $this->libraryMapper->find($id);
+
+        $this->episodeMapper->deleteByLibrary($id);
+        $this->watchMapper->deleteByLibrary($id);
+        $this->watchlistMapper->deleteByLibrary($id);
+        $this->seriesMapper->deleteByLibrary($id);
+        $this->movieMapper->deleteByLibrary($id);
+        $this->quizResultMapper->deleteByLibrary($id);
+        $this->memberMapper->deleteByLibrary($id);
+        $this->libraryMapper->delete($library);
     }
 
     /**

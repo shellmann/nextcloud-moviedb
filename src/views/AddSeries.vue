@@ -145,6 +145,7 @@ import { useLibrariesStore } from '../stores/libraries.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useSeriesStore } from '../stores/series.js'
 import { useSettingsStore } from '../stores/settings.js'
+import { todayLocal } from '../utils/formatters.js'
 
 export default {
 	name: 'AddSeries',
@@ -238,7 +239,7 @@ export default {
 				this.selectedPlatform = null
 				this.selectedLanguage = this.languageOptions.find((l) => l.id === this.tmdbLanguage) || null
 				this.selectedRating = null
-				this.dateWatched = new Date().toISOString().slice(0, 10)
+				this.dateWatched = todayLocal()
 				window.scrollTo({ top: 0, behavior: 'smooth' })
 			} catch (error) {
 				console.error('Failed to fetch series details:', error)

@@ -11,6 +11,7 @@ use OCA\MovieDB\Db\LibraryMember;
 use OCA\MovieDB\Db\LibraryMemberMapper;
 use OCA\MovieDB\Db\MovieMapper;
 use OCA\MovieDB\Db\MovieWatchMapper;
+use OCA\MovieDB\Db\QuizResultMapper;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Db\WatchlistMapper;
 use OCA\MovieDB\Service\LibraryService;
@@ -28,6 +29,7 @@ class LibraryServiceTest extends TestCase {
     private WatchlistMapper $watchlistMapper;
     private MovieWatchMapper $watchMapper;
     private EpisodeMapper $episodeMapper;
+    private QuizResultMapper $quizResultMapper;
     private IUserManager $userManager;
     private IDBConnection $db;
     private LibraryService $service;
@@ -42,6 +44,7 @@ class LibraryServiceTest extends TestCase {
         $this->watchlistMapper = $this->createMock(WatchlistMapper::class);
         $this->watchMapper    = $this->createMock(MovieWatchMapper::class);
         $this->episodeMapper  = $this->createMock(EpisodeMapper::class);
+        $this->quizResultMapper = $this->createMock(QuizResultMapper::class);
         $this->userManager    = $this->createMock(IUserManager::class);
         $this->db             = $this->createMock(IDBConnection::class);
 
@@ -53,6 +56,7 @@ class LibraryServiceTest extends TestCase {
             $this->watchlistMapper,
             $this->watchMapper,
             $this->episodeMapper,
+            $this->quizResultMapper,
             $this->userManager,
             $this->db
         );
@@ -420,5 +424,82 @@ class LibraryServiceTest extends TestCase {
         $m->setPermissionEdit($canEdit);
         $m->setCreatedAt('2026-01-01 00:00:00');
         return $m;
+    }
+
+    // ── delete / purgeLibrary ─────────────────────────────────────────────────
+
+    public function testDeleteRejectsNonOwner(): void {
+        $library = new Library();
+        $library->setId(5);
+        $library->setOwner('alice');
+        $this->libraryMapper->method('find')->willReturn($library);
+
+        $this->libraryMapper->expects($this->never())->method('delete');
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->service->delete(5, 'mallory');
+    }
+
+    public function testDeleteRejectsPersonalLibrary(): void {
+        $library = new Library();
+        $library->setId(5);
+        $library->setOwner('alice');
+        $library->setIsPersonal(true);
+        $this->libraryMapper->method('find')->willReturn($library);
+
+        $this->libraryMapper->expects($this->never())->method('delete');
+        $this->expectException(\InvalidArgumentException::class);
+
+        $this->service->delete(5, 'alice');
+    }
+
+    public function testDeleteRunsCascadeInTransaction(): void {
+        $library = new Library();
+        $library->setId(5);
+        $library->setOwner('alice');
+        $this->libraryMapper->method('find')->willReturn($library);
+
+        $this->db->expects($this->once())->method('beginTransaction');
+        $this->quizResultMapper->expects($this->once())->method('deleteByLibrary')->with(5);
+        $this->libraryMapper->expects($this->once())->method('delete')->with($library);
+        $this->db->expects($this->once())->method('commit');
+        $this->db->expects($this->never())->method('rollBack');
+
+        $this->service->delete(5, 'alice');
+    }
+
+    public function testDeleteRollsBackOnFailure(): void {
+        $library = new Library();
+        $library->setId(5);
+        $library->setOwner('alice');
+        $this->libraryMapper->method('find')->willReturn($library);
+        $this->movieMapper->method('deleteByLibrary')->willThrowException(new \RuntimeException('boom'));
+
+        $this->db->expects($this->once())->method('rollBack');
+        $this->db->expects($this->never())->method('commit');
+        $this->expectException(\RuntimeException::class);
+
+        $this->service->delete(5, 'alice');
+    }
+
+    public function testPurgeLibraryRemovesEverythingWithoutGuards(): void {
+        $library = new Library();
+        $library->setId(9);
+        $library->setOwner('alice');
+        $library->setIsPersonal(true);
+        $this->libraryMapper->method('find')->willReturn($library);
+
+        $this->episodeMapper->expects($this->once())->method('deleteByLibrary')->with(9);
+        $this->watchMapper->expects($this->once())->method('deleteByLibrary')->with(9);
+        $this->watchlistMapper->expects($this->once())->method('deleteByLibrary')->with(9);
+        $this->seriesMapper->expects($this->once())->method('deleteByLibrary')->with(9);
+        $this->movieMapper->expects($this->once())->method('deleteByLibrary')->with(9);
+        $this->quizResultMapper->expects($this->once())->method('deleteByLibrary')->with(9);
+        $this->memberMapper->expects($this->once())->method('deleteByLibrary')->with(9);
+        $this->libraryMapper->expects($this->once())->method('delete')->with($library);
+        // purgeLibrary leaves transaction handling to its caller
+        $this->db->expects($this->never())->method('beginTransaction');
+
+        $this->service->purgeLibrary(9);
     }
 }

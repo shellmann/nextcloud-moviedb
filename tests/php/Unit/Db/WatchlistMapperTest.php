@@ -58,6 +58,30 @@ class WatchlistMapperTest extends TestCase {
         $this->assertContains('media_type', $this->qbStub->eqColumns);
     }
 
+    public function testCountAllAppliesGenreFilterAsWholeElementMatch(): void {
+        $this->mapper->countAll(1, ['genre' => 28]);
+
+        $this->assertSame(
+            ['[28]', '[28,%', '%,28,%', '%,28]'],
+            $this->qbStub->likePatterns
+        );
+    }
+
+    public function testCountAllAppliesMinPriorityAndExcludeId(): void {
+        $this->mapper->countAll(1, ['minPriority' => 1, 'excludeId' => 9]);
+
+        $this->assertContains('priority', $this->qbStub->gteColumns);
+        $this->assertContains('id', $this->qbStub->neqColumns);
+    }
+
+    public function testCountAllIgnoresZeroValuedPickerFilters(): void {
+        $this->mapper->countAll(1, ['genre' => 0, 'minPriority' => 0, 'excludeId' => 0]);
+
+        $this->assertSame([], $this->qbStub->likePatterns);
+        $this->assertSame([], $this->qbStub->gteColumns);
+        $this->assertSame([], $this->qbStub->neqColumns);
+    }
+
     public function testCountAllWithNoFiltersDoesNotThrow(): void {
         $count = $this->mapper->countAll(1);
         $this->assertEquals(7, $count);
@@ -73,6 +97,9 @@ class RecordingWatchlistQBStub implements IQueryBuilder {
     public array $firstResultCalls = [];
     public array $iLikeColumns = [];
     public array $eqColumns = [];
+    public array $likePatterns = [];
+    public array $gteColumns = [];
+    public array $neqColumns = [];
 
     public function select(...$_): static { return $this; }
     public function addSelect(...$_): static { return $this; }
@@ -131,6 +158,25 @@ class RecordingWatchlistQBStub implements IQueryBuilder {
                 $this->stub->eqColumns[] = $column;
                 return '1=1';
             }
+
+            public function like(string $column, string $pattern, ...$_): string {
+                $this->stub->likePatterns[] = $pattern;
+                return '1=1';
+            }
+
+            public function gte(string $column, ...$_): string {
+                $this->stub->gteColumns[] = $column;
+                return '1=1';
+            }
+
+            public function neq(string $column, ...$_): string {
+                $this->stub->neqColumns[] = $column;
+                return '1=1';
+            }
+
+            public function castColumn(string $column, ...$_): string { return $column; }
+
+            public function orX(string ...$_): string { return '1=1'; }
 
             public function iLike(string $column, ...$_): string {
                 $this->stub->iLikeColumns[] = $column;
