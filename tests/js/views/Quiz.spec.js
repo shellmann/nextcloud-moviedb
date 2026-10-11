@@ -66,6 +66,24 @@ describe('Quiz view', () => {
 		expect(wrapper.find('.quiz-chart-caption').text()).toContain('share of the maximum points')
 	})
 
+	it('says when only the latest rounds are shown and numbers them from where they start', async () => {
+		const wrapper = await mountView()
+		const rounds = Array.from({ length: 30 }, (_, i) => ({ id: i + 1, percent: 50, playedAt: '2026-10-01 10:00:00' }))
+		quiz.results = { rounds, total: 58, best: { percent: 100 }, accuracy: {} }
+		await flushPromises()
+
+		expect(wrapper.text()).toContain('Showing your latest 30 of 58 rounds.')
+		expect(wrapper.findAllComponents({ name: 'QuizHistoryChart' })[0].props('firstNumber')).toBe(29)
+	})
+
+	it('stays silent about cutting the history when everything is shown', async () => {
+		const wrapper = await mountView()
+		quiz.results = { rounds: [{ id: 1, percent: 50, playedAt: '2026-10-01 10:00:00' }], total: 1, best: { percent: 50 }, accuracy: {} }
+		await flushPromises()
+
+		expect(wrapper.text()).not.toContain('Showing your latest')
+	})
+
 	it('only offers the reset button when there is history', async () => {
 		const wrapper = await mountView()
 		expect(wrapper.text()).not.toContain('Reset quiz history')

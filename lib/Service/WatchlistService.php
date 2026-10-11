@@ -58,6 +58,52 @@ class WatchlistService {
         return $items[0] ?? null;
     }
 
+    /**
+     * Up to $n distinct random items matching the filters (the segments of the
+     * "wheel"), in random order. Same portable approach as pickRandom(): count,
+     * then random offsets. With `excludeId` the previous winner is skipped, unless
+     * that leaves nothing.
+     *
+     * @return WatchlistItem[]
+     */
+    public function pickRandomSet(int $libraryId, array $filters = [], int $n = 8): array {
+        $n = max(1, $n);
+        $total = $this->mapper->countAll($libraryId, $filters);
+
+        if ($total === 0 && !empty($filters['excludeId'])) {
+            unset($filters['excludeId']);
+            $total = $this->mapper->countAll($libraryId, $filters);
+        }
+        if ($total === 0) {
+            return [];
+        }
+
+        $filters += ['sort' => 'title', 'dir' => 'ASC'];
+
+        if ($total <= $n) {
+            $items = $this->mapper->findAll($libraryId, $filters, $n, 0);
+        } else {
+            $offsets = [];
+            while (count($offsets) < $n) {
+                $offsets[random_int(0, $total - 1)] = true;
+            }
+            $items = [];
+            foreach (array_keys($offsets) as $offset) {
+                foreach ($this->mapper->findAll($libraryId, $filters, 1, $offset) as $item) {
+                    $items[] = $item;
+                }
+            }
+        }
+
+        // Fisher-Yates with a CSPRNG-backed int, so the order is random too.
+        for ($i = count($items) - 1; $i > 0; $i--) {
+            $j = random_int(0, $i);
+            [$items[$i], $items[$j]] = [$items[$j], $items[$i]];
+        }
+
+        return $items;
+    }
+
     public function count(int $libraryId, array $filters = []): int {
         return $this->mapper->countAll($libraryId, $filters);
     }

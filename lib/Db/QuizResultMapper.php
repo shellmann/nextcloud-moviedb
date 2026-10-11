@@ -38,6 +38,25 @@ class QuizResultMapper extends QBMapper {
     }
 
     /**
+     * Number of finished rounds of a user in a library (the history view only
+     * loads the latest ones and says how many there are in total).
+     */
+    public function countByUserAndLibrary(string $userId, int $libraryId): int {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select($qb->func()->count('*', 'count'))
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
+
+        $result = $qb->executeQuery();
+        $row = $result->fetch();
+        $result->closeCursor();
+
+        return (int)($row['count'] ?? 0);
+    }
+
+    /**
      * Best round (highest percent, earliest wins a tie) or null if none played.
      */
     public function findBest(string $userId, int $libraryId): ?QuizResult {

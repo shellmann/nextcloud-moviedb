@@ -43,7 +43,13 @@
 			<h3 id="quiz-history-heading">
 				{{ t('moviedb', 'Your results') }}
 			</h3>
-			<QuizHistoryChart :rounds="quizStore.results.rounds" :best="bestPercent" />
+			<QuizHistoryChart
+				:rounds="quizStore.results.rounds"
+				:best="bestPercent"
+				:firstNumber="firstRoundNumber" />
+			<p v-if="isCut" class="quiz-chart-caption">
+				{{ t('moviedb', 'Showing your latest {shown} of {total} rounds. Your personal best counts all of them.', { shown: quizStore.results.rounds.length, total: quizStore.results.total }) }}
+			</p>
 			<p v-if="quizStore.results.rounds.length" class="quiz-chart-caption">
 				{{ t('moviedb', 'Each bar is the share of the maximum points you scored in that round.') }}
 			</p>
@@ -57,8 +63,12 @@
 			</template>
 			<NcButton
 				v-if="quizStore.results.rounds.length"
-				variant="tertiary"
+				class="quiz-reset"
+				variant="secondary"
 				@click="showResetDialog = true">
+				<template #icon>
+					<DeleteOutline :size="20" />
+				</template>
 				{{ t('moviedb', 'Reset quiz history') }}
 			</NcButton>
 		</section>
@@ -100,6 +110,7 @@
 
 <script>
 import { NcButton, NcDialog } from '@nextcloud/vue'
+import DeleteOutline from 'vue-material-design-icons/DeleteOutline.vue'
 import ExitToApp from 'vue-material-design-icons/ExitToApp.vue'
 import TrophyOutline from 'vue-material-design-icons/TrophyOutline.vue'
 import QuizAccuracyList from '../components/quiz/QuizAccuracyList.vue'
@@ -116,6 +127,7 @@ export default {
 	components: {
 		NcButton,
 		NcDialog,
+		DeleteOutline,
 		ExitToApp,
 		QuizAccuracyList,
 		QuizHistoryChart,
@@ -146,6 +158,16 @@ export default {
 
 		bestPercent() {
 			return this.quizStore.results.best ? this.quizStore.results.best.percent : null
+		},
+
+		/** The history only loads the latest rounds; number them from where they start. */
+		firstRoundNumber() {
+			const { rounds, total } = this.quizStore.results
+			return Math.max(1, total - rounds.length + 1)
+		},
+
+		isCut() {
+			return this.quizStore.results.total > this.quizStore.results.rounds.length
 		},
 
 		hasAccuracy() {
@@ -245,6 +267,11 @@ export default {
 	h4 {
 		margin-top: 8px;
 	}
+}
+
+.quiz-reset {
+	margin-top: 12px;
+	border: 1px solid var(--color-border-maxcontrast);
 }
 
 .quiz-chart-caption {

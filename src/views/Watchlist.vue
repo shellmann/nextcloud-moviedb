@@ -17,7 +17,7 @@
 					:title="t('moviedb', 'Pick Random')"
 					@click="showPicker = true">
 					<template #icon>
-						<DiceMultiple :size="20" />
+						<FerrisWheel :size="20" />
 					</template>
 				</NcButton>
 			</div>
@@ -229,7 +229,7 @@
 import { NcButton, NcDialog, NcEmptyContent, NcLoadingIcon, NcModal, NcSelect, NcTextField } from '@nextcloud/vue'
 import Check from 'vue-material-design-icons/Check.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
-import DiceMultiple from 'vue-material-design-icons/DiceMultiple.vue'
+import FerrisWheel from 'vue-material-design-icons/FerrisWheel.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
@@ -240,6 +240,7 @@ import { useLibrariesStore } from '../stores/libraries.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
+import { todayLocal } from '../utils/formatters.js'
 
 export default {
 	name: 'Watchlist',
@@ -254,7 +255,7 @@ export default {
 		WatchlistPicker,
 		Check,
 		Delete,
-		DiceMultiple,
+		FerrisWheel,
 		Pencil,
 		PlaylistPlay,
 		Plus,
@@ -281,7 +282,7 @@ export default {
 			watchedData: {
 				platform: null,
 				language: null,
-				dateWatched: new Date().toISOString().split('T')[0],
+				dateWatched: todayLocal(),
 				rating: null,
 			},
 
@@ -397,7 +398,7 @@ export default {
 			this.watchedData = {
 				platform: null,
 				language: this.languageOptions[0], // Default to English (first in list)
-				dateWatched: new Date().toISOString().split('T')[0],
+				dateWatched: todayLocal(),
 				rating: null,
 			}
 			this.showWatchedModal = true

@@ -26,18 +26,33 @@
 					:options="genreOptions"
 					:placeholder="t('moviedb', 'Genre')"
 					:aria-label="t('moviedb', 'Genre')"
-					@update:modelValue="pick(false)" />
-				<NcCheckboxRadioSwitch v-model="highPriorityOnly" @update:modelValue="pick(false)">
+					@update:modelValue="load" />
+				<NcCheckboxRadioSwitch v-model="highPriorityOnly" @update:modelValue="load">
 					{{ t('moviedb', 'High priority only') }}
 				</NcCheckboxRadioSwitch>
 			</div>
 
-			<!-- Persistent live region so a new pick is announced to screen readers. -->
-			<div class="picker-live" aria-live="polite" aria-atomic="true">
-				<div v-if="loading && !item" class="picker-loading">
-					<NcLoadingIcon :size="32" />
-				</div>
+			<div v-if="loading" class="picker-loading">
+				<NcLoadingIcon :size="32" />
+			</div>
 
+			<template v-else-if="items.length">
+				<WatchlistWheel
+					ref="wheel"
+					:items="items"
+					@wheelClick="spin" />
+				<p class="picker-hint">
+					{{ t('moviedb', 'Click the wheel or press the button to spin.') }}
+				</p>
+			</template>
+
+			<p v-else-if="searched" class="picker-empty">
+				{{ t('moviedb', 'No title on your watchlist matches these filters.') }}
+			</p>
+
+			<!-- Persistent live region so the outcome is announced to screen readers. -->
+			<div class="picker-live" aria-live="polite" aria-atomic="true">
+				<span v-if="spinning" class="picker-sr-only">{{ t('moviedb', 'Spinning the wheel') }}</span>
 				<div v-else-if="item" :key="item.id" class="picker-result">
 					<img
 						v-if="item.posterPath"
@@ -61,10 +76,6 @@
 						</p>
 					</div>
 				</div>
-
-				<p v-else-if="searched" class="picker-empty">
-					{{ t('moviedb', 'No title on your watchlist matches these filters.') }}
-				</p>
 			</div>
 		</div>
 
@@ -75,8 +86,14 @@
 			<NcButton v-if="item && canEdit" @click="markWatched">
 				{{ t('moviedb', 'Mark as Watched') }}
 			</NcButton>
-			<NcButton variant="primary" :disabled="loading" @click="pick(true)">
-				{{ t('moviedb', 'Spin again') }}
+			<NcButton
+				variant="primary"
+				:disabled="loading || spinning || !items.length"
+				@click="spin">
+				<template #icon>
+					<FerrisWheel :size="20" />
+				</template>
+				{{ item ? t('moviedb', 'Spin again') : t('moviedb', 'Spin the wheel') }}
 			</NcButton>
 		</template>
 	</NcDialog>
@@ -84,9 +101,13 @@
 
 <script>
 import { NcButton, NcCheckboxRadioSwitch, NcDialog, NcLoadingIcon, NcSelect } from '@nextcloud/vue'
+import FerrisWheel from 'vue-material-design-icons/FerrisWheel.vue'
+import WatchlistWheel from './WatchlistWheel.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getGenreOptions, getPriorityOptions, MEDIA_TYPE } from '../constants.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
+
+const WHEEL_SEGMENTS = 8
 
 export default {
 	name: 'WatchlistPicker',
@@ -95,8 +116,10 @@ export default {
 		NcButton,
 		NcCheckboxRadioSwitch,
 		NcDialog,
+		FerrisWheel,
 		NcLoadingIcon,
 		NcSelect,
+		WatchlistWheel,
 	},
 
 	props: {
@@ -116,9 +139,11 @@ export default {
 			mediaType: 'all',
 			genre: null,
 			highPriorityOnly: false,
+			items: [],
 			item: null,
 			searched: false,
 			loading: false,
+			spinning: false,
 			typeOptions: [
 				{ id: 'all', label: t('moviedb', 'All') },
 				{ id: MEDIA_TYPE.MOVIE, label: t('moviedb', 'Movies') },
@@ -162,14 +187,14 @@ export default {
 			if (isOpen) {
 				this.item = null
 				this.searched = false
-				this.pick(false)
+				this.load()
 			}
 		},
 	},
 
 	created() {
 		if (this.open) {
-			this.pick(false)
+			this.load()
 		}
 	},
 
@@ -182,28 +207,57 @@ export default {
 			if (this.genre && !this.genreOptions.some((g) => g.id === this.genre.id)) {
 				this.genre = null
 			}
-			this.pick(false)
+			this.load()
 		},
 
-		/**
-		 * @param {boolean} excludeCurrent - skip the shown item ("spin again")
-		 */
-		async pick(excludeCurrent) {
-			this.loading = true
+		filters() {
 			const filters = {}
 			if (this.mediaType !== 'all') { filters.mediaType = this.mediaType }
 			if (this.genre) { filters.genre = this.genre.id }
 			if (this.highPriorityOnly) { filters.minPriority = 1 }
-			if (excludeCurrent && this.item) { filters.exclude = this.item.id }
+			return filters
+		},
 
-			const result = await this.watchlistStore.pickRandom(filters)
+		/**
+		 * Loads the titles that go on the wheel. Filters changed, so any earlier
+		 * outcome no longer applies.
+		 *
+		 * @param {number|null} excludeId - Skip this title (the previous winner)
+		 * @return {Promise<boolean>} false if the request failed
+		 */
+		async load(excludeId = null) {
+			this.loading = true
+			const filters = this.filters()
+			if (excludeId) { filters.exclude = excludeId }
+			const items = await this.watchlistStore.pickRandomSet(filters, WHEEL_SEGMENTS)
 			this.loading = false
-			if (result === false) {
-				// Request failed (the store already showed an error): keep what is shown.
-				return
+			if (items === false) {
+				// The store already showed an error: keep what is on screen.
+				return false
 			}
-			this.item = result
+			this.items = items
+			this.item = null
 			this.searched = true
+			return true
+		},
+
+		/**
+		 * Spin the wheel. After a first result the next spin brings a fresh
+		 * selection of titles (never the previous winner), then lands on one of them.
+		 */
+		async spin() {
+			if (this.loading || this.spinning || !this.items.length) { return }
+			if (this.item) {
+				const ok = await this.load(this.item.id)
+				if (!ok || !this.items.length) { return }
+				await this.$nextTick()
+			}
+			const index = Math.floor(Math.random() * this.items.length)
+			this.spinning = true
+			this.item = null
+			await this.$refs.wheel?.spinTo(index)
+			this.spinning = false
+			this.item = this.items[index]
 		},
 
 		markWatched() {
@@ -219,7 +273,7 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 16px;
-	min-height: 260px;
+	min-height: 320px;
 }
 
 .picker-filters {
@@ -241,6 +295,15 @@ export default {
 	display: flex;
 	justify-content: center;
 	padding: 48px 0;
+}
+
+.picker-sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
 }
 
 .picker-result {
@@ -306,6 +369,12 @@ export default {
 	-webkit-box-orient: vertical;
 	overflow: hidden;
 	margin: 0;
+}
+
+.picker-hint {
+	margin: 0;
+	text-align: center;
+	color: var(--color-text-maxcontrast);
 }
 
 .picker-empty {

@@ -156,7 +156,7 @@ describe('Quiz store', () => {
 
 		expect(await store.resetResults()).toBe(true)
 
-		expect(store.results).toEqual({ rounds: [], best: null, accuracy: {} })
+		expect(store.results).toEqual({ rounds: [], total: 0, best: null, accuracy: {} })
 		expect(showSuccess).toHaveBeenCalled()
 	})
 

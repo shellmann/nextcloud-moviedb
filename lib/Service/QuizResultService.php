@@ -22,7 +22,9 @@ class QuizResultService {
     }
 
     /**
-     * @return array{rounds: list<QuizResult>, best: ?QuizResult, accuracy: array<string, int>}
+     * `rounds` holds the latest rounds only; `total` is how many exist, so the UI can say so.
+     *
+     * @return array{rounds: list<QuizResult>, total: int, best: ?QuizResult, accuracy: array<string, int>}
      */
     public function list(string $userId, int $libraryId): array {
         // Newest first from the DB; the chart wants oldest first.
@@ -45,6 +47,7 @@ class QuizResultService {
 
         return [
             'rounds' => $rounds,
+            'total' => $this->mapper->countByUserAndLibrary($userId, $libraryId),
             'best' => $this->mapper->findBest($userId, $libraryId),
             'accuracy' => $accuracy,
         ];

@@ -121,11 +121,13 @@ class QuizResultServiceTest extends TestCase {
         $oldest = $this->round(1, ['release_year' => ['points' => 0, 'max' => 10]]);
         $this->mapper->method('findRecent')->with('alice', 7, 30)->willReturn([$newest, $oldest]);
         $this->mapper->method('findBest')->with('alice', 7)->willReturn($newest);
+        $this->mapper->method('countByUserAndLibrary')->with('alice', 7)->willReturn(58);
 
         $data = $this->service->list('alice', 7);
 
         $this->assertSame([1, 2], array_map(fn ($r) => $r->getId(), $data['rounds']));
         $this->assertSame($newest, $data['best']);
+        $this->assertSame(58, $data['total'], 'total counts all rounds, not just the loaded ones');
         $this->assertSame(['release_year' => 50, 'rating' => 0], $data['accuracy']);
     }
 
@@ -133,6 +135,6 @@ class QuizResultServiceTest extends TestCase {
         $this->mapper->method('findRecent')->willReturn([]);
         $this->mapper->method('findBest')->willReturn(null);
 
-        $this->assertSame(['rounds' => [], 'best' => null, 'accuracy' => []], $this->service->list('alice', 7));
+        $this->assertSame(['rounds' => [], 'total' => 0, 'best' => null, 'accuracy' => []], $this->service->list('alice', 7));
     }
 }

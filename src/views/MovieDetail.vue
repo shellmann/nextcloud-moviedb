@@ -193,7 +193,7 @@ import { useLibrariesStore } from '../stores/libraries.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useWatchesStore } from '../stores/watches.js'
-import { formatDate, formatRuntime } from '../utils/formatters.js'
+import { formatDate, formatRuntime, todayLocal } from '../utils/formatters.js'
 
 export default {
 	name: 'MovieDetail',
@@ -232,7 +232,7 @@ export default {
 			showDeleteDialog: false,
 			showLogDialog: false,
 			logForm: {
-				watchedAt: new Date().toISOString().slice(0, 10),
+				watchedAt: todayLocal(),
 				rating: null,
 				review: '',
 			},
@@ -318,7 +318,7 @@ export default {
 			}
 			await this.watchesStore.create(this.id, data)
 			this.showLogDialog = false
-			this.logForm = { watchedAt: new Date().toISOString().slice(0, 10), rating: null, review: '' }
+			this.logForm = { watchedAt: todayLocal(), rating: null, review: '' }
 		},
 
 		async deleteWatch(watchId) {

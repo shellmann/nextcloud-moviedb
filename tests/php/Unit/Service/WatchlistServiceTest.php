@@ -348,6 +348,53 @@ class WatchlistServiceTest extends TestCase {
         $this->service->pickRandom(self::LIBRARY_ID, ['excludeId' => 7]);
     }
 
+    public function testPickRandomSetReturnsNothingWhenNoMatch(): void {
+        $this->mapper->method('countAll')->willReturn(0);
+        $this->mapper->expects($this->never())->method('findAll');
+
+        $this->assertSame([], $this->service->pickRandomSet(self::LIBRARY_ID, [], 8));
+    }
+
+    public function testPickRandomSetReturnsEverythingWhenFewerThanRequested(): void {
+        $items = [$this->createWatchlistItem(1, 'A'), $this->createWatchlistItem(2, 'B'), $this->createWatchlistItem(3, 'C')];
+        $this->mapper->method('countAll')->willReturn(3);
+        $this->mapper->expects($this->once())->method('findAll')
+            ->with(self::LIBRARY_ID, $this->anything(), 8, 0)->willReturn($items);
+
+        $result = $this->service->pickRandomSet(self::LIBRARY_ID, [], 8);
+
+        $this->assertCount(3, $result);
+        $this->assertEqualsCanonicalizing([1, 2, 3], array_map(fn ($i) => $i->getId(), $result));
+    }
+
+    public function testPickRandomSetUsesDistinctOffsetsWhenThereAreMoreItems(): void {
+        $this->mapper->method('countAll')->willReturn(20);
+        $offsets = [];
+        $this->mapper->method('findAll')->willReturnCallback(function ($lib, $f, $limit, $offset) use (&$offsets) {
+            $offsets[] = $offset;
+            return [$this->createWatchlistItem($offset + 1, "T$offset")];
+        });
+
+        $result = $this->service->pickRandomSet(self::LIBRARY_ID, [], 8);
+
+        $this->assertCount(8, $result);
+        $this->assertSame($offsets, array_values(array_unique($offsets)));
+        $this->assertCount(8, array_unique(array_map(fn ($i) => $i->getId(), $result)));
+        foreach ($offsets as $o) {
+            $this->assertGreaterThanOrEqual(0, $o);
+            $this->assertLessThanOrEqual(19, $o);
+        }
+    }
+
+    public function testPickRandomSetDropsTheExclusionWhenItLeavesNothing(): void {
+        $this->mapper->method('countAll')->willReturnCallback(fn ($lib, $f) => isset($f['excludeId']) ? 0 : 1);
+        $this->mapper->expects($this->once())->method('findAll')
+            ->with(self::LIBRARY_ID, $this->callback(fn ($f) => !isset($f['excludeId'])), 8, 0)
+            ->willReturn([$this->createWatchlistItem(7, 'Only')]);
+
+        $this->assertCount(1, $this->service->pickRandomSet(self::LIBRARY_ID, ['excludeId' => 7], 8));
+    }
+
     private function createWatchlistItem(int $id, string $title): WatchlistItem {
         $item = new WatchlistItem();
         $item->setId($id);

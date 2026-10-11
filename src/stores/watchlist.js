@@ -89,6 +89,27 @@ export const useWatchlistStore = defineStore('watchlist', {
 		},
 
 		/**
+		 * Fetches up to `count` random candidates (the segments of the wheel).
+		 *
+		 * @param {object} filters - mediaType, genre, minPriority, exclude
+		 * @param {number} count - How many candidates
+		 * @return {Promise<Array<object> | false>} The items (maybe empty), false on error
+		 */
+		async pickRandomSet(filters = {}, count = 8) {
+			try {
+				const libraryId = useLibrariesStore().activeLibraryId
+				const params = { ...filters, count }
+				if (libraryId !== null) { params.libraryId = libraryId }
+				const response = await api.getRandomWatchlistItem(params)
+				return response.data.items ?? []
+			} catch (error) {
+				console.error('Failed to load wheel candidates:', error)
+				showError(t('moviedb', 'Failed to pick a title. Please try again.'))
+				return false
+			}
+		},
+
+		/**
 		 * Sets sort field and direction, then re-fetches.
 		 *
 		 * @param {string} sort - Sort field

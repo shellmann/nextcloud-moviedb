@@ -5,7 +5,7 @@ import api from '../services/api.js'
 import { buildBreakdown, MAX_POINTS, scoreAnswer } from '../utils/quizScoring.js'
 import { useLibrariesStore } from './libraries.js'
 
-const emptyResults = () => ({ rounds: [], best: null, accuracy: {} })
+const emptyResults = () => ({ rounds: [], total: 0, best: null, accuracy: {} })
 
 /**
  * Quiz store - one running round (kept only in memory) plus the saved history.
@@ -59,6 +59,7 @@ export const useQuizStore = defineStore('quiz', {
 				const response = await api.getQuizResults(this._libraryId())
 				this.results = {
 					rounds: response.data.rounds ?? [],
+					total: response.data.total ?? (response.data.rounds ?? []).length,
 					best: response.data.best ?? null,
 					accuracy: response.data.accuracy ?? {},
 				}

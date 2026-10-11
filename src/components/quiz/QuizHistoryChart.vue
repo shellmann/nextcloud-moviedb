@@ -37,7 +37,9 @@
 					:width="barWidth"
 					:height="isMounted ? bar.barHeight : 0"
 					rx="4"
-					class="bar" />
+					class="bar">
+					<title>{{ bar.title }}</title>
+				</rect>
 				<text
 					:x="bar.x + barWidth / 2"
 					:y="bar.y - 6"
@@ -48,12 +50,22 @@
 				<text
 					v-if="i % labelStep === 0"
 					:x="bar.x + barWidth / 2"
-					:y="height - 4"
+					:y="height - 18"
 					text-anchor="middle"
 					class="bar-label">
-					{{ bar.label }}
+					{{ firstNumber + i }}
 				</text>
 			</g>
+			<!-- One date per day, centred under that day's rounds, so several rounds on one day stay readable. -->
+			<text
+				v-for="group in visibleDateGroups"
+				:key="group.day"
+				:x="group.x"
+				:y="height - 3"
+				text-anchor="middle"
+				class="bar-label bar-date">
+				{{ group.label }}
+			</text>
 		</svg>
 	</div>
 </template>
@@ -73,11 +85,13 @@ export default {
 		rounds: { type: Array, required: true },
 		/** Best percent, or null while nothing was played. */
 		best: { type: Number, default: null },
+		/** Number of the first shown round (history is cut to the latest rounds). */
+		firstNumber: { type: Number, default: 1 },
 	},
 
 	data() {
 		return {
-			height: 190,
+			height: 205,
 			barWidth: 24,
 			gap: 10,
 			chartBottom: 30,
@@ -109,17 +123,49 @@ export default {
 		},
 
 		ariaLabel() {
-			const scores = this.rounds.map((r) => `${r.percent}%`).join(', ')
+			const scores = this.rounds.map((r, i) => `${this.firstNumber + i}: ${r.percent}%`).join(', ')
 			return t('moviedb', 'Score per quiz round in percent') + ': ' + scores
+		},
+
+		/** Rounds played on the same day, with the centre of their bars. */
+		dayGroups() {
+			const groups = []
+			for (const bar of this.bars) {
+				const last = groups[groups.length - 1]
+				if (last && last.day === bar.day) {
+					last.end = bar.x + this.barWidth
+				} else {
+					groups.push({ day: bar.day, label: bar.label, start: bar.x, end: bar.x + this.barWidth })
+				}
+			}
+			return groups.map((g) => ({ day: g.day, label: g.label, x: (g.start + g.end) / 2 }))
+		},
+
+		/**
+		 * Date labels that fit: with many days the dates would overlap, so skip one
+		 * that would touch the previous (the tooltip of every bar still has its date).
+		 */
+		visibleDateGroups() {
+			const MIN_GAP = 52
+			const shown = []
+			for (const group of this.dayGroups) {
+				if (!shown.length || group.x - shown[shown.length - 1].x >= MIN_GAP) {
+					shown.push(group)
+				}
+			}
+			return shown
 		},
 
 		bars() {
 			return this.rounds.map((round, index) => {
+				const day = this.localDay(round.playedAt)
 				const barHeight = (Math.max(0, Math.min(100, round.percent)) / 100) * this.plotHeight
 				return {
 					id: round.id,
 					percent: round.percent,
 					label: this.formatDate(round.playedAt),
+					day,
+					title: t('moviedb', 'Round {n}, {date}: {percent}%', { n: this.firstNumber + index, date: this.formatDateTime(round.playedAt), percent: round.percent }),
 					x: index * (this.barWidth + this.gap) + this.gap,
 					y: this.chartTop + (this.plotHeight - barHeight),
 					barHeight,
@@ -135,8 +181,36 @@ export default {
 	},
 
 	methods: {
+		/**
+		 * The server stores timestamps in UTC without a zone marker ("2026-10-11 12:00:00").
+		 * Parse them as UTC so they display in the viewer's own time zone.
+		 *
+		 * @param {string} playedAt - Server timestamp
+		 * @return {Date}
+		 */
+		parseUtc(playedAt) {
+			return new Date(String(playedAt).replace(' ', 'T') + 'Z')
+		},
+
+		/**
+		 * Calendar day (YYYY-MM-DD) in the viewer's time zone, to group rounds by local day.
+		 *
+		 * @param playedAt
+		 */
+		localDay(playedAt) {
+			const d = this.parseUtc(playedAt)
+			if (Number.isNaN(d.getTime())) { return String(playedAt).slice(0, 10) }
+			const pad = (n) => String(n).padStart(2, '0')
+			return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
+		},
+
+		formatDateTime(playedAt) {
+			const date = this.parseUtc(playedAt)
+			return Number.isNaN(date.getTime()) ? '' : date.toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
+		},
+
 		formatDate(playedAt) {
-			const date = new Date(String(playedAt).replace(' ', 'T'))
+			const date = this.parseUtc(playedAt)
 			if (Number.isNaN(date.getTime())) {
 				return ''
 			}
@@ -154,7 +228,7 @@ export default {
 .quiz-history-svg {
 	width: 100%;
 	height: auto;
-	max-height: 190px;
+	max-height: 205px;
 }
 
 .bar {

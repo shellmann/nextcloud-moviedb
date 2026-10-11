@@ -115,6 +115,13 @@ class WatchlistController extends AuthenticatedController {
             'excludeId' => max(0, (int)$this->request->getParam('exclude', 0)),
         ];
 
+        // `count` > 1 returns a set of candidates for the wheel; `item` stays the first one.
+        $count = max(1, min(12, (int)$this->request->getParam('count', 1)));
+        if ($count > 1) {
+            $items = $this->service->pickRandomSet($libraryId, $filters, $count);
+            return new JSONResponse(['items' => $items, 'item' => $items[0] ?? null]);
+        }
+
         return new JSONResponse(['item' => $this->service->pickRandom($libraryId, $filters)]);
     }
 

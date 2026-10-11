@@ -381,4 +381,31 @@ class WatchlistControllerTest extends TestCase {
 
         $this->assertNull($this->controller->random()->getData()['item']);
     }
+
+    public function testRandomWithCountReturnsASetAndKeepsItemForCompatibility(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $params = ['count' => '8', 'genre' => '28'];
+        $this->request->method('getParam')->willReturnCallback(fn ($k, $d = null) => $params[$k] ?? $d);
+        $a = $this->makeItem(1, 'movie', 1);
+        $b = $this->makeItem(2, 'movie', 2);
+
+        $this->service->expects($this->once())->method('pickRandomSet')
+            ->with(self::LIBRARY_ID, $this->callback(fn ($f) => $f['genre'] === 28), 8)->willReturn([$a, $b]);
+        $this->service->expects($this->never())->method('pickRandom');
+
+        $data = $this->controller->random()->getData();
+
+        $this->assertSame([$a, $b], $data['items']);
+        $this->assertSame($a, $data['item']);
+    }
+
+    public function testRandomClampsCountToTwelve(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $params = ['count' => '500'];
+        $this->request->method('getParam')->willReturnCallback(fn ($k, $d = null) => $params[$k] ?? $d);
+
+        $this->service->expects($this->once())->method('pickRandomSet')->with(self::LIBRARY_ID, $this->anything(), 12)->willReturn([]);
+
+        $this->assertNull($this->controller->random()->getData()['item']);
+    }
 }
