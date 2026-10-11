@@ -53,8 +53,10 @@ describe('QuizHistoryChart', () => {
 	})
 
 	it('shows the date only where the day changes, so same-day rounds stay readable', () => {
-		const same = (id) => ({ id, percent: 50, playedAt: `2026-10-11 1${id}:00:00` })
-		const wrapper = mountChart({ rounds: [same(1), same(2), same(3), { id: 4, percent: 60, playedAt: '2026-10-12 09:00:00' }], best: 60 })
+		// Server timestamps are UTC; build them from LOCAL times so the days are the same in every time zone.
+		const server = (y, m, d, h) => new Date(y, m, d, h).toISOString().slice(0, 19).replace('T', ' ')
+		const same = (id) => ({ id, percent: 50, playedAt: server(2026, 9, 11, 9 + id) })
+		const wrapper = mountChart({ rounds: [same(1), same(2), same(3), { id: 4, percent: 60, playedAt: server(2026, 9, 12, 9) }], best: 60 })
 
 		expect(wrapper.findAll('.bar-date')).toHaveLength(2)
 
@@ -86,7 +88,8 @@ describe('QuizHistoryChart', () => {
 		const wrapper = mountChart({ rounds, best: 20 })
 		const day = (s) => new Date(s.replace(' ', 'T') + 'Z').toDateString()
 
-		expect(wrapper.findAll('.bar-date')).toHaveLength(day(rounds[0].playedAt) === day(rounds[1].playedAt) ? 1 : 2)
+		// (assert the groups, not the drawn labels: neighbouring dates may be skipped to avoid overlap)
+		expect(wrapper.vm.dayGroups).toHaveLength(day(rounds[0].playedAt) === day(rounds[1].playedAt) ? 1 : 2)
 	})
 
 	it('gives every bar a tooltip with round number, time and score', () => {
