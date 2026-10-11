@@ -46,6 +46,23 @@ class QuizResultServiceTest extends TestCase {
         $this->assertSame(['points' => 5, 'max' => 10], $result->getBreakdown()['rating']);
     }
 
+    public function testZeroPointRoundStillWritesScoreAndPercent(): void {
+        // Regression: score 0 / percent 0 equal the property defaults, so the
+        // Entity skipped them in the INSERT and MariaDB rejected the row
+        // ("Field 'score' doesn't have a default value").
+        $result = $this->service->create('alice', 7, $this->valid([
+            'questionCount' => 1, 'score' => 0, 'maxScore' => 10,
+            'breakdown' => ['rating' => ['points' => 0, 'max' => 10]],
+        ]));
+
+        $this->assertSame(0, $result->getScore());
+        $this->assertSame(0, $result->getPercent());
+        $updated = array_keys($result->getUpdatedFields());
+        foreach (['userId', 'libraryId', 'playedAt', 'questionCount', 'score', 'maxScore', 'percent'] as $field) {
+            $this->assertContains($field, $updated, "$field must be part of the INSERT");
+        }
+    }
+
     public function testPercentIsRounded(): void {
         $result = $this->service->create('alice', 7, $this->valid([
             'questionCount' => 3, 'score' => 20, 'maxScore' => 30,

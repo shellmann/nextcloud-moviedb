@@ -47,6 +47,18 @@ class QuizResult extends Entity implements JsonSerializable {
         $this->addType('breakdown', 'json');
     }
 
+    /**
+     * Nextcloud's Entity only writes fields whose value differs from the
+     * property default. A round with 0 points / 0 percent therefore left
+     * `score` and `percent` out of the INSERT, and the columns have no DB
+     * default (MariaDB: "Field 'score' doesn't have a default value").
+     * Call this before insert() so these two are always written.
+     */
+    public function markScoreFieldsForInsert(): void {
+        $this->markFieldUpdated('score');
+        $this->markFieldUpdated('percent');
+    }
+
     public function jsonSerialize(): array {
         return [
             'id'            => $this->id,

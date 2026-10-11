@@ -245,6 +245,19 @@ namespace OCP\AppFramework\Db {
     class Entity {
         protected $id;
         private $_fieldTypes = [];
+        private $_updatedFields = [];
+
+        /**
+         * Like Nextcloud: only fields changed from their current value are
+         * written on insert/update, plus those marked explicitly.
+         */
+        public function getUpdatedFields(): array {
+            return $this->_updatedFields;
+        }
+
+        protected function markFieldUpdated(string $attribute): void {
+            $this->_updatedFields[$attribute] = true;
+        }
 
         public function getId(): ?int {
             return $this->id;
@@ -263,6 +276,11 @@ namespace OCP\AppFramework\Db {
             if (strpos($methodName, 'set') === 0) {
                 $property = lcfirst(substr($methodName, 3));
                 $value = $args[0] ?? null;
+
+                if (property_exists($this, $property) && $this->$property === $value) {
+                    return;
+                }
+                $this->_updatedFields[$property] = true;
 
                 // Handle JSON type conversion
                 if (isset($this->_fieldTypes[$property]) && $this->_fieldTypes[$property] === 'json') {

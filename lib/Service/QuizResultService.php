@@ -102,6 +102,7 @@ class QuizResultService {
         $result->setMaxScore($maxScore);
         $result->setPercent((int)round($score * 100 / $maxScore));
         $result->setBreakdown($clean);
+        $result->markScoreFieldsForInsert();
 
         return $this->mapper->insert($result);
     }
