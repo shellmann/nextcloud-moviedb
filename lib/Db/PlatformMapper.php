@@ -153,4 +153,37 @@ class PlatformMapper extends QBMapper {
             }
         }
     }
+
+    /**
+     * IDs of the custom (non-default) platforms owned by a user.
+     *
+     * @return int[]
+     */
+    public function findCustomIdsByUser(string $userId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('id')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('is_default', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL)));
+
+        $result = $qb->executeQuery();
+        $ids = array_map('intval', $result->fetchAll(\PDO::FETCH_COLUMN));
+        $result->closeCursor();
+
+        return $ids;
+    }
+
+    /**
+     * Delete the custom (non-default) platforms owned by a user.
+     */
+    public function deleteCustomByUser(string $userId): void {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->eq('is_default', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL)));
+
+        $qb->executeStatement();
+    }
 }

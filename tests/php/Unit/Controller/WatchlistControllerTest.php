@@ -345,4 +345,40 @@ class WatchlistControllerTest extends TestCase {
         $this->assertSame(1, $data['page']);
         $this->assertSame(1, $data['limit']);
     }
+
+    public function testRandomForwardsFiltersAndReturnsItem(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $params = ['mediaType' => 'movie', 'genre' => '878', 'minPriority' => '1', 'exclude' => '4'];
+        $this->request->method('getParam')->willReturnCallback(fn ($k, $d = null) => $params[$k] ?? $d);
+        $item = $this->makeItem(5, 'movie', 1);
+
+        $this->service->expects($this->once())
+            ->method('pickRandom')
+            ->with(self::LIBRARY_ID, [
+                'mediaType' => 'movie',
+                'genre' => 878,
+                'minPriority' => 1,
+                'excludeId' => 4,
+            ])
+            ->willReturn($item);
+
+        $response = $this->controller->random();
+
+        $this->assertSame($item, $response->getData()['item']);
+    }
+
+    public function testRandomClampsPriorityAndReturnsNullItem(): void {
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
+        $params = ['minPriority' => '99', 'genre' => '-3'];
+        $this->request->method('getParam')->willReturnCallback(fn ($k, $d = null) => $params[$k] ?? $d);
+
+        $this->service->expects($this->once())
+            ->method('pickRandom')
+            ->with(self::LIBRARY_ID, $this->callback(
+                fn ($f) => $f['minPriority'] === 2 && $f['genre'] === 0 && $f['excludeId'] === 0
+            ))
+            ->willReturn(null);
+
+        $this->assertNull($this->controller->random()->getData()['item']);
+    }
 }

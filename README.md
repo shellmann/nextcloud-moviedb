@@ -22,7 +22,8 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **TMDB Integration**: Automatically fetch movie and TV posters, cast, plot, and episode data
 - **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews
 - **Shared Libraries**: Create named libraries and share your collection with other Nextcloud users — assign viewer or editor roles, manage members, and switch between libraries
-- **Watchlist**: Mixed movie + TV watchlist with priorities and a random picker
+- **Watchlist**: Mixed movie + TV watchlist with priorities and a random picker that chooses from the whole list (filter by type, genre, high priority)
+- **Quiz**: Play a quiz about your own library — when you watched a title, when it was released, who directed it — with a question count of your choice, a score history chart and a personal best
 - **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime
 - **Import / Export**: Back up a library or move it to another Nextcloud instance as a single JSON file — ratings, reviews, rewatches, episode progress and watchlist included
 - **Multilingual**: Full internationalization support (German, Spanish, French, Italian, Dutch)

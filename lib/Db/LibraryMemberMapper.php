@@ -63,4 +63,16 @@ class LibraryMemberMapper extends QBMapper {
 
         $qb->executeStatement();
     }
+
+    /**
+     * Delete every membership of a user (used when the Nextcloud user is deleted).
+     */
+    public function deleteByUser(string $userId): void {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->delete($this->getTableName())
+            ->where($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)));
+
+        $qb->executeStatement();
+    }
 }

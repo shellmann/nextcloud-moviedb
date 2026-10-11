@@ -30,6 +30,34 @@ class WatchlistService {
         return $this->mapper->findAll($libraryId, $filters, $limit, $offset);
     }
 
+    /**
+     * Pick one random item out of the WHOLE watchlist (not just one page) that
+     * matches the filters. With `excludeId` the previous pick is skipped; if that
+     * leaves nothing, the excluded item is the only match and is returned again.
+     *
+     * Portable random: count, then a random offset (no RAND() in QueryBuilder).
+     */
+    public function pickRandom(int $libraryId, array $filters = []): ?WatchlistItem {
+        $total = $this->mapper->countAll($libraryId, $filters);
+
+        if ($total === 0 && !empty($filters['excludeId'])) {
+            unset($filters['excludeId']);
+            $total = $this->mapper->countAll($libraryId, $filters);
+        }
+        if ($total === 0) {
+            return null;
+        }
+
+        $items = $this->mapper->findAll(
+            $libraryId,
+            $filters + ['sort' => 'title', 'dir' => 'ASC'],
+            1,
+            random_int(0, $total - 1)
+        );
+
+        return $items[0] ?? null;
+    }
+
     public function count(int $libraryId, array $filters = []): int {
         return $this->mapper->countAll($libraryId, $filters);
     }

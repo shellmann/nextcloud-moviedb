@@ -6,6 +6,7 @@ import { useWatchlistStore } from '@/stores/watchlist.js'
 vi.mock('@/services/api.js', () => ({
 	default: {
 		getWatchlist: vi.fn(),
+		getRandomWatchlistItem: vi.fn(),
 		addToWatchlist: vi.fn(),
 		updateWatchlistItem: vi.fn(),
 		removeFromWatchlist: vi.fn(),
@@ -400,6 +401,31 @@ describe('Watchlist Store', () => {
 			const result = await store.moveToWatched(1, {})
 
 			expect(result).toBeNull()
+		})
+	})
+
+	describe('pickRandom', () => {
+		it('returns the picked item and forwards filters', async () => {
+			api.getRandomWatchlistItem.mockResolvedValue({ data: { item: { id: 4 } } })
+
+			const result = await store.pickRandom({ mediaType: 'movie', genre: 28 })
+
+			expect(result).toEqual({ id: 4 })
+			expect(api.getRandomWatchlistItem).toHaveBeenCalledWith({ mediaType: 'movie', genre: 28 })
+		})
+
+		it('returns null when nothing matches', async () => {
+			api.getRandomWatchlistItem.mockResolvedValue({ data: { item: null } })
+
+			expect(await store.pickRandom()).toBeNull()
+		})
+
+		it('returns false and shows an error when the request fails', async () => {
+			const { showError } = await import('@nextcloud/dialogs')
+			api.getRandomWatchlistItem.mockRejectedValue(new Error('boom'))
+
+			expect(await store.pickRandom()).toBe(false)
+			expect(showError).toHaveBeenCalled()
 		})
 	})
 })

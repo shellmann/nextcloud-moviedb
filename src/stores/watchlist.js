@@ -69,6 +69,26 @@ export const useWatchlistStore = defineStore('watchlist', {
 		},
 
 		/**
+		 * Picks one random item from the whole watchlist (not just the loaded page).
+		 *
+		 * @param {object} filters - mediaType, genre, minPriority, exclude (id to skip)
+		 * @return {Promise<object | null | false>} The item, null if nothing matches, false on error
+		 */
+		async pickRandom(filters = {}) {
+			try {
+				const libraryId = useLibrariesStore().activeLibraryId
+				const params = { ...filters }
+				if (libraryId !== null) { params.libraryId = libraryId }
+				const response = await api.getRandomWatchlistItem(params)
+				return response.data.item ?? null
+			} catch (error) {
+				console.error('Failed to pick a random watchlist item:', error)
+				showError(t('moviedb', 'Failed to pick a title. Please try again.'))
+				return false
+			}
+		},
+
+		/**
 		 * Sets sort field and direction, then re-fetches.
 		 *
 		 * @param {string} sort - Sort field

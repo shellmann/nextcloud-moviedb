@@ -27,6 +27,9 @@ return [
 
         // Watchlist CRUD
         ['name' => 'watchlist#index', 'url' => '/api/watchlist', 'verb' => 'GET'],
+        // Literal 'random' must be declared BEFORE the {id} catch-all so the string
+        // is not captured as an id.
+        ['name' => 'watchlist#random', 'url' => '/api/watchlist/random', 'verb' => 'GET'],
         ['name' => 'watchlist#show', 'url' => '/api/watchlist/{id}', 'verb' => 'GET'],
         ['name' => 'watchlist#create', 'url' => '/api/watchlist', 'verb' => 'POST'],
         ['name' => 'watchlist#update', 'url' => '/api/watchlist/{id}', 'verb' => 'PUT'],
@@ -78,6 +81,13 @@ return [
         ['name' => 'library#addMember',    'url' => '/api/libraries/{id}/members',             'verb' => 'POST',   'requirements' => ['id' => '\d+']],
         ['name' => 'library#removeMember', 'url' => '/api/libraries/{id}/members/{userId}',    'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
         ['name' => 'library#leave',        'url' => '/api/libraries/{id}/leave',               'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
+
+        // Quiz about the active library; results are the user's own rounds
+        ['name' => 'quiz#meta', 'url' => '/api/quiz/meta', 'verb' => 'GET'],
+        ['name' => 'quiz#generate', 'url' => '/api/quiz', 'verb' => 'GET'],
+        ['name' => 'quiz#results', 'url' => '/api/quiz/results', 'verb' => 'GET'],
+        ['name' => 'quiz#saveResult', 'url' => '/api/quiz/results', 'verb' => 'POST'],
+        ['name' => 'quiz#resetResults', 'url' => '/api/quiz/results', 'verb' => 'DELETE'],
 
         // Library export / import (JSON file)
         ['name' => 'import_export#export', 'url' => '/api/export', 'verb' => 'GET'],

@@ -359,3 +359,19 @@ namespace OCP\AppFramework\Bootstrap {
     interface IRegistrationContext {}
     interface IBootContext {}
 }
+
+namespace OCP\EventDispatcher {
+    class Event {}
+    interface IEventListener {
+        public function handle(Event $event): void;
+    }
+}
+
+namespace OCP\User\Events {
+    class UserDeletedEvent extends \OCP\EventDispatcher\Event {
+        public function __construct(private \OCP\IUser $user) {}
+        public function getUser(): \OCP\IUser {
+            return $this->user;
+        }
+    }
+}

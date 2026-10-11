@@ -284,6 +284,27 @@ class MovieWatchMapper extends QBMapper {
     }
 
     /**
+     * One user's own title-level watches in a library (movie watches and
+     * series-level watches, no episode rows). Used by the quiz so it only
+     * asks about what the player watched, not about other members' watches.
+     *
+     * @return MovieWatch[]
+     */
+    public function findAllByLibraryAndUser(int $libraryId, string $userId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('user_id', $qb->createNamedParameter($userId)))
+            ->andWhere($qb->expr()->isNull('episode_id'))
+            ->orderBy('watched_at', 'ASC')
+            ->addOrderBy('id', 'ASC');
+
+        return $this->findEntities($qb);
+    }
+
+    /**
      * Delete all watch rows for a series (used on cascade delete). Ownership is
      * verified by the caller before invoking this.
      */
@@ -305,6 +326,26 @@ class MovieWatchMapper extends QBMapper {
 
         $qb->delete($this->getTableName())
             ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
+
+        $qb->executeStatement();
+    }
+
+    /**
+     * Clear the platform of every watch that references one of the given
+     * platforms (used when a user's custom platforms are deleted).
+     *
+     * @param int[] $platformIds
+     */
+    public function clearPlatforms(array $platformIds): void {
+        if ($platformIds === []) {
+            return;
+        }
+
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->update($this->getTableName())
+            ->set('platform_id', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+            ->where($qb->expr()->in('platform_id', $qb->createNamedParameter($platformIds, IQueryBuilder::PARAM_INT_ARRAY)));
 
         $qb->executeStatement();
     }

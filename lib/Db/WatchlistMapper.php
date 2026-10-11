@@ -80,7 +80,10 @@ class WatchlistMapper extends QBMapper {
     }
 
     /**
-     * Apply shared filter logic to a query builder (search, mediaType).
+     * Apply shared filter logic to a query builder.
+     *
+     * Keys: search, mediaType, genre (TMDB genre id), minPriority (priority >= n),
+     * excludeId (skip one item — used by "spin again" in the random picker).
      */
     private function applyFilters(IQueryBuilder $qb, array $filters): void {
         if (!empty($filters['search'])) {
@@ -91,6 +94,29 @@ class WatchlistMapper extends QBMapper {
         if (!empty($filters['mediaType'])) {
             $qb->andWhere($qb->expr()->eq('media_type',
                 $qb->createNamedParameter($filters['mediaType'])));
+        }
+
+        if (!empty($filters['genre'])) {
+            // genre_ids is a JSON array of ints, e.g. [28,12]. Match the id as a
+            // whole element (first, middle, last or only), same idiom as MovieMapper.
+            $genreId = (int)$filters['genre'];
+            $genreCol = $qb->expr()->castColumn('genre_ids', IQueryBuilder::PARAM_STR);
+            $qb->andWhere($qb->expr()->orX(
+                $qb->expr()->like($genreCol, $qb->createNamedParameter('[' . $genreId . ']')),
+                $qb->expr()->like($genreCol, $qb->createNamedParameter('[' . $genreId . ',%')),
+                $qb->expr()->like($genreCol, $qb->createNamedParameter('%,' . $genreId . ',%')),
+                $qb->expr()->like($genreCol, $qb->createNamedParameter('%,' . $genreId . ']'))
+            ));
+        }
+
+        if (!empty($filters['minPriority'])) {
+            $qb->andWhere($qb->expr()->gte('priority',
+                $qb->createNamedParameter((int)$filters['minPriority'], IQueryBuilder::PARAM_INT)));
+        }
+
+        if (!empty($filters['excludeId'])) {
+            $qb->andWhere($qb->expr()->neq('id',
+                $qb->createNamedParameter((int)$filters['excludeId'], IQueryBuilder::PARAM_INT)));
         }
     }
 
