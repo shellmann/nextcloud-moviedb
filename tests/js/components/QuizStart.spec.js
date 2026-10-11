@@ -84,6 +84,17 @@ describe('QuizStart', () => {
 		expect(wrapper.vm.count).toBe(6)
 	})
 
+	it('explains how points are calculated, using the real scoring table', () => {
+		const wrapper = mountStart()
+		const text = wrapper.find('.quiz-scoring').text()
+
+		expect(text).toContain('How are points calculated?')
+		expect(text).toContain('Every question is worth up to 10 points.')
+		expect(text).toContain('Multiple choice: 10 points for the right answer, otherwise 0.')
+		expect(text).toContain('Year estimates: 10 points if exact, 7 if 1 year off, 4 if 2 years off, 2 if 3 years off.')
+		expect(text).toContain('Number answers (rating, seasons): 10 points if exact, 5 if 1 off.')
+	})
+
 	it('emits start with the chosen count', async () => {
 		const wrapper = mountStart()
 		await preset(wrapper, 5).trigger('click')

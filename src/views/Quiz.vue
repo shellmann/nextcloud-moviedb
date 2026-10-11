@@ -1,7 +1,19 @@
 <template>
 	<div class="quiz">
-		<div class="list-header">
-			<h2>{{ t('moviedb', 'Quiz') }}</h2>
+		<div class="quiz-title">
+			<h2>
+				<TrophyOutline :size="28" aria-hidden="true" />
+				{{ t('moviedb', 'Quiz') }}
+			</h2>
+			<NcButton
+				v-if="quizStore.phase === 'playing'"
+				variant="tertiary"
+				@click="showQuitDialog = true">
+				<template #icon>
+					<ExitToApp :size="20" />
+				</template>
+				{{ t('moviedb', 'Quit quiz') }}
+			</NcButton>
 		</div>
 
 		<QuizStart
@@ -27,20 +39,21 @@
 			:isNewBest="quizStore.isNewBest"
 			@playAgain="playAgain" />
 
-		<section v-if="quizStore.phase !== 'playing'" class="quiz-history">
-			<h3>{{ t('moviedb', 'Your results') }}</h3>
+		<section v-if="quizStore.phase !== 'playing'" class="quiz-history" aria-labelledby="quiz-history-heading">
+			<h3 id="quiz-history-heading">
+				{{ t('moviedb', 'Your results') }}
+			</h3>
 			<QuizHistoryChart :rounds="quizStore.results.rounds" :best="bestPercent" />
+			<p v-if="quizStore.results.rounds.length" class="quiz-chart-caption">
+				{{ t('moviedb', 'Each bar is the share of the maximum points you scored in that round.') }}
+			</p>
 			<p v-if="bestPercent !== null" class="quiz-best">
+				<TrophyOutline :size="20" aria-hidden="true" />
 				{{ t('moviedb', 'Personal best: {percent}%', { percent: bestPercent }) }}
 			</p>
-			<template v-if="accuracyRows.length">
+			<template v-if="hasAccuracy">
 				<h4>{{ t('moviedb', 'Accuracy by question type') }}</h4>
-				<ul class="quiz-accuracy">
-					<li v-for="row in accuracyRows" :key="row.type">
-						<span>{{ row.label }}</span>
-						<span>{{ row.percent }}%</span>
-					</li>
-				</ul>
+				<QuizAccuracyList :accuracy="quizStore.results.accuracy" />
 			</template>
 			<NcButton
 				v-if="quizStore.results.rounds.length"
@@ -49,6 +62,21 @@
 				{{ t('moviedb', 'Reset quiz history') }}
 			</NcButton>
 		</section>
+
+		<NcDialog
+			:open="showQuitDialog"
+			:name="t('moviedb', 'Quit this round?')"
+			@update:open="showQuitDialog = $event">
+			<p>{{ t('moviedb', 'Your answers so far will not be saved.') }}</p>
+			<template #actions>
+				<NcButton @click="showQuitDialog = false">
+					{{ t('moviedb', 'Keep playing') }}
+				</NcButton>
+				<NcButton variant="error" @click="quit">
+					{{ t('moviedb', 'Quit quiz') }}
+				</NcButton>
+			</template>
+		</NcDialog>
 
 		<NcDialog
 			:open="showResetDialog"
@@ -72,13 +100,15 @@
 
 <script>
 import { NcButton, NcDialog } from '@nextcloud/vue'
+import ExitToApp from 'vue-material-design-icons/ExitToApp.vue'
+import TrophyOutline from 'vue-material-design-icons/TrophyOutline.vue'
+import QuizAccuracyList from '../components/quiz/QuizAccuracyList.vue'
 import QuizHistoryChart from '../components/quiz/QuizHistoryChart.vue'
 import QuizQuestion from '../components/quiz/QuizQuestion.vue'
 import QuizStart from '../components/quiz/QuizStart.vue'
 import QuizSummary from '../components/quiz/QuizSummary.vue'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { useQuizStore } from '../stores/quiz.js'
-import { quizTypeLabel } from '../utils/quizScoring.js'
 
 export default {
 	name: 'Quiz',
@@ -86,10 +116,13 @@ export default {
 	components: {
 		NcButton,
 		NcDialog,
+		ExitToApp,
+		QuizAccuracyList,
 		QuizHistoryChart,
 		QuizQuestion,
 		QuizStart,
 		QuizSummary,
+		TrophyOutline,
 	},
 
 	setup() {
@@ -101,6 +134,7 @@ export default {
 	data() {
 		return {
 			showResetDialog: false,
+			showQuitDialog: false,
 			resetting: false,
 		}
 	},
@@ -114,12 +148,8 @@ export default {
 			return this.quizStore.results.best ? this.quizStore.results.best.percent : null
 		},
 
-		accuracyRows() {
-			return Object.entries(this.quizStore.results.accuracy).map(([type, percent]) => ({
-				type,
-				label: quizTypeLabel(type),
-				percent,
-			}))
+		hasAccuracy() {
+			return Object.keys(this.quizStore.results.accuracy).length > 0
 		},
 	},
 
@@ -149,6 +179,11 @@ export default {
 			await this.quizStore.fetchMeta()
 		},
 
+		quit() {
+			this.showQuitDialog = false
+			this.quizStore.reset()
+		},
+
 		async confirmReset() {
 			this.resetting = true
 			await this.quizStore.resetResults()
@@ -163,45 +198,66 @@ export default {
 .quiz {
 	display: flex;
 	flex-direction: column;
-	gap: 16px;
+	gap: 20px;
 	padding: 20px;
+	max-width: 760px;
 }
 
-.list-header h2 {
-	margin: 0;
+.quiz-title {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+
+	h2 {
+		display: flex;
+		align-items: center;
+		gap: 10px;
+		margin: 0;
+	}
+}
+
+@media (max-width: 480px) {
+	.quiz {
+		padding: 12px;
+	}
+
+	.quiz-history {
+		padding: 16px;
+	}
 }
 
 .quiz-history {
 	display: flex;
 	flex-direction: column;
 	align-items: flex-start;
-	gap: 8px;
-	max-width: 640px;
-	margin-top: 16px;
+	gap: 10px;
+	margin-top: 8px;
+	padding: 24px;
+	border-radius: var(--border-radius-large);
+	background: var(--color-background-hover);
 
 	h3,
 	h4 {
 		margin: 0;
 	}
+
+	h4 {
+		margin-top: 8px;
+	}
+}
+
+.quiz-chart-caption {
+	margin: 0;
+	color: var(--color-text-maxcontrast);
 }
 
 .quiz-best {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
 	margin: 0;
 	color: var(--color-success-text);
 	font-weight: bold;
-}
-
-.quiz-accuracy {
-	width: 100%;
-	margin: 0 0 8px;
-	padding: 0;
-	list-style: none;
-
-	li {
-		display: flex;
-		justify-content: space-between;
-		padding: 4px 0;
-		border-bottom: 1px solid var(--color-border);
-	}
 }
 </style>

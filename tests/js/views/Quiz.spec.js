@@ -56,6 +56,16 @@ describe('Quiz view', () => {
 		expect(wrapper.text()).toContain('Question 1 of 1')
 	})
 
+	it('explains what the bars in the history mean, but only once there is history', async () => {
+		const wrapper = await mountView()
+		expect(wrapper.find('.quiz-chart-caption').exists()).toBe(false)
+
+		quiz.results = { rounds: [{ id: 1, percent: 50, playedAt: '2026-10-01 10:00:00' }], best: { percent: 50 }, accuracy: {} }
+		await flushPromises()
+
+		expect(wrapper.find('.quiz-chart-caption').text()).toContain('share of the maximum points')
+	})
+
 	it('only offers the reset button when there is history', async () => {
 		const wrapper = await mountView()
 		expect(wrapper.text()).not.toContain('Reset quiz history')
@@ -90,6 +100,30 @@ describe('Quiz view', () => {
 		await wrapper.find('.dialog').findAll('button').find((b) => b.text() === 'Cancel').trigger('click')
 
 		expect(quiz.resetResults).not.toHaveBeenCalled()
+		expect(wrapper.find('.dialog').exists()).toBe(false)
+	})
+
+	it('offers to quit only while playing, and asks before dropping the round', async () => {
+		const wrapper = await mountView()
+		expect(wrapper.findAll('button').some((b) => b.text() === 'Quit quiz')).toBe(false)
+
+		quiz.questions = [{ type: 'rating', mode: 'number', subject: { title: 'X', mediaType: 'movie' }, answer: 5, min: 1, max: 10 }]
+		quiz.phase = 'playing'
+		await flushPromises()
+		await wrapper.findAll('button').find((b) => b.text() === 'Quit quiz').trigger('click')
+
+		const dialog = wrapper.find('.dialog')
+		expect(dialog.text()).toContain('Your answers so far will not be saved.')
+		expect(quiz.phase).toBe('playing')
+
+		await dialog.findAll('button').find((b) => b.text() === 'Keep playing').trigger('click')
+		expect(wrapper.find('.dialog').exists()).toBe(false)
+		expect(quiz.phase).toBe('playing')
+
+		await wrapper.findAll('button').find((b) => b.text() === 'Quit quiz').trigger('click')
+		await wrapper.find('.dialog').findAll('button').find((b) => b.text() === 'Quit quiz').trigger('click')
+
+		expect(quiz.phase).toBe('start')
 		expect(wrapper.find('.dialog').exists()).toBe(false)
 	})
 

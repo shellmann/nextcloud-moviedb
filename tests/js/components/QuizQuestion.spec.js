@@ -107,6 +107,21 @@ describe('QuizQuestion', () => {
 		expect(wrapper.vm.estimate).not.toBe(6)
 	})
 
+	it('tells how a year estimate is rated', () => {
+		expect(mountQ(yearQ()).find('.quiz-scoring-hint').text())
+			.toBe('Exact: 10 points · 1 year off: 7 · 2 years off: 4 · 3 years off: 2')
+	})
+
+	it('tells how a number answer is rated', () => {
+		const q = { type: 'rating', mode: 'number', subject: subject(), answer: 7, min: 1, max: 10 }
+
+		expect(mountQ(q).find('.quiz-scoring-hint').text()).toBe('Exact: 10 points · 1 off: 5')
+	})
+
+	it('shows no estimate hint for multiple choice', () => {
+		expect(mountQ(choiceQ()).find('.quiz-scoring-hint').exists()).toBe(false)
+	})
+
 	it('shows feedback with points, the correct answer and the right next button', () => {
 		const wrapper = mountQ(yearQ(), { value: 2001, points: 7 })
 

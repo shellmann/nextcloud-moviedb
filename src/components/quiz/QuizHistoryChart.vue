@@ -8,7 +8,8 @@
 			class="quiz-history-svg"
 			:class="{ 'is-mounted': isMounted }"
 			:viewBox="`0 0 ${width} ${height}`"
-			preserveAspectRatio="xMidYMid meet"
+			preserveAspectRatio="xMinYMid meet"
+			:style="{ maxWidth: width * 1.6 + 'px' }"
 			role="img"
 			:aria-label="ariaLabel">
 			<defs>
@@ -76,7 +77,7 @@ export default {
 
 	data() {
 		return {
-			height: 220,
+			height: 190,
 			barWidth: 24,
 			gap: 10,
 			chartBottom: 30,
@@ -87,7 +88,7 @@ export default {
 
 	computed: {
 		width() {
-			return Math.max(this.rounds.length * (this.barWidth + this.gap) + this.gap, 200)
+			return Math.max(this.rounds.length * (this.barWidth + this.gap) + this.gap, 280)
 		},
 
 		plotHeight() {
@@ -153,7 +154,7 @@ export default {
 .quiz-history-svg {
 	width: 100%;
 	height: auto;
-	max-height: 220px;
+	max-height: 190px;
 }
 
 .bar {
@@ -174,6 +175,10 @@ export default {
 }
 
 .bar-count {
+	// halo so the number stays readable where it meets the best-score line
+	paint-order: stroke;
+	stroke: var(--color-background-hover);
+	stroke-width: 3px;
 	font-weight: 600;
 	opacity: 0;
 	transition: opacity 0.3s ease 0.4s;

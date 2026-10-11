@@ -4,9 +4,9 @@ import { translate as t } from '@nextcloud/l10n'
 export const MAX_POINTS = 10
 
 /** Points for a year estimate that is 0, 1, 2 or 3 years off. */
-const YEAR_POINTS = [10, 7, 4, 2]
+export const YEAR_POINTS = [10, 7, 4, 2]
 /** Points for a number answer (rating, seasons) that is 0 or 1 off. */
-const NUMBER_POINTS = [10, 5]
+export const NUMBER_POINTS = [10, 5]
 
 /**
  * Points (0..MAX_POINTS) for an answer to a quiz question.

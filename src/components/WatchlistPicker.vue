@@ -32,37 +32,40 @@
 				</NcCheckboxRadioSwitch>
 			</div>
 
-			<div v-if="loading && !item" class="picker-loading">
-				<NcLoadingIcon :size="32" />
-			</div>
-
-			<div v-else-if="item" :key="item.id" class="picker-result">
-				<img
-					v-if="item.posterPath"
-					class="picker-poster"
-					:src="getPosterUrl(item.posterPath)"
-					:alt="item.title">
-				<div v-else class="picker-poster picker-no-poster">
-					{{ t('moviedb', 'No poster') }}
+			<!-- Persistent live region so a new pick is announced to screen readers. -->
+			<div class="picker-live" aria-live="polite" aria-atomic="true">
+				<div v-if="loading && !item" class="picker-loading">
+					<NcLoadingIcon :size="32" />
 				</div>
-				<div class="picker-info">
-					<h3>{{ item.title }}</h3>
-					<p v-if="year" class="picker-year">
-						{{ year }}
-					</p>
-					<div class="picker-tags">
-						<span v-for="genreName in genreNames" :key="genreName" class="picker-tag">{{ genreName }}</span>
-						<span v-if="item.priority > 0" class="picker-tag picker-priority">{{ priorityLabel }}</span>
+
+				<div v-else-if="item" :key="item.id" class="picker-result">
+					<img
+						v-if="item.posterPath"
+						class="picker-poster"
+						:src="getPosterUrl(item.posterPath)"
+						alt="">
+					<div v-else class="picker-poster picker-no-poster">
+						{{ t('moviedb', 'No poster') }}
 					</div>
-					<p v-if="item.overview" class="picker-overview">
-						{{ item.overview }}
-					</p>
+					<div class="picker-info">
+						<h3>{{ item.title }}</h3>
+						<p v-if="year" class="picker-year">
+							{{ year }}
+						</p>
+						<div class="picker-tags">
+							<span v-for="genreName in genreNames" :key="genreName" class="picker-tag">{{ genreName }}</span>
+							<span v-if="item.priority > 0" class="picker-tag picker-priority">{{ priorityLabel }}</span>
+						</div>
+						<p v-if="item.overview" class="picker-overview">
+							{{ item.overview }}
+						</p>
+					</div>
 				</div>
-			</div>
 
-			<p v-else-if="searched" class="picker-empty">
-				{{ t('moviedb', 'No title on your watchlist matches these filters.') }}
-			</p>
+				<p v-else-if="searched" class="picker-empty">
+					{{ t('moviedb', 'No title on your watchlist matches these filters.') }}
+				</p>
+			</div>
 		</div>
 
 		<template #actions>

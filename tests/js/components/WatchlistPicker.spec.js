@@ -114,6 +114,16 @@ describe('WatchlistPicker', () => {
 		expect(wrapper.text()).not.toContain('No title on your watchlist')
 	})
 
+	it('announces new picks through a persistent live region', async () => {
+		store.pickRandom = vi.fn().mockResolvedValue(item(1))
+		const wrapper = mountPicker()
+		await flushPromises()
+
+		const live = wrapper.find('.picker-live')
+		expect(live.attributes('aria-live')).toBe('polite')
+		expect(live.text()).toContain('Title 1')
+	})
+
 	it('emits mark-watched with the shown item and closes', async () => {
 		store.pickRandom = vi.fn().mockResolvedValue(item(1))
 		const wrapper = mountPicker()
