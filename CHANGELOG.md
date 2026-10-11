@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-10-11
+
 ### Added
 - Quiz: test your memory with questions about your own library, for example
   when you first watched a title, when it was released or first aired, who
