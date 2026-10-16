@@ -4,6 +4,39 @@ import { defineStore } from 'pinia'
 import api from '../services/api.js'
 import { useLibrariesStore } from './libraries.js'
 
+const STATUS_STORAGE_KEY = 'moviedb_seriesStatusFilter'
+const WATCH_STATUSES = ['in_progress', 'finished', 'stopped']
+
+/**
+ * The status filter the user picked last time, so the series list opens the
+ * same way ("all" when nothing valid is stored).
+ *
+ * @return {string|null}
+ */
+function storedWatchStatus() {
+	try {
+		const value = localStorage.getItem(STATUS_STORAGE_KEY)
+		return WATCH_STATUSES.includes(value) ? value : null
+	} catch {
+		return null
+	}
+}
+
+/**
+ * @param {string|null} value - Status filter to remember, null for all
+ */
+function storeWatchStatus(value) {
+	try {
+		if (value) {
+			localStorage.setItem(STATUS_STORAGE_KEY, value)
+		} else {
+			localStorage.removeItem(STATUS_STORAGE_KEY)
+		}
+	} catch {
+		// Storage unavailable (private mode): the filter just is not remembered.
+	}
+}
+
 /**
  * Series store - Manages TV series collection state and CRUD operations.
  * Mirrors the movies store; mark-watched actions re-fetch the detail view so
@@ -33,6 +66,7 @@ export const useSeriesStore = defineStore('series', {
 			sort: 'date_watched',
 			dir: 'DESC',
 			favorite: false,
+			watchStatus: storedWatchStatus(),
 		},
 	}),
 
@@ -59,6 +93,7 @@ export const useSeriesStore = defineStore('series', {
 				if (this.filters.sort) { params.sort = this.filters.sort }
 				if (this.filters.dir) { params.dir = this.filters.dir }
 				if (this.filters.favorite) { params.favorite = 1 }
+				if (this.filters.watchStatus) { params.watchStatus = this.filters.watchStatus }
 				const libraryId = useLibrariesStore().activeLibraryId
 				if (libraryId !== null) { params.libraryId = libraryId }
 
@@ -244,7 +279,38 @@ export const useSeriesStore = defineStore('series', {
 		},
 
 		/**
-		 * Resets all filter criteria to their defaults.
+		 * Sets or clears "stop watching" for a series. The show stays in the
+		 * list but leaves "continue watching".
+		 *
+		 * @param {number} id - Series ID
+		 * @param {boolean} stopped - true to stop watching, false to resume
+		 * @param {object} options - Options
+		 * @param {boolean} options.toast - Show a success toast (callers with their own undo toast pass false)
+		 * @return {Promise<object | null>} The refreshed series or null on error
+		 */
+		async setStopped(id, stopped = true, { toast = true } = {}) {
+			try {
+				const libraryId = useLibrariesStore().activeLibraryId
+				const response = await api.setSeriesStopped(id, stopped, libraryId !== null ? libraryId : undefined)
+				if (this.currentSeries?.id === id) {
+					this.currentSeries = response.data.series
+				}
+				if (toast) {
+					showSuccess(stopped
+						? t('moviedb', 'You stopped watching this show.')
+						: t('moviedb', 'The show is back in "Continue watching".'))
+				}
+				return response.data.series
+			} catch (error) {
+				console.error('Failed to update stop-watching status:', error)
+				showError(t('moviedb', 'Failed to update the show. Please try again.'))
+				return null
+			}
+		},
+
+		/**
+		 * Resets all filter criteria to their defaults. The status filter is
+		 * remembered across visits, so it is kept.
 		 */
 		resetFilters() {
 			this.filters = {
@@ -254,6 +320,7 @@ export const useSeriesStore = defineStore('series', {
 				sort: 'date_watched',
 				dir: 'DESC',
 				favorite: false,
+				watchStatus: storedWatchStatus(),
 			}
 			this.page = 1
 		},
@@ -264,6 +331,9 @@ export const useSeriesStore = defineStore('series', {
 		 * @param {object} filters - New filter values to merge
 		 */
 		setFilters(filters) {
+			if ('watchStatus' in filters) {
+				storeWatchStatus(filters.watchStatus)
+			}
 			this.filters = { ...this.filters, ...filters }
 			this.page = 1
 			this.fetchAll()

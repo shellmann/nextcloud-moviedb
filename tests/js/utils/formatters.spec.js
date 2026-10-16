@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { formatDate, formatRuntime, todayLocal } from '@/utils/formatters.js'
+import { episodeCode, formatDate, formatRuntime, todayLocal } from '@/utils/formatters.js'
 
 describe('Formatters', () => {
 	describe('formatDate', () => {
@@ -72,5 +72,12 @@ describe('Formatters', () => {
 		it('should return empty string for 0', () => {
 			expect(formatRuntime(0)).toBe('')
 		})
+	})
+})
+
+describe('episodeCode', () => {
+	it('pads season and episode to two digits', () => {
+		expect(episodeCode({ seasonNumber: 2, episodeNumber: 5 })).toBe('S02E05')
+		expect(episodeCode({ seasonNumber: 12, episodeNumber: 104 })).toBe('S12E104')
 	})
 })

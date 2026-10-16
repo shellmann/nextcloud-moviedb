@@ -158,6 +158,16 @@ class ImportValidatorTest extends TestCase {
         $this->assertSame(1, $r['invalid']['episodes']);
     }
 
+    public function testStoppedWatchingIsKeptAndDefaultsToFalse(): void {
+        $r = $this->validator->validate($this->file(['series' => [
+            ['title' => 'Dropped', 'stoppedWatching' => true],
+            ['title' => 'Old export'],
+            ['title' => 'Junk', 'stoppedWatching' => 'yes'],
+        ]]));
+
+        $this->assertSame([true, false, false], array_column($r['series'], 'stoppedWatching'));
+    }
+
     public function testWatchlistRejectsUnknownMediaType(): void {
         $r = $this->validator->validate($this->file(['watchlist' => [
             ['title' => 'A', 'mediaType' => 'series', 'priority' => 2],

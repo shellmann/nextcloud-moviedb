@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\LibraryService;
+use OCA\MovieDB\Service\SeriesProgressService;
 use OCA\MovieDB\Service\StatsService;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
@@ -18,18 +19,21 @@ class StatsController extends AuthenticatedController {
     private StatsService $service;
     private LibraryService $libraryService;
     private LoggerInterface $logger;
+    private SeriesProgressService $progressService;
 
     public function __construct(
         IRequest $request,
         StatsService $service,
         LibraryService $libraryService,
         IUserSession $userSession,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        SeriesProgressService $progressService
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
         $this->libraryService = $libraryService;
         $this->logger = $logger;
+        $this->progressService = $progressService;
     }
 
     #[NoAdminRequired]
@@ -109,7 +113,7 @@ class StatsController extends AuthenticatedController {
 
         return new JSONResponse([
             'movies' => $movies,
-            'series' => $series,
+            'series' => $this->progressService->attachProgress($series, $libraryId),
         ]);
     }
 
@@ -126,7 +130,7 @@ class StatsController extends AuthenticatedController {
 
         return new JSONResponse([
             'movies' => $movies,
-            'series' => $series,
+            'series' => $this->progressService->attachProgress($series, $libraryId),
         ]);
     }
 }

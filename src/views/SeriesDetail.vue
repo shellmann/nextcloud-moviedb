@@ -76,16 +76,21 @@
 
 					<!-- Overall progress -->
 					<div class="progress-block">
-						<div class="progress-label">
+						<!-- Nothing to track yet: no progress, nothing to mark or stop. -->
+						<p v-if="!hasAiredEpisodes" class="no-episodes">
+							{{ hasEpisodes ? t('moviedb', 'No episodes have aired yet.') : t('moviedb', 'No episodes are known for this show yet.') }}
+						</p>
+						<div v-if="hasAiredEpisodes" class="progress-label">
 							<span>{{ t('moviedb', 'Progress') }}</span>
 							<span class="progress-value">
 								{{ series.watchedEpisodeCount }} / {{ series.airedEpisodeCount }}
 								({{ series.progress }}%)
 							</span>
 						</div>
-						<NcProgressBar :value="series.progress" size="medium" />
-						<div v-if="activeCanEdit" class="progress-actions">
+						<NcProgressBar v-if="hasAiredEpisodes" :value="series.progress" size="medium" />
+						<div v-if="activeCanEdit && (hasAiredEpisodes || stopped)" class="progress-actions">
 							<NcButton
+								v-if="hasAiredEpisodes"
 								:disabled="series.caughtUp || marking"
 								@click="markSeriesWatched(true)">
 								<template #icon>
@@ -99,7 +104,20 @@
 								@click="markSeriesWatched(false)">
 								{{ t('moviedb', 'Mark series unwatched') }}
 							</NcButton>
+							<NcButton
+								:disabled="marking"
+								@click="setStopped(!stopped)">
+								<template #icon>
+									<PlayCircleOutline v-if="stopped" :size="20" />
+									<EyeOff v-else :size="20" />
+								</template>
+								{{ stopped ? t('moviedb', 'Resume watching') : t('moviedb', 'Stop watching') }}
+							</NcButton>
 						</div>
+						<p v-if="stopped" class="stopped-note">
+							<EyeOff :size="16" />
+							{{ t('moviedb', 'You stopped watching this show. It no longer appears in "Continue watching".') }}
+						</p>
 					</div>
 
 					<!-- Next episode -->
@@ -207,13 +225,15 @@ import CheckAll from 'vue-material-design-icons/CheckAll.vue'
 import ChevronDown from 'vue-material-design-icons/ChevronDown.vue'
 import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
+import EyeOff from 'vue-material-design-icons/EyeOff.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
+import PlayCircleOutline from 'vue-material-design-icons/PlayCircleOutline.vue'
 import Television from 'vue-material-design-icons/Television.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { LANGUAGE_OPTIONS } from '../constants.js'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { useSeriesStore } from '../stores/series.js'
-import { formatDate, formatRuntime } from '../utils/formatters.js'
+import { episodeCode, formatDate, formatRuntime } from '../utils/formatters.js'
 
 export default {
 	name: 'SeriesDetail',
@@ -232,6 +252,8 @@ export default {
 		CheckAll,
 		ChevronDown,
 		ChevronRight,
+		EyeOff,
+		PlayCircleOutline,
 	},
 
 	props: {
@@ -285,6 +307,18 @@ export default {
 		activeCanEdit() {
 			return this.librariesStore.activeCanEdit
 		},
+
+		stopped() {
+			return this.series?.watchStatus === 'stopped'
+		},
+
+		hasAiredEpisodes() {
+			return (this.series?.airedEpisodeCount ?? 0) > 0
+		},
+
+		hasEpisodes() {
+			return (this.series?.seasons ?? []).some((s) => s.episodes?.length)
+		},
 	},
 
 	async created() {
@@ -306,11 +340,7 @@ export default {
 			return LANGUAGE_OPTIONS.find((l) => l.id === code)?.label || code
 		},
 
-		episodeCode(ep) {
-			const s = String(ep.seasonNumber).padStart(2, '0')
-			const e = String(ep.episodeNumber).padStart(2, '0')
-			return `S${s}E${e}`
-		},
+		episodeCode,
 
 		seasonLabel(seasonNumber) {
 			if (seasonNumber === 0) {
@@ -358,6 +388,13 @@ export default {
 			if (this.marking) { return }
 			this.marking = true
 			await this.seriesStore.markSeriesWatched(this.id, watched)
+			this.marking = false
+		},
+
+		async setStopped(stopped) {
+			if (this.marking) { return }
+			this.marking = true
+			await this.seriesStore.setStopped(this.series.id, stopped)
 			this.marking = false
 		},
 	},
@@ -494,6 +531,19 @@ export default {
         color: var(--color-warning, #e9a800);
         font-weight: 500;
     }
+}
+
+.no-episodes {
+    margin: 0;
+    color: var(--color-text-maxcontrast);
+}
+
+.stopped-note {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin: 8px 0 0;
+    color: var(--color-text-maxcontrast);
 }
 
 .progress-block {

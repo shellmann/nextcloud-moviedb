@@ -57,3 +57,15 @@ export function formatRuntime(minutes) {
 	const mins = minutes % 60
 	return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`
 }
+
+/**
+ * Short episode code like "S02E05".
+ *
+ * @param {{ seasonNumber: number, episodeNumber: number }} episode - Episode
+ * @return {string}
+ */
+export function episodeCode(episode) {
+	const s = String(episode.seasonNumber).padStart(2, '0')
+	const e = String(episode.episodeNumber).padStart(2, '0')
+	return `S${s}E${e}`
+}

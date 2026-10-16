@@ -115,6 +115,31 @@ class SettingsControllerTest extends TestCase {
         $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
     }
 
+    /**
+     * @dataProvider continueWatchingProvider
+     */
+    public function testSavesContinueWatchingAsString(mixed $value, string $stored): void {
+        $this->request->method('getParams')->willReturn(['showContinueWatching' => $value]);
+        $this->userConfig->expects($this->once())->method('setValueString')
+            ->with('alice', 'moviedb', 'show_continue_watching', $stored);
+
+        $this->assertSame(Http::STATUS_OK, $this->controller->update()->getStatus());
+    }
+
+    public static function continueWatchingProvider(): array {
+        return [[true, '1'], ['true', '1'], ['1', '1'], [false, '0'], ['false', '0'], ['0', '0']];
+    }
+
+    public function testBadContinueWatchingValueWritesNothing(): void {
+        $this->request->method('getParams')->willReturn([
+            'defaultLanguage' => 'en-US',
+            'showContinueWatching' => 'maybe',
+        ]);
+        $this->userConfig->expects($this->never())->method('setValueString');
+
+        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
+    }
+
     public function testKeyRejectedByTmdbWritesNothing(): void {
         $this->request->method('getParams')->willReturn([
             'tmdbApiKey' => 'wrong-key',

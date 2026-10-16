@@ -18,6 +18,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 
 - **Movie Tracking**: Log movies with platform (Netflix, Disney+, etc.), language, and date watched
 - **TV Show Tracking**: Track series at the episode level — season progress, "up next" card, and bulk-mark seasons as watched
+- **Continue Watching**: The dashboard lists the shows you are in the middle of with the next episode; stop watching a show you gave up on, and filter the TV list by in progress, finished and stopped
 - **Rewatch Support**: Log multiple viewings with separate ratings, platforms, and dates
 - **TMDB Integration**: Automatically fetch movie and TV posters, cast, plot, and episode data
 - **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews

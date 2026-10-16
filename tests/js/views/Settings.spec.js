@@ -7,6 +7,11 @@ vi.mock('@nextcloud/vue', () => ({
 	NcTextField: { template: '<input />' },
 	NcSelect: { template: '<div />' },
 	NcButton: { template: '<button><slot /></button>' },
+	NcCheckboxRadioSwitch: {
+		props: ['modelValue', 'disabled'],
+		emits: ['update:modelValue'],
+		template: '<label class="switch"><input type="checkbox" :checked="modelValue" @change="$emit(\'update:modelValue\', $event.target.checked)"><slot /></label>',
+	},
 	NcDialog: {
 		props: ['open', 'name'],
 		template: '<div v-if="open" class="dialog"><h2>{{ name }}</h2><slot /><slot name="actions" /></div>',
@@ -355,5 +360,58 @@ describe('Settings TMDB API key', () => {
 		await wrapper.vm.saveSettings()
 
 		expect(showError).toHaveBeenCalledWith('Failed to save settings. Please try again.')
+	})
+})
+
+describe('Settings dashboard switch', () => {
+	let wrapper
+	let settings
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		vi.clearAllMocks()
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		for (const store of [useMoviesStore(), useSeriesStore(), useWatchlistStore(), usePlatformsStore()]) {
+			store.fetchAll = vi.fn().mockResolvedValue()
+		}
+		settings = useSettingsStore()
+		wrapper = mount(Settings, {
+			global: {
+				stubs: {
+					Eye: IconStub, EyeOff: IconStub, ContentSave: IconStub, Delete: IconStub,
+					Download: IconStub, Upload: IconStub, Plus: IconStub,
+				},
+				mocks: { t: (app, text) => text },
+			},
+		})
+	})
+
+	const toggle = async (checked) => {
+		const input = wrapper.find('.switch input')
+		input.element.checked = checked
+		await input.trigger('change')
+		await flushPromises()
+	}
+
+	it('saves the switch right away', async () => {
+		settings.update = vi.fn().mockResolvedValue()
+
+		await toggle(false)
+
+		expect(settings.update).toHaveBeenCalledWith({ showContinueWatching: false })
+		expect(showSuccess).toHaveBeenCalled()
+		expect(wrapper.vm.showContinueWatching).toBe(false)
+	})
+
+	it('flips back and shows an error when saving fails', async () => {
+		settings.update = vi.fn().mockRejectedValue(new Error('nope'))
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+
+		await toggle(false)
+
+		expect(showError).toHaveBeenCalled()
+		expect(wrapper.vm.showContinueWatching).toBe(true)
 	})
 })

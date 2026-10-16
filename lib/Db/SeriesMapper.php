@@ -23,7 +23,7 @@ class SeriesMapper extends QBMapper {
         'id', 'user_id', 'library_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
         'backdrop_path', 'overview', 'genre_ids', 'first_air_date', 'first_air_year',
         'number_of_seasons', 'number_of_episodes', 'status', 'cast_data', 'director',
-        'is_favorite', 'created_at', 'updated_at',
+        'is_favorite', 'stopped_watching', 'created_at', 'updated_at',
     ];
 
     public function __construct(IDBConnection $db) {
@@ -138,6 +138,11 @@ class SeriesMapper extends QBMapper {
         if (!empty($filters['search'])) {
             $qb->andWhere($qb->expr()->iLike('m.title',
                 $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search']) . '%')));
+        }
+        if (isset($filters['ids']) && is_array($filters['ids'])) {
+            // Callers short-circuit an empty list; guard anyway so we never emit IN ().
+            $ids = array_values(array_map('intval', $filters['ids'])) ?: [0];
+            $qb->andWhere($qb->expr()->in('m.id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
         }
         if (isset($filters['favorite']) && $filters['favorite']) {
             $qb->andWhere($qb->expr()->eq('m.is_favorite', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));

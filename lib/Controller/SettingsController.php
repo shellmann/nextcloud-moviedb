@@ -81,6 +81,18 @@ class SettingsController extends AuthenticatedController {
             }
         }
 
+        $showContinueWatching = null;
+        if (array_key_exists('showContinueWatching', $data)) {
+            $raw = $data['showContinueWatching'];
+            if (in_array($raw, [true, 'true', '1', 1], true)) {
+                $showContinueWatching = '1';
+            } elseif (in_array($raw, [false, 'false', '0', 0], true)) {
+                $showContinueWatching = '0';
+            } else {
+                return new JSONResponse(['error' => 'Invalid value for showContinueWatching'], Http::STATUS_BAD_REQUEST);
+            }
+        }
+
         // Checked last because it is the only check that calls TMDB
         if ($apiKey !== null && $apiKey !== '') {
             if ($error = $this->verifyTmdbApiKey($this->tmdbService, $apiKey)) {
@@ -108,6 +120,10 @@ class SettingsController extends AuthenticatedController {
 
         if ($appLanguage !== null) {
             $this->userConfig->setValueString($this->userId, Application::APP_ID, 'app_language', $appLanguage);
+        }
+
+        if ($showContinueWatching !== null) {
+            $this->userConfig->setValueString($this->userId, Application::APP_ID, 'show_continue_watching', $showContinueWatching);
         }
 
         return new JSONResponse(['success' => true]);

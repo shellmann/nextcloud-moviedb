@@ -4,10 +4,16 @@
 		role="button"
 		tabindex="0"
 		:aria-labelledby="'series-title-' + series.id"
+		:aria-describedby="description ? 'series-desc-' + series.id : undefined"
 		@click="$emit('click')"
 		@keydown.enter="$emit('click')"
 		@keydown.space.prevent="$emit('click')">
-		<div class="poster">
+		<!-- A role="button" exposes only its name, so status and progress go into its description. -->
+		<span
+			v-if="description"
+			:id="'series-desc-' + series.id"
+			class="hidden-visually">{{ description }}</span>
+		<div class="poster" :class="{ stopped }">
 			<img
 				v-if="series.posterPath"
 				:src="posterUrl"
@@ -25,6 +31,9 @@
 			<div v-if="series.lastRating" class="rating-badge">
 				{{ series.lastRating }}
 			</div>
+			<div v-if="stopped" class="stopped-badge">
+				{{ t('moviedb', 'Stopped') }}
+			</div>
 		</div>
 		<div class="info">
 			<h3 :id="'series-title-' + series.id" class="title">
@@ -34,6 +43,11 @@
 			<div v-if="genreLabels.length" class="genre-pills">
 				<span v-for="genre in genreLabels" :key="genre" class="genre-pill">{{ genre }}</span>
 			</div>
+			<EpisodeProgress
+				v-if="series.airedEpisodeCount > 0"
+				class="progress"
+				:watched="series.watchedEpisodeCount"
+				:aired="series.airedEpisodeCount" />
 			<div class="meta-row">
 				<span v-if="series.lastWatchedAt" class="watched-date">
 					<Calendar :size="12" />
@@ -45,9 +59,11 @@
 </template>
 
 <script>
+import { translate as t } from '@nextcloud/l10n'
 import Calendar from 'vue-material-design-icons/Calendar.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
 import Television from 'vue-material-design-icons/Television.vue'
+import EpisodeProgress from './EpisodeProgress.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { TV_GENRE_OPTIONS } from '../constants.js'
 import { formatDate } from '../utils/formatters.js'
@@ -61,13 +77,14 @@ export default {
 		Television,
 		Heart,
 		Calendar,
+		EpisodeProgress,
 	},
 
 	props: {
 		/**
 		 * Series object containing all series data
 		 *
-		 * @type {{ id: number, title: string, posterPath?: string, firstAirYear?: number, genreIds?: (Array|string), lastRating?: number, lastWatchedAt?: string, isFavorite?: boolean }}
+		 * @type {{ id: number, title: string, posterPath?: string, firstAirYear?: number, genreIds?: (Array|string), lastRating?: number, lastWatchedAt?: string, isFavorite?: boolean, watchedEpisodeCount?: number, airedEpisodeCount?: number, progress?: number, watchStatus?: string }}
 		 */
 		series: {
 			type: Object,
@@ -83,6 +100,21 @@ export default {
 	],
 
 	computed: {
+		stopped() {
+			return this.series.watchStatus === 'stopped'
+		},
+
+		description() {
+			const parts = []
+			if (this.stopped) {
+				parts.push(t('moviedb', 'Stopped'))
+			}
+			if (this.series.airedEpisodeCount > 0) {
+				parts.push(t('moviedb', '{watched} of {aired} episodes watched', { watched: this.series.watchedEpisodeCount, aired: this.series.airedEpisodeCount }))
+			}
+			return parts.join(', ')
+		},
+
 		posterUrl() {
 			return getPosterUrl(this.series.posterPath, 'w300')
 		},
@@ -149,6 +181,32 @@ export default {
         background: var(--color-background-darker);
         color: var(--color-text-lighter);
     }
+}
+
+.hidden-visually {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
+
+.poster.stopped img {
+    filter: grayscale(0.7) brightness(0.8);
+}
+
+.stopped-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    color: white;
+    border-radius: tokens.$radius-sm;
+    padding: 2px 6px;
+    font-size: 11px;
+    font-weight: 600;
+    z-index: 1;
 }
 
 .favorite-badge {
@@ -228,6 +286,10 @@ export default {
         background: var(--color-primary-element-light);
         color: var(--color-primary-element-light-text);
         white-space: nowrap;
+    }
+
+    .progress {
+        margin-top: 6px;
     }
 
     .meta-row {

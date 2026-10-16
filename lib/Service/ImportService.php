@@ -129,6 +129,7 @@ class ImportService {
                 $series->setCastData($row['castData']);
                 $series->setDirector($row['director']);
                 $series->setIsFavorite($row['isFavorite']);
+                $series->setStoppedWatching($row['stoppedWatching']);
                 $series->setCreatedAt($now);
                 $series = $this->seriesMapper->insert($series);
                 $imported['series']++;

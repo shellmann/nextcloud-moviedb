@@ -106,6 +106,7 @@ class SeriesServiceTest extends TestCase {
         $this->assertSame(1, $result['watchedEpisodeCount']);
         $this->assertSame(50, $result['progress']);
         $this->assertFalse($result['caughtUp']);
+        $this->assertSame('in_progress', $result['watchStatus']);
     }
 
     public function testFindWithProgressExposesSeriesLevelWatchMetadata(): void {
@@ -378,6 +379,38 @@ class SeriesServiceTest extends TestCase {
     }
 
     // ---- cascade delete ----
+
+    // ---- stop watching ----
+
+    public function testSetStoppedWatchingUpdatesTheSeries(): void {
+        $series = $this->makeSeries(1);
+        $this->mapper->method('find')->with(1, self::LIBRARY_ID)->willReturn($series);
+        $this->mapper->expects($this->once())->method('update')
+            ->with($this->callback(fn (Series $s) => $s->getStoppedWatching() === true && $s->getUpdatedAt() !== null));
+
+        $this->service->setStoppedWatching(1, self::LIBRARY_ID, true);
+    }
+
+    public function testSetStoppedWatchingIsIdempotent(): void {
+        $series = $this->makeSeries(1);
+        $series->setStoppedWatching(true);
+        $this->mapper->method('find')->willReturn($series);
+        $this->mapper->expects($this->never())->method('update');
+
+        $this->service->setStoppedWatching(1, self::LIBRARY_ID, true);
+    }
+
+    public function testStoppedShowReportsStoppedStatusOnDetail(): void {
+        $series = $this->makeSeries(1);
+        $series->setStoppedWatching(true);
+        $this->mapper->method('find')->willReturn($series);
+        $this->episodeMapper->method('findBySeries')->willReturn([
+            $this->makeEpisode(1, 1, 1, 1, '2020-01-01', true),
+            $this->makeEpisode(2, 1, 1, 2, '2020-01-08', false),
+        ]);
+
+        $this->assertSame('stopped', $this->service->findWithProgress(1, self::LIBRARY_ID)['watchStatus']);
+    }
 
     public function testDeleteCascadesEpisodesAndWatchRows(): void {
         $seriesId = 1;
