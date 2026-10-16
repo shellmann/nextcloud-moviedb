@@ -62,8 +62,9 @@ class SeriesController extends AuthenticatedController {
         ];
 
         // Empty means all shows; anything else must be a known status.
-        $watchStatus = (string)$this->request->getParam('watchStatus', '');
-        if ($watchStatus !== '') {
+        $watchStatus = $this->request->getParam('watchStatus', '');
+        if ($watchStatus !== '' && $watchStatus !== null) {
+            // in_array with strict types also rejects arrays (watchStatus[]=…) without a warning.
             if (!in_array($watchStatus, SeriesProgressService::STATUSES, true)) {
                 return new JSONResponse(['error' => 'Invalid watchStatus'], Http::STATUS_BAD_REQUEST);
             }

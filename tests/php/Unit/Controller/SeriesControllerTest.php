@@ -148,11 +148,18 @@ class SeriesControllerTest extends TestCase {
         $this->controller()->index();
     }
 
-    public function testIndexRejectsAnUnknownWatchStatus(): void {
-        $this->params(['watchStatus' => 'bogus']);
+    /**
+     * @dataProvider badWatchStatusProvider
+     */
+    public function testIndexRejectsAnUnknownWatchStatus(mixed $value): void {
+        $this->params(['watchStatus' => $value]);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
         $this->service->expects($this->never())->method('findAll');
 
         $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller()->index()->getStatus());
+    }
+
+    public static function badWatchStatusProvider(): array {
+        return [['bogus'], [['finished']]];
     }
 }

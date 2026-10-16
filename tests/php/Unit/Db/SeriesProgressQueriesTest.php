@@ -131,7 +131,9 @@ class SeriesProgressQueriesTest extends TestCase {
     public function testEpisodeCountSubqueriesUseTheSameAiredRule(): void {
         $sql = $this->countWith('finished');
 
-        $this->assertSame(2, substr_count($sql, 'FROM moviedb_episodes e WHERE e.air_date IS NOT NULL AND e.air_date <= :ws_today AND e.season_number > 0'));
+        // Scoped to the library, then the same aired rule as everywhere else.
+        $this->assertSame(2, substr_count($sql, 'FROM moviedb_episodes e INNER JOIN moviedb_series es ON e.series_id = es.id WHERE es.library_id = :ws_library_id AND e.air_date IS NOT NULL AND e.air_date <= :ws_today AND e.season_number > 0'));
+        $this->assertSame(7, $this->rec->params[':ws_library_id']);
         $this->assertSame(1, substr_count($sql, 'e.watched = :ws_watched'));
         $this->assertStringContainsString('LEFT JOIN (SELECT e.series_id, COUNT(*) AS episode_count', $sql);
     }

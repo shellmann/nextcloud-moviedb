@@ -80,7 +80,7 @@ class SeriesMapper extends QBMapper {
             )
             ->where($qb->expr()->eq('m.library_id', $libraryParam));
 
-        $this->applyFilters($qb, $filters);
+        $this->applyFilters($qb, $libraryId, $filters);
 
         $sortField = $filters['sort'] ?? 'date_watched';
         $sortDir = strtoupper($filters['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
@@ -109,7 +109,7 @@ class SeriesMapper extends QBMapper {
             ->from($this->getTableName(), 'm')
             ->where($qb->expr()->eq('m.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
 
-        $this->applyFilters($qb, $filters);
+        $this->applyFilters($qb, $libraryId, $filters);
 
         $result = $qb->executeQuery();
         $row = $result->fetch();
@@ -118,7 +118,7 @@ class SeriesMapper extends QBMapper {
         return (int)($row['count'] ?? 0);
     }
 
-    private function applyFilters(IQueryBuilder $qb, array $filters): void {
+    private function applyFilters(IQueryBuilder $qb, int $libraryId, array $filters): void {
         if (!empty($filters['genre'])) {
             $genreId = (int)$filters['genre'];
             $genreCol = $qb->expr()->castColumn('m.genre_ids', IQueryBuilder::PARAM_STR);
@@ -140,7 +140,7 @@ class SeriesMapper extends QBMapper {
                 $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search']) . '%')));
         }
         if (!empty($filters['watchStatus'])) {
-            $this->applyWatchStatus($qb, (string)$filters['watchStatus'], $filters['today'] ?? (new \DateTime())->format('Y-m-d'));
+            $this->applyWatchStatus($qb, (string)$filters['watchStatus'], $libraryId, $filters['today'] ?? (new \DateTime())->format('Y-m-d'));
         }
         if (isset($filters['favorite']) && $filters['favorite']) {
             $qb->andWhere($qb->expr()->eq('m.is_favorite', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));
@@ -158,7 +158,7 @@ class SeriesMapper extends QBMapper {
      *   in_progress — not stopped, nothing aired yet or watched < aired
      * Unknown values match nothing; the controller rejects them before.
      */
-    private function applyWatchStatus(IQueryBuilder $qb, string $status, string $today): void {
+    private function applyWatchStatus(IQueryBuilder $qb, string $status, int $libraryId, string $today): void {
         $stopped = $qb->expr()->eq('m.stopped_watching', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL));
         $notStopped = $qb->expr()->orX(
             $qb->expr()->eq('m.stopped_watching', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL)),
@@ -171,6 +171,7 @@ class SeriesMapper extends QBMapper {
         }
 
         // Both subqueries share these placeholders, bound once on the outer builder.
+        $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT, ':ws_library_id');
         $qb->createNamedParameter($today, IQueryBuilder::PARAM_STR, ':ws_today');
         $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL, ':ws_watched');
         $qb->leftJoin('m', $qb->createFunction('(' . $this->episodeCountSql(false) . ')'), 'ea', $qb->expr()->eq('m.id', 'ea.series_id'));
@@ -193,15 +194,19 @@ class SeriesMapper extends QBMapper {
     }
 
     /**
-     * Aired regular episodes per series (only watched ones with $watchedOnly).
-     * Rows only exist for series with at least one, hence the LEFT JOINs.
+     * Aired regular episodes per series of the library (only watched ones with
+     * $watchedOnly). Rows only exist for series with at least one, hence the
+     * LEFT JOINs. Scoped to the library like the latest-watch subquery, so it
+     * never aggregates other users' episodes.
      */
     private function episodeCountSql(bool $watchedOnly): string {
         $sub = $this->db->getQueryBuilder();
         $sub->select('e.series_id')
             ->selectAlias($sub->func()->count('*'), 'episode_count')
             ->from('moviedb_episodes', 'e')
-            ->where($sub->expr()->isNotNull('e.air_date'))
+            ->innerJoin('e', 'moviedb_series', 'es', $sub->expr()->eq('e.series_id', 'es.id'))
+            ->where('es.library_id = :ws_library_id')
+            ->andWhere($sub->expr()->isNotNull('e.air_date'))
             ->andWhere('e.air_date <= :ws_today')
             ->andWhere('e.season_number > 0')
             ->groupBy('e.series_id');
