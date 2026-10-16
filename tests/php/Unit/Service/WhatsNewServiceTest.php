@@ -43,7 +43,9 @@ class WhatsNewServiceTest extends TestCase {
     public function testExistingUserWithoutRecordStartsFromTheBaseline(): void {
         $this->givenStored('');
         $this->libraryMapper->method('findAccessible')->with('alice')->willReturn([new Library()]);
-        $this->userConfig->expects($this->never())->method('setValueString');
+        // Stored right away, so the library lookup does not repeat on every visit until the dialog is closed.
+        $this->userConfig->expects($this->once())->method('setValueString')
+            ->with('alice', 'moviedb', 'last_seen_version', WhatsNewService::BASELINE_VERSION);
 
         $this->assertSame(WhatsNewService::BASELINE_VERSION, $this->service->state('alice')['lastSeenVersion']);
     }

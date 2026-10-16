@@ -37,16 +37,13 @@ class WhatsNewService {
         $lastSeen = $this->userConfig->getValueString($userId, Application::APP_ID, self::CONFIG_KEY, '');
 
         if ($lastSeen === '') {
-            if ($this->libraryMapper->findAccessible($userId) !== []) {
-                // Used MovieDB before the dialog existed.
-                $lastSeen = self::BASELINE_VERSION;
-            } else {
-                // First visit ever: nothing to catch up on. Remember it now, before
-                // the first API call creates the personal library and the user
-                // would look like an existing one next time.
-                $lastSeen = $current;
-                $this->userConfig->setValueString($userId, Application::APP_ID, self::CONFIG_KEY, $current);
-            }
+            // Decide once and store it, so the library lookup never runs again.
+            // Used MovieDB before the dialog existed → start from the baseline.
+            // First visit ever → nothing to catch up on; stored now, before the
+            // first API call creates the personal library and the user would
+            // look like an existing one next time.
+            $lastSeen = $this->libraryMapper->findAccessible($userId) !== [] ? self::BASELINE_VERSION : $current;
+            $this->userConfig->setValueString($userId, Application::APP_ID, self::CONFIG_KEY, $lastSeen);
         }
 
         return ['currentVersion' => $current, 'lastSeenVersion' => $lastSeen];
