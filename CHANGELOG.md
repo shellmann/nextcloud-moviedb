@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-16
+
 ### Added
 - "Continue watching" on the dashboard: the TV shows you are in the middle
   of, with their progress and the next episode, which you can mark as
@@ -20,6 +22,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TV show cards show the episode progress, and the TV show list can be
   filtered by in progress, finished and stopped. The filter is remembered
   (#74).
+
+### Changed
+- A TV show without aired episodes says so on its page, instead of showing
+  "0 / 0" and buttons that have nothing to mark.
 
 ### Fixed
 - Marking a whole season or show as watched now counts as recent activity,
