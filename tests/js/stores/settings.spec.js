@@ -53,6 +53,14 @@ describe('Settings Store', () => {
 			expect(store.isAdmin).toBe(false)
 			expect(store.defaultLanguage).toBe('de-DE')
 			expect(store.appLanguage).toBe('auto')
+			expect(store.showContinueWatching).toBe(true)
+		})
+
+		it('should keep continue watching off once the user switched it off', () => {
+			loadState.mockReturnValueOnce({ showContinueWatching: false })
+			setActivePinia(createPinia())
+
+			expect(useSettingsStore().showContinueWatching).toBe(false)
 		})
 	})
 

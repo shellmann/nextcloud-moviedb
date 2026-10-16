@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\LibraryService;
+use OCA\MovieDB\Service\SeriesProgressService;
 use OCA\MovieDB\Service\SeriesService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -22,18 +23,21 @@ class SeriesController extends AuthenticatedController {
     private SeriesService $service;
     private LibraryService $libraryService;
     private LoggerInterface $logger;
+    private SeriesProgressService $progressService;
 
     public function __construct(
         IRequest $request,
         SeriesService $service,
         LibraryService $libraryService,
         IUserSession $userSession,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        SeriesProgressService $progressService
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
         $this->libraryService = $libraryService;
         $this->logger = $logger;
+        $this->progressService = $progressService;
     }
 
     #[NoAdminRequired]
@@ -57,11 +61,21 @@ class SeriesController extends AuthenticatedController {
             'favorite' => $this->request->getParam('favorite'),
         ];
 
+        // Empty means all shows; anything else must be a known status.
+        $watchStatus = $this->request->getParam('watchStatus', '');
+        if ($watchStatus !== '' && $watchStatus !== null) {
+            // in_array with strict types also rejects arrays (watchStatus[]=…) without a warning.
+            if (!in_array($watchStatus, SeriesProgressService::STATUSES, true)) {
+                return new JSONResponse(['error' => 'Invalid watchStatus'], Http::STATUS_BAD_REQUEST);
+            }
+            $filters['watchStatus'] = $watchStatus;
+        }
+
         $series = $this->service->findAll($libraryId, $filters, $limit, $offset);
         $total = $this->service->count($libraryId, $filters);
 
         return new JSONResponse([
-            'series' => $series,
+            'series' => $this->progressService->attachProgress($series, $libraryId),
             'total' => $total,
             'page' => $page,
             'limit' => $limit,
@@ -290,6 +304,57 @@ class SeriesController extends AuthenticatedController {
                 'seasonNumber' => $seasonNumber,
             ]);
             return new JSONResponse(['error' => 'Failed to mark season watched. Please try again.'], Http::STATUS_BAD_REQUEST);
+        }
+    }
+
+    /**
+     * Dashboard "continue watching": shows with aired, unwatched episodes.
+     */
+    #[NoAdminRequired]
+    public function continueWatching(): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+        $limit = (int)$this->request->getParam('limit', 10);
+
+        return new JSONResponse(['series' => $this->progressService->continueWatching($libraryId, $limit)]);
+    }
+
+    /**
+     * Set or clear "stop watching" for a show (edit permission, like episodes).
+     */
+    #[NoAdminRequired]
+    public function stopped(int $id): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
+        $stopped = $this->parseWatchedFlag($this->request->getParam('stopped'));
+
+        try {
+            $this->service->setStoppedWatching($id, $libraryId, $stopped);
+            return new JSONResponse(['series' => $this->service->findWithProgress($id, $libraryId)]);
+        } catch (DoesNotExistException $e) {
+            return new JSONResponse(['error' => 'Series not found'], Http::STATUS_NOT_FOUND);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to update stop-watching status', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'seriesId' => $id,
+            ]);
+            return new JSONResponse(['error' => 'Failed to update the show. Please try again.'], Http::STATUS_BAD_REQUEST);
         }
     }
 

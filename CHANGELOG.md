@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-10-16
+
+### Added
+- "Continue watching" on the dashboard: the TV shows you are in the middle
+  of, with their progress and the next episode, which you can mark as
+  watched right there. Shows you have not started yet follow after the
+  others. A finished show comes back on its own when a new season airs.
+  The row can be switched off in the settings (#74).
+- "Stop watching" for TV shows you gave up on: they leave "Continue
+  watching" but keep their episodes, ratings and history, and you can
+  resume them at any time. In a shared library this applies to all
+  members, like the watched episodes (#74).
+- TV show cards show the episode progress, and the TV show list can be
+  filtered by in progress, finished and stopped. The filter is remembered
+  (#74).
+- "What's new in MovieDB": after an update, users see the highlights of
+  the new version once, when they first open the app. New users are not
+  shown it.
+
+### Changed
+- A TV show without aired episodes says so on its page, instead of showing
+  "0 / 0" and buttons that have nothing to mark.
+
+### Fixed
+- Marking a whole season or show as watched now counts as recent activity,
+  like marking a single episode.
+
 ## [1.8.0] - 2026-10-11
 
 ### Added

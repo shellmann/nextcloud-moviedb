@@ -222,6 +222,8 @@ class ImportValidator {
             'castData' => $this->cast($s['castData'] ?? null),
             'director' => $this->str($s['director'] ?? null, 255),
             'isFavorite' => ($s['isFavorite'] ?? false) === true,
+            // Added in v1.9; older exports lack it and import as not stopped.
+            'stoppedWatching' => ($s['stoppedWatching'] ?? false) === true,
             'watch' => $watch,
             'episodes' => $episodes,
         ];

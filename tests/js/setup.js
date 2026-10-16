@@ -21,6 +21,7 @@ vi.mock('@nextcloud/dialogs', () => ({
 	showSuccess: vi.fn(),
 	showInfo: vi.fn(),
 	showWarning: vi.fn(),
+	showUndo: vi.fn(),
 }))
 
 // Mock @nextcloud/router

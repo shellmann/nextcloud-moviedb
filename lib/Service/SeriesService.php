@@ -235,6 +235,7 @@ class SeriesService {
         $data['progress'] = $airedCount > 0 ? (int)round(($watchedCount / $airedCount) * 100) : 0;
         $data['nextEpisode'] = $nextEpisode;
         $data['caughtUp'] = $airedCount > 0 && $watchedCount >= $airedCount;
+        $data['watchStatus'] = SeriesProgressService::watchStatus((bool)$series->getStoppedWatching(), $watchedCount, $airedCount);
 
         // Series-level watch metadata (the TV show's own rating/platform/
         // language/date), read from the single series-level watch row.
@@ -285,6 +286,22 @@ class SeriesService {
         $episode->setWatched($watched);
         $episode->setUpdatedAt((new DateTime())->format('Y-m-d H:i:s'));
         $this->episodeMapper->update($episode);
+    }
+
+    /**
+     * Set or clear "stop watching": the show leaves "continue watching" but keeps
+     * its episodes and history. Applies to the whole library, like episode flags.
+     *
+     * @throws DoesNotExistException
+     */
+    public function setStoppedWatching(int $seriesId, int $libraryId, bool $stopped): void {
+        $series = $this->mapper->find($seriesId, $libraryId);
+        if ((bool)$series->getStoppedWatching() === $stopped) {
+            return; // idempotent
+        }
+        $series->setStoppedWatching($stopped);
+        $series->setUpdatedAt((new DateTime())->format('Y-m-d H:i:s'));
+        $this->mapper->update($series);
     }
 
     /**

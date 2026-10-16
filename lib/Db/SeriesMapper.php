@@ -23,7 +23,7 @@ class SeriesMapper extends QBMapper {
         'id', 'user_id', 'library_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
         'backdrop_path', 'overview', 'genre_ids', 'first_air_date', 'first_air_year',
         'number_of_seasons', 'number_of_episodes', 'status', 'cast_data', 'director',
-        'is_favorite', 'created_at', 'updated_at',
+        'is_favorite', 'stopped_watching', 'created_at', 'updated_at',
     ];
 
     public function __construct(IDBConnection $db) {
@@ -80,7 +80,7 @@ class SeriesMapper extends QBMapper {
             )
             ->where($qb->expr()->eq('m.library_id', $libraryParam));
 
-        $this->applyFilters($qb, $filters);
+        $this->applyFilters($qb, $libraryId, $filters);
 
         $sortField = $filters['sort'] ?? 'date_watched';
         $sortDir = strtoupper($filters['dir'] ?? 'DESC') === 'ASC' ? 'ASC' : 'DESC';
@@ -109,7 +109,7 @@ class SeriesMapper extends QBMapper {
             ->from($this->getTableName(), 'm')
             ->where($qb->expr()->eq('m.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
 
-        $this->applyFilters($qb, $filters);
+        $this->applyFilters($qb, $libraryId, $filters);
 
         $result = $qb->executeQuery();
         $row = $result->fetch();
@@ -118,7 +118,7 @@ class SeriesMapper extends QBMapper {
         return (int)($row['count'] ?? 0);
     }
 
-    private function applyFilters(IQueryBuilder $qb, array $filters): void {
+    private function applyFilters(IQueryBuilder $qb, int $libraryId, array $filters): void {
         if (!empty($filters['genre'])) {
             $genreId = (int)$filters['genre'];
             $genreCol = $qb->expr()->castColumn('m.genre_ids', IQueryBuilder::PARAM_STR);
@@ -139,9 +139,81 @@ class SeriesMapper extends QBMapper {
             $qb->andWhere($qb->expr()->iLike('m.title',
                 $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search']) . '%')));
         }
+        if (!empty($filters['watchStatus'])) {
+            $this->applyWatchStatus($qb, (string)$filters['watchStatus'], $libraryId, $filters['today'] ?? (new \DateTime())->format('Y-m-d'));
+        }
         if (isset($filters['favorite']) && $filters['favorite']) {
             $qb->andWhere($qb->expr()->eq('m.is_favorite', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));
         }
+    }
+
+    /**
+     * Filter by watch status in SQL, so pagination and counts stay right for
+     * libraries of any size. Joins the aired and the watched regular-episode
+     * counts per series (same rule as SeriesProgressService::watchStatus and
+     * SeriesService::findWithProgress: aired = air_date <= today, season 0
+     * excluded) and compares them:
+     *   stopped     — stopped_watching set
+     *   finished    — not stopped, aired > 0 and watched >= aired
+     *   in_progress — not stopped, nothing aired yet or watched < aired
+     * Unknown values match nothing; the controller rejects them before.
+     */
+    private function applyWatchStatus(IQueryBuilder $qb, string $status, int $libraryId, string $today): void {
+        $stopped = $qb->expr()->eq('m.stopped_watching', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL));
+        $notStopped = $qb->expr()->orX(
+            $qb->expr()->eq('m.stopped_watching', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL)),
+            $qb->expr()->isNull('m.stopped_watching')
+        );
+
+        if ($status === 'stopped') {
+            $qb->andWhere($stopped);
+            return;
+        }
+
+        // Both subqueries share these placeholders, bound once on the outer builder.
+        $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT, ':ws_library_id');
+        $qb->createNamedParameter($today, IQueryBuilder::PARAM_STR, ':ws_today');
+        $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL, ':ws_watched');
+        $qb->leftJoin('m', $qb->createFunction('(' . $this->episodeCountSql(false) . ')'), 'ea', $qb->expr()->eq('m.id', 'ea.series_id'));
+        $qb->leftJoin('m', $qb->createFunction('(' . $this->episodeCountSql(true) . ')'), 'ew', $qb->expr()->eq('m.id', 'ew.series_id'));
+        $watched = 'COALESCE(ew.episode_count, 0)';
+
+        if ($status === 'finished') {
+            $qb->andWhere($notStopped)
+                ->andWhere($qb->expr()->isNotNull('ea.episode_count'))
+                ->andWhere($qb->createFunction($watched . ' >= ea.episode_count'));
+        } elseif ($status === 'in_progress') {
+            $qb->andWhere($notStopped)
+                ->andWhere($qb->expr()->orX(
+                    $qb->expr()->isNull('ea.episode_count'),
+                    $qb->createFunction($watched . ' < ea.episode_count')
+                ));
+        } else {
+            $qb->andWhere('1 = 0');
+        }
+    }
+
+    /**
+     * Aired regular episodes per series of the library (only watched ones with
+     * $watchedOnly). Rows only exist for series with at least one, hence the
+     * LEFT JOINs. Scoped to the library like the latest-watch subquery, so it
+     * never aggregates other users' episodes.
+     */
+    private function episodeCountSql(bool $watchedOnly): string {
+        $sub = $this->db->getQueryBuilder();
+        $sub->select('e.series_id')
+            ->selectAlias($sub->func()->count('*'), 'episode_count')
+            ->from('moviedb_episodes', 'e')
+            ->innerJoin('e', 'moviedb_series', 'es', $sub->expr()->eq('e.series_id', 'es.id'))
+            ->where('es.library_id = :ws_library_id')
+            ->andWhere($sub->expr()->isNotNull('e.air_date'))
+            ->andWhere('e.air_date <= :ws_today')
+            ->andWhere('e.season_number > 0')
+            ->groupBy('e.series_id');
+        if ($watchedOnly) {
+            $sub->andWhere('e.watched = :ws_watched');
+        }
+        return $sub->getSQL();
     }
 
     public function findByTmdbId(int $libraryId, int $tmdbId): ?Series {

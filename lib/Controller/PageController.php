@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\SettingsService;
+use OCA\MovieDB\Service\WhatsNewService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
@@ -25,6 +26,7 @@ class PageController extends Controller {
         private IUserSession $userSession,
         private SettingsService $settingsService,
         private IInitialState $initialState,
+        private WhatsNewService $whatsNewService,
     ) {
         parent::__construct(Application::APP_ID, $request);
     }
@@ -40,6 +42,7 @@ class PageController extends Controller {
         $userId = $this->userSession->getUser()?->getUID();
         if ($userId !== null) {
             $this->initialState->provideInitialState('settings', $this->settingsService->getUserSettings($userId));
+            $this->initialState->provideInitialState('whatsNew', $this->whatsNewService->state($userId));
         }
 
         $response = new TemplateResponse(Application::APP_ID, 'index', [

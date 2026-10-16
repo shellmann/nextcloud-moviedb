@@ -84,8 +84,27 @@
 		</div>
 
 		<div class="dashboard-sections">
+			<!-- Hidden when switched off in the settings or when nothing is left to watch. -->
+			<div v-if="showContinueWatching && continueWatching.length" class="section continue-section">
+				<h3>{{ t('moviedb', 'Continue watching') }}</h3>
+				<div class="movie-row continue-row">
+					<ContinueWatchingCard
+						v-for="item in continueWatching"
+						:key="'continue-' + item.id"
+						:series="item"
+						:canEdit="librariesStore.activeCanEdit"
+						:libraryId="librariesStore.activeLibraryId"
+						@open="goToSeries(item.id)"
+						@changed="refreshAfterChange"
+						@stopped="onStopped" />
+				</div>
+			</div>
+
 			<div class="section">
-				<h3>{{ t('moviedb', 'Recently Watched') }}</h3>
+				<!-- Focus target when the last "continue watching" card disappears. -->
+				<h3 ref="recentHeading" tabindex="-1">
+					{{ t('moviedb', 'Recently Watched') }}
+				</h3>
 				<div v-if="recentItems.length" class="movie-row">
 					<template v-for="item in recentItems">
 						<MovieCard
@@ -147,14 +166,18 @@
 </template>
 
 <script>
+import { showUndo } from '@nextcloud/dialogs'
+import { translate as t } from '@nextcloud/l10n'
 import { NcNoteCard, NcSelect } from '@nextcloud/vue'
 import ApiKeyAdminHint from '../components/ApiKeyAdminHint.vue'
+import ContinueWatchingCard from '../components/ContinueWatchingCard.vue'
 import MovieCard from '../components/MovieCard.vue'
 import PlatformChart from '../components/PlatformChart.vue'
 import SeriesCard from '../components/SeriesCard.vue'
 import YearChart from '../components/YearChart.vue'
 import api from '../services/api.js'
 import { useLibrariesStore } from '../stores/libraries.js'
+import { useSeriesStore } from '../stores/series.js'
 import { useSettingsStore } from '../stores/settings.js'
 
 export default {
@@ -167,12 +190,14 @@ export default {
 		YearChart,
 		PlatformChart,
 		ApiKeyAdminHint,
+		ContinueWatchingCard,
 	},
 
 	setup() {
 		const settingsStore = useSettingsStore()
 		const librariesStore = useLibrariesStore()
-		return { settingsStore, librariesStore }
+		const seriesStore = useSeriesStore()
+		return { settingsStore, librariesStore, seriesStore }
 	},
 
 	data() {
@@ -186,6 +211,7 @@ export default {
 				watchlistCount: 0,
 			},
 
+			continueWatching: [],
 			recentMovies: [],
 			recentSeries: [],
 			topRatedMovies: [],
@@ -210,6 +236,10 @@ export default {
 	computed: {
 		hasApiKey() {
 			return this.settingsStore.hasApiKey
+		},
+
+		showContinueWatching() {
+			return this.settingsStore.showContinueWatching
 		},
 
 		recentItems() {
@@ -246,6 +276,7 @@ export default {
 					api.getStats(lid),
 					api.getRecentMovies(5, lid),
 					api.getTopRatedMovies(5, lid),
+					this.loadContinueWatching(),
 				])
 				this.stats = statsRes.data
 				this.recentMovies = recentRes.data.movies
@@ -258,6 +289,83 @@ export default {
 			} finally {
 				this.loading = false
 			}
+		},
+
+		/**
+		 * Loads the "continue watching" row; skipped when the user switched it off.
+		 * A failure only hides the row, the rest of the dashboard still loads.
+		 */
+		async loadContinueWatching() {
+			if (!this.showContinueWatching) {
+				this.continueWatching = []
+				return
+			}
+			try {
+				const libraryId = this.librariesStore.activeLibraryId
+				const response = await api.getContinueWatching(10, libraryId !== null ? libraryId : undefined)
+				this.continueWatching = response.data.series || []
+			} catch (error) {
+				console.error('Failed to load continue watching:', error)
+				this.continueWatching = []
+			}
+		},
+
+		/**
+		 * A card marked an episode watched: reload, and keep the focus in the row.
+		 *
+		 * @param {object} series - The show the episode belongs to
+		 */
+		async refreshAfterChange(series) {
+			const index = this.continueIndex(series)
+			await this.loadDashboardData()
+			await this.restoreFocus(series, index)
+		},
+
+		/**
+		 * @param {object} series - A show of the row
+		 * @return {number} Its position in the row, -1 if absent
+		 */
+		continueIndex(series) {
+			return series ? this.continueWatching.findIndex((s) => s.id === series.id) : -1
+		},
+
+		/**
+		 * After a reload the card that held the focus may be gone (show stopped or
+		 * finished). Keep the keyboard user in place: the same card's "Watched"
+		 * button if it is still there, else the card now at that position, else
+		 * the next section heading.
+		 *
+		 * @param {object|undefined} series - The show the action was for
+		 * @param {number} index - Its position in the row before the reload
+		 */
+		async restoreFocus(series, index) {
+			if (!series || index < 0) { return }
+			await this.$nextTick()
+			const root = this.$el
+			const same = root.querySelector(`.continue-card[data-series-id="${series.id}"] .watched-button`)
+			if (same) {
+				same.focus()
+				return
+			}
+			const links = root.querySelectorAll('.continue-card .title-link')
+			const target = links[Math.min(index, links.length - 1)] ?? this.$refs.recentHeading
+			target?.focus()
+		},
+
+		/**
+		 * A card stopped a show: reload (the card disappears) and offer an undo.
+		 *
+		 * @param {object} series - The show that was stopped
+		 */
+		async onStopped(series) {
+			const index = this.continueIndex(series)
+			await this.loadDashboardData()
+			await this.restoreFocus(series, index)
+			showUndo(t('moviedb', 'You stopped watching {title}.', { title: series.title }), async () => {
+				if (await this.seriesStore.setStopped(series.id, false, { toast: false })) {
+					await this.loadDashboardData()
+				}
+			})
 		},
 
 		async loadChartData() {
@@ -413,6 +521,11 @@ export default {
     margin-bottom: 16px;
 }
 
+.section h3:focus-visible {
+    outline: 2px solid var(--color-main-text);
+    outline-offset: 2px;
+}
+
 .movie-row {
     display: flex;
     gap: 16px;
@@ -422,6 +535,12 @@ export default {
     > * {
         flex: 0 0 140px;
         width: 140px;
+    }
+
+    // Room for the next episode and the quick actions.
+    &.continue-row > * {
+        flex-basis: 170px;
+        width: 170px;
     }
 }
 
@@ -438,6 +557,11 @@ export default {
     .movie-row > * {
         flex-basis: 110px;
         width: 110px;
+    }
+
+    .movie-row.continue-row > * {
+        flex-basis: 150px;
+        width: 150px;
     }
 
     .section-header {

@@ -77,6 +77,7 @@
 		<NcAppContent>
 			<router-view />
 		</NcAppContent>
+		<WhatsNewDialog />
 	</NcContent>
 </template>
 
@@ -98,6 +99,7 @@ import PlaylistPlay from 'vue-material-design-icons/PlaylistPlay.vue'
 import Television from 'vue-material-design-icons/Television.vue'
 import TrophyOutline from 'vue-material-design-icons/TrophyOutline.vue'
 import ViewDashboard from 'vue-material-design-icons/ViewDashboard.vue'
+import WhatsNewDialog from './components/WhatsNewDialog.vue'
 import { useLibrariesStore } from './stores/libraries.js'
 import { useMoviesStore } from './stores/movies.js'
 import { usePlatformsStore } from './stores/platforms.js'
@@ -122,6 +124,7 @@ export default {
 		Cog,
 		BookshelfIcon,
 		EyeOutline,
+		WhatsNewDialog,
 	},
 
 	setup() {

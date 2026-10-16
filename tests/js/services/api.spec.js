@@ -101,3 +101,21 @@ describe('api quiz', () => {
 		expect(axios.delete).toHaveBeenCalledWith('/index.php/apps/moviedb/api/quiz/results', { data: { libraryId: 7 } })
 	})
 })
+
+describe('api continue watching', () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it('loads the row for a library', () => {
+		api.getContinueWatching(10, 3)
+		expect(axios.get).toHaveBeenCalledWith('/index.php/apps/moviedb/api/series/continue', { params: { limit: 10, libraryId: 3 } })
+	})
+
+	it('sets and clears stop watching', () => {
+		api.setSeriesStopped(7, true, 3)
+		api.setSeriesStopped(7, false)
+		expect(axios.post).toHaveBeenNthCalledWith(1, '/index.php/apps/moviedb/api/series/7/stopped', { stopped: true, libraryId: 3 })
+		expect(axios.post).toHaveBeenNthCalledWith(2, '/index.php/apps/moviedb/api/series/7/stopped', { stopped: false })
+	})
+})

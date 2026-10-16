@@ -25,6 +25,12 @@
 
 		<div class="filters">
 			<NcSelect
+				v-model="selectedStatus"
+				:options="statusOptions"
+				:clearable="false"
+				:aria-label="t('moviedb', 'Watch status')"
+				@update:modelValue="applyFilters" />
+			<NcSelect
 				v-model="selectedGenre"
 				:options="genreOptions"
 				:placeholder="t('moviedb', 'All genres')"
@@ -78,7 +84,7 @@
 				</p>
 			</template>
 			<template #action>
-				<NcButton v-if="!showFavoritesOnly && activeCanEdit" @click="$router.push({ name: 'add-series' })">
+				<NcButton v-if="!showFavoritesOnly && !selectedStatus?.id && activeCanEdit" @click="$router.push({ name: 'add-series' })">
 					{{ t('moviedb', 'Add your first TV show') }}
 				</NcButton>
 			</template>
@@ -142,6 +148,7 @@ export default {
 			sortBy: null,
 			sortDirection: 'DESC',
 			showFavoritesOnly: false,
+			selectedStatus: null,
 		}
 	},
 
@@ -179,7 +186,25 @@ export default {
 			]
 		},
 
+		statusOptions() {
+			return [
+				{ id: null, label: t('moviedb', 'All shows') },
+				{ id: 'in_progress', label: t('moviedb', 'In progress') },
+				{ id: 'finished', label: t('moviedb', 'Finished') },
+				{ id: 'stopped', label: t('moviedb', 'Stopped') },
+			]
+		},
+
 		emptyStateMessage() {
+			if (this.selectedStatus?.id === 'in_progress') {
+				return t('moviedb', 'No TV shows in progress')
+			}
+			if (this.selectedStatus?.id === 'finished') {
+				return t('moviedb', 'No finished TV shows')
+			}
+			if (this.selectedStatus?.id === 'stopped') {
+				return t('moviedb', 'No TV shows you stopped watching')
+			}
 			if (this.showFavoritesOnly) {
 				return t('moviedb', 'No favorite TV shows yet')
 			}
@@ -195,6 +220,8 @@ export default {
 		this.sortBy = this.sortOptions[0]
 		this.debouncedSearch = debounce(this.applyFilters, 300)
 		this.seriesStore.resetFilters()
+		// The status filter is remembered across visits (see the series store).
+		this.selectedStatus = this.statusOptions.find((o) => o.id === this.seriesStore.filters.watchStatus) ?? this.statusOptions[0]
 		// Wait until libraries have loaded so the active library id is known;
 		// otherwise this first fetch races App.vue's initial load and falls
 		// back to the personal library instead of the active one.
@@ -210,6 +237,7 @@ export default {
 				sort: this.sortBy?.id || 'date_watched',
 				dir: this.sortDirection,
 				favorite: this.showFavoritesOnly,
+				watchStatus: this.selectedStatus?.id || null,
 			})
 		},
 

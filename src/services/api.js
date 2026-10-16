@@ -189,6 +189,16 @@ export default {
 		if (libraryId !== undefined) { body.libraryId = libraryId }
 		return axios.post(`${baseUrl}/series/${id}/watched`, body)
 	},
+	setSeriesStopped(id, stopped = true, libraryId = undefined) {
+		const body = { stopped }
+		if (libraryId !== undefined) { body.libraryId = libraryId }
+		return axios.post(`${baseUrl}/series/${id}/stopped`, body)
+	},
+	getContinueWatching(limit = 10, libraryId = undefined) {
+		const params = { limit }
+		if (libraryId !== undefined) { params.libraryId = libraryId }
+		return axios.get(`${baseUrl}/series/continue`, { params })
+	},
 	markSeasonWatched(id, seasonNumber, watched = true, libraryId = undefined) {
 		const body = { watched }
 		if (libraryId !== undefined) { body.libraryId = libraryId }

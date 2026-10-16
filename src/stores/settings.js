@@ -25,6 +25,8 @@ function fromServer(data) {
 		defaultLanguage: data.defaultLanguage || 'de-DE',
 		/** @type {string} Application UI language preference ('auto' or locale code) */
 		appLanguage: data.appLanguage || 'auto',
+		/** @type {boolean} Whether the dashboard shows the "continue watching" row (on unless switched off) */
+		showContinueWatching: data.showContinueWatching !== false,
 	}
 }
 

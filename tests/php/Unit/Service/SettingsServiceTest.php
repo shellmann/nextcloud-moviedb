@@ -73,6 +73,20 @@ class SettingsServiceTest extends TestCase {
         $this->assertSame('auto', $settings['appLanguage']);
     }
 
+    public function testContinueWatchingIsOnByDefault(): void {
+        $this->givenUserKey('');
+
+        $this->assertTrue($this->service->getUserSettings('alice')['showContinueWatching']);
+    }
+
+    public function testContinueWatchingCanBeSwitchedOff(): void {
+        $this->userConfig->method('getValueString')->willReturnCallback(
+            fn (string $userId, string $app, string $key, string $default) => $key === 'show_continue_watching' ? '0' : $default
+        );
+
+        $this->assertFalse($this->service->getUserSettings('alice')['showContinueWatching']);
+    }
+
     public function testIsAdmin(): void {
         $this->givenUserKey('');
         $this->groupManager->method('isAdmin')->with('alice')->willReturn(true);

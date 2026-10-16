@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 import { useSeriesStore } from '@/stores/series.js'
 
 vi.mock('@/services/api.js', () => ({
@@ -12,6 +13,7 @@ vi.mock('@/services/api.js', () => ({
 		markEpisodeWatched: vi.fn(),
 		markSeasonWatched: vi.fn(),
 		markSeriesWatched: vi.fn(),
+		setSeriesStopped: vi.fn(),
 	},
 }))
 
@@ -21,6 +23,7 @@ describe('Series Store', () => {
 	let store
 
 	beforeEach(() => {
+		localStorage.clear()
 		setActivePinia(createPinia())
 		store = useSeriesStore()
 		vi.clearAllMocks()
@@ -226,6 +229,85 @@ describe('Series Store', () => {
 			expect(store.filters.search).toBe('')
 			expect(store.page).toBe(1)
 			expect('platform' in store.filters).toBe(false)
+		})
+	})
+
+	describe('watch status filter', () => {
+		it('sends the status filter to the API', async () => {
+			api.getSeries.mockResolvedValue({ data: { series: [], total: 0, page: 1, totalPages: 0 } })
+
+			store.setFilters({ watchStatus: 'in_progress' })
+			await Promise.resolve()
+
+			expect(api.getSeries.mock.calls[0][0].watchStatus).toBe('in_progress')
+		})
+
+		it('omits the status for "all shows"', async () => {
+			api.getSeries.mockResolvedValue({ data: { series: [], total: 0, page: 1, totalPages: 0 } })
+
+			store.setFilters({ watchStatus: null })
+			await Promise.resolve()
+
+			expect('watchStatus' in api.getSeries.mock.calls[0][0]).toBe(false)
+		})
+
+		it('remembers the status across visits and resets', () => {
+			api.getSeries.mockResolvedValue({ data: { series: [], total: 0, page: 1, totalPages: 0 } })
+			store.setFilters({ watchStatus: 'finished' })
+
+			store.resetFilters()
+			expect(store.filters.watchStatus).toBe('finished')
+
+			// A fresh store (new page load) starts with the remembered status too.
+			setActivePinia(createPinia())
+			expect(useSeriesStore().filters.watchStatus).toBe('finished')
+		})
+
+		it('ignores an unknown stored status', () => {
+			localStorage.setItem('moviedb_seriesStatusFilter', 'bogus')
+			setActivePinia(createPinia())
+
+			expect(useSeriesStore().filters.watchStatus).toBeNull()
+		})
+
+		it('forgets the status when switching back to all shows', () => {
+			api.getSeries.mockResolvedValue({ data: { series: [], total: 0, page: 1, totalPages: 0 } })
+			store.setFilters({ watchStatus: 'stopped' })
+			store.setFilters({ watchStatus: null })
+
+			expect(localStorage.getItem('moviedb_seriesStatusFilter')).toBeNull()
+		})
+	})
+
+	describe('setStopped', () => {
+		it('updates the open series with the server payload and shows a toast', async () => {
+			store.currentSeries = { id: 5, watchStatus: 'in_progress' }
+			api.setSeriesStopped.mockResolvedValue({ data: { series: { id: 5, watchStatus: 'stopped' } } })
+
+			const result = await store.setStopped(5, true)
+
+			expect(api.setSeriesStopped).toHaveBeenCalledWith(5, true, undefined)
+			expect(store.currentSeries.watchStatus).toBe('stopped')
+			expect(result.watchStatus).toBe('stopped')
+			expect(showSuccess).toHaveBeenCalled()
+		})
+
+		it('leaves another open series alone and can skip the toast', async () => {
+			store.currentSeries = { id: 9 }
+			api.setSeriesStopped.mockResolvedValue({ data: { series: { id: 5 } } })
+
+			await store.setStopped(5, false, { toast: false })
+
+			expect(store.currentSeries).toEqual({ id: 9 })
+			expect(showSuccess).not.toHaveBeenCalled()
+		})
+
+		it('returns null and shows an error on failure', async () => {
+			api.setSeriesStopped.mockRejectedValue(new Error('nope'))
+			vi.spyOn(console, 'error').mockImplementation(() => {})
+
+			expect(await store.setStopped(5, true)).toBeNull()
+			expect(showError).toHaveBeenCalled()
 		})
 	})
 })

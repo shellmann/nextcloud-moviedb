@@ -65,6 +65,20 @@
 		</div>
 
 		<div class="settings-section">
+			<h3>{{ t('moviedb', 'Dashboard') }}</h3>
+			<NcCheckboxRadioSwitch
+				:modelValue="showContinueWatching"
+				type="switch"
+				:disabled="savingDashboard"
+				@update:modelValue="saveShowContinueWatching">
+				{{ t('moviedb', 'Show "Continue watching" on the dashboard') }}
+			</NcCheckboxRadioSwitch>
+			<p class="hint">
+				{{ t('moviedb', 'Lists the TV shows you are in the middle of, with the next episode.') }}
+			</p>
+		</div>
+
+		<div class="settings-section">
 			<h3>{{ t('moviedb', 'Custom Platforms') }}</h3>
 			<p class="section-description">
 				{{ t('moviedb', 'Add your own streaming platforms or sources.') }}
@@ -250,7 +264,7 @@
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import { imagePath } from '@nextcloud/router'
-import { NcButton, NcDialog, NcSelect, NcTextField } from '@nextcloud/vue'
+import { NcButton, NcCheckboxRadioSwitch, NcDialog, NcSelect, NcTextField } from '@nextcloud/vue'
 import ContentSave from 'vue-material-design-icons/ContentSave.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
 import Download from 'vue-material-design-icons/Download.vue'
@@ -273,6 +287,7 @@ import { tmdbApiKeyErrorMessage } from '../utils/tmdbApiKey.js'
 export default {
 	name: 'Settings',
 	components: {
+		NcCheckboxRadioSwitch,
 		ApiKeyAdminHint,
 		NcTextField,
 		NcSelect,
@@ -306,6 +321,8 @@ export default {
 			languageOptions: getTmdbLanguageOptions(),
 			newPlatformName: '',
 			saving: false,
+			savingDashboard: false,
+			showContinueWatching: this.settingsStore.showContinueWatching,
 			showDeletePlatformDialog: false,
 			showRemoveApiKeyDialog: false,
 			pendingDeletePlatformId: null,
@@ -404,6 +421,27 @@ export default {
 				showError(tmdbApiKeyErrorMessage(error) ?? t('moviedb', 'Failed to save settings. Please try again.'))
 			} finally {
 				this.saving = false
+			}
+		},
+
+		/**
+		 * Saves the dashboard switch right away; on failure it flips back.
+		 *
+		 * @param {boolean} value - New switch state
+		 */
+		async saveShowContinueWatching(value) {
+			const previous = this.showContinueWatching
+			this.showContinueWatching = value
+			this.savingDashboard = true
+			try {
+				await this.settingsStore.update({ showContinueWatching: value })
+				showSuccess(t('moviedb', 'Settings saved successfully.'))
+			} catch (error) {
+				console.error('Failed to save dashboard setting:', error)
+				this.showContinueWatching = previous
+				showError(t('moviedb', 'Failed to save settings. Please try again.'))
+			} finally {
+				this.savingDashboard = false
 			}
 		},
 

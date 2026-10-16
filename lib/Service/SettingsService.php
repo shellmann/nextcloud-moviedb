@@ -35,6 +35,8 @@ class SettingsService {
             'isAdmin' => $this->groupManager->isAdmin($userId),
             'defaultLanguage' => $this->userConfig->getValueString($userId, Application::APP_ID, 'default_language', 'de-DE'),
             'appLanguage' => $this->userConfig->getValueString($userId, Application::APP_ID, 'app_language', 'auto'),
+            // Stored as '1'/'0'; on unless the user switched it off.
+            'showContinueWatching' => $this->userConfig->getValueString($userId, Application::APP_ID, 'show_continue_watching', '1') !== '0',
         ];
     }
 }

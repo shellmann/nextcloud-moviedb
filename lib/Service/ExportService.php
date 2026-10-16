@@ -127,6 +127,7 @@ class ExportService {
                 'castData' => $s->getCastData(),
                 'director' => $s->getDirector(),
                 'isFavorite' => (bool)$s->getIsFavorite(),
+                'stoppedWatching' => (bool)$s->getStoppedWatching(),
                 'watch' => $watchBySeries[$s->getId()] ?? null,
                 'episodes' => $episodesBySeries[$s->getId()] ?? [],
             ];
