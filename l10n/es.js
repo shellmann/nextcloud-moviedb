@@ -462,6 +462,13 @@ OC.L10N.register(
         "No episodes have aired yet.": "Todavía no se ha emitido ningún episodio.",
         "No episodes are known for this show yet.": "Todavía no se conocen episodios de esta serie.",
         "Mark {episode} of {title} as watched": "Marcar {episode} de {title} como visto",
-        "Stop watching {title}": "Dejar de ver {title}"
+        "Stop watching {title}": "Dejar de ver {title}",
+        "What's new in MovieDB": "Novedades de MovieDB",
+        "Version {version}": "Versión {version}",
+        "All changes (opens GitHub)": "Todos los cambios (abre GitHub)",
+        "Got it": "Entendido",
+        "Continue watching: the dashboard shows the TV shows you are in the middle of, with the next episode, which you can mark as watched right there.": "Seguir viendo: el panel muestra las series que estás viendo, con el siguiente episodio, que puedes marcar como visto ahí mismo.",
+        "Stop watching a show you gave up on. It leaves \"Continue watching\" but keeps its episodes and history, and you can resume it at any time.": "Deja de ver una serie que has abandonado. Sale de «Seguir viendo», pero conserva sus episodios e historial, y puedes retomarla cuando quieras.",
+        "Every TV show card shows your episode progress, and the TV show list can be filtered by in progress, finished and stopped.": "Cada tarjeta de serie muestra tu progreso de episodios, y la lista de series se puede filtrar por en curso, terminadas y abandonadas."
     },
 "nplurals=2; plural=(n != 1);");

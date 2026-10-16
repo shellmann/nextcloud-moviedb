@@ -22,6 +22,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - TV show cards show the episode progress, and the TV show list can be
   filtered by in progress, finished and stopped. The filter is remembered
   (#74).
+- "What's new in MovieDB": after an update, users see the highlights of
+  the new version once, when they first open the app. New users are not
+  shown it.
 
 ### Changed
 - A TV show without aired episodes says so on its page, instead of showing

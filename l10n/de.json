@@ -461,7 +461,14 @@
 		"No episodes have aired yet.": "Es wurden noch keine Folgen ausgestrahlt.",
 		"No episodes are known for this show yet.": "Für diese Serie sind noch keine Folgen bekannt.",
 		"Mark {episode} of {title} as watched": "{episode} von {title} als gesehen markieren",
-		"Stop watching {title}": "{title} nicht weiterschauen"
+		"Stop watching {title}": "{title} nicht weiterschauen",
+		"What's new in MovieDB": "Neu in MovieDB",
+		"Version {version}": "Version {version}",
+		"All changes (opens GitHub)": "Alle Änderungen (öffnet GitHub)",
+		"Got it": "Verstanden",
+		"Continue watching: the dashboard shows the TV shows you are in the middle of, with the next episode, which you can mark as watched right there.": "Weiterschauen: Das Dashboard zeigt die Serien, die du gerade schaust, mit der nächsten Folge. Die kannst du direkt dort als gesehen markieren.",
+		"Stop watching a show you gave up on. It leaves \"Continue watching\" but keeps its episodes and history, and you can resume it at any time.": "Nicht weiterschauen für Serien, die du abgebrochen hast. Sie verschwinden aus „Weiterschauen“, behalten aber Folgen und Verlauf, und du kannst sie jederzeit wieder aufnehmen.",
+		"Every TV show card shows your episode progress, and the TV show list can be filtered by in progress, finished and stopped.": "Jede Serienkarte zeigt deinen Fortschritt, und die Serienliste lässt sich nach laufend, fertig und abgebrochen filtern."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -140,6 +140,24 @@ class SettingsControllerTest extends TestCase {
         $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
     }
 
+    public function testSavesTheLastSeenVersion(): void {
+        $this->request->method('getParams')->willReturn(['lastSeenVersion' => '1.9.0']);
+        $this->userConfig->expects($this->once())->method('setValueString')
+            ->with('alice', 'moviedb', 'last_seen_version', '1.9.0');
+
+        $this->assertSame(Http::STATUS_OK, $this->controller->update()->getStatus());
+    }
+
+    public function testBadLastSeenVersionWritesNothing(): void {
+        $this->request->method('getParams')->willReturn([
+            'defaultLanguage' => 'en-US',
+            'lastSeenVersion' => ['1.9.0'],
+        ]);
+        $this->userConfig->expects($this->never())->method('setValueString');
+
+        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
+    }
+
     public function testKeyRejectedByTmdbWritesNothing(): void {
         $this->request->method('getParams')->willReturn([
             'tmdbApiKey' => 'wrong-key',
