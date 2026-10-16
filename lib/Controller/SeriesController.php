@@ -61,13 +61,13 @@ class SeriesController extends AuthenticatedController {
             'favorite' => $this->request->getParam('favorite'),
         ];
 
-        // The watch status depends on episode counts, so resolve it to ids first.
-        $watchStatus = $this->request->getParam('watchStatus');
-        if (in_array($watchStatus, SeriesProgressService::STATUSES, true)) {
-            $filters['ids'] = $this->progressService->idsWithStatus($libraryId, $watchStatus);
-            if ($filters['ids'] === []) {
-                return new JSONResponse(['series' => [], 'total' => 0, 'page' => $page, 'limit' => $limit, 'totalPages' => 0]);
+        // Empty means all shows; anything else must be a known status.
+        $watchStatus = (string)$this->request->getParam('watchStatus', '');
+        if ($watchStatus !== '') {
+            if (!in_array($watchStatus, SeriesProgressService::STATUSES, true)) {
+                return new JSONResponse(['error' => 'Invalid watchStatus'], Http::STATUS_BAD_REQUEST);
             }
+            $filters['watchStatus'] = $watchStatus;
         }
 
         $series = $this->service->findAll($libraryId, $filters, $limit, $offset);

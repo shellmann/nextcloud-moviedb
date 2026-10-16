@@ -119,19 +119,26 @@ class EpisodeMapper extends QBMapper {
      * SeriesService::findWithProgress: aired = air_date <= $today, season 0
      * (specials) excluded. Series without aired episodes are absent.
      *
+     * Pass $seriesIds to count only those series (one page of a list); without
+     * it the whole library is counted (the dashboard row ranks all shows).
+     *
+     * @param int[]|null $seriesIds
      * @return array<int, array{watched: int, aired: int, lastWatchedAt: ?string}>
      */
-    public function progressByLibrary(int $libraryId, string $today): array {
+    public function progressByLibrary(int $libraryId, string $today, ?array $seriesIds = null): array {
+        if ($seriesIds === []) {
+            return [];
+        }
         $progress = [];
 
-        $aired = $this->progressQuery($libraryId, $today, false);
+        $aired = $this->progressQuery($libraryId, $today, false, $seriesIds);
         $result = $aired->executeQuery();
         while ($row = $result->fetch()) {
             $progress[(int)$row['series_id']] = ['watched' => 0, 'aired' => (int)$row['count'], 'lastWatchedAt' => null];
         }
         $result->closeCursor();
 
-        $watched = $this->progressQuery($libraryId, $today, true);
+        $watched = $this->progressQuery($libraryId, $today, true, $seriesIds);
         $result = $watched->executeQuery();
         while ($row = $result->fetch()) {
             $id = (int)$row['series_id'];
@@ -145,7 +152,10 @@ class EpisodeMapper extends QBMapper {
         return $progress;
     }
 
-    private function progressQuery(int $libraryId, string $today, bool $watchedOnly): IQueryBuilder {
+    /**
+     * @param int[]|null $seriesIds
+     */
+    private function progressQuery(int $libraryId, string $today, bool $watchedOnly, ?array $seriesIds): IQueryBuilder {
         $qb = $this->db->getQueryBuilder();
 
         $qb->select('e.series_id')
@@ -158,6 +168,9 @@ class EpisodeMapper extends QBMapper {
             ->andWhere($qb->expr()->gt('e.season_number', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)))
             ->groupBy('e.series_id');
 
+        if ($seriesIds !== null) {
+            $qb->andWhere($qb->expr()->in('e.series_id', $qb->createNamedParameter(array_values(array_map('intval', $seriesIds)), IQueryBuilder::PARAM_INT_ARRAY)));
+        }
         if ($watchedOnly) {
             $qb->selectAlias($qb->func()->max('e.updated_at'), 'last_watched_at')
                 ->andWhere($qb->expr()->eq('e.watched', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));

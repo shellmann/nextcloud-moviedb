@@ -84,7 +84,7 @@
 				</p>
 			</template>
 			<template #action>
-				<NcButton v-if="!showFavoritesOnly && activeCanEdit" @click="$router.push({ name: 'add-series' })">
+				<NcButton v-if="!showFavoritesOnly && !selectedStatus?.id && activeCanEdit" @click="$router.push({ name: 'add-series' })">
 					{{ t('moviedb', 'Add your first TV show') }}
 				</NcButton>
 			</template>

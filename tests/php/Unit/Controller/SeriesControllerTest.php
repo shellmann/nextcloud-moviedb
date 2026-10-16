@@ -126,36 +126,33 @@ class SeriesControllerTest extends TestCase {
         return [['true', true], ['1', true], ['false', false], ['0', false]];
     }
 
-    public function testIndexFiltersByWatchStatusIds(): void {
+    public function testIndexPassesAKnownWatchStatusToTheQuery(): void {
         $this->params(['watchStatus' => 'finished']);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
-        $this->progressService->method('idsWithStatus')->with(self::LIB, 'finished')->willReturn([2, 5]);
         $this->service->expects($this->once())->method('findAll')
-            ->with(self::LIB, $this->callback(fn (array $f) => $f['ids'] === [2, 5]))->willReturn([]);
-        $this->service->method('count')->willReturn(0);
+            ->with(self::LIB, $this->callback(fn (array $f) => $f['watchStatus'] === 'finished'))->willReturn([]);
+        $this->service->expects($this->once())->method('count')
+            ->with(self::LIB, $this->callback(fn (array $f) => $f['watchStatus'] === 'finished'))->willReturn(0);
+        $this->progressService->method('attachProgress')->willReturn([]);
+
+        $this->assertSame(Http::STATUS_OK, $this->controller()->index()->getStatus());
+    }
+
+    public function testIndexWithoutWatchStatusListsAllShows(): void {
+        $this->params(['watchStatus' => '']);
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
+        $this->service->expects($this->once())->method('findAll')
+            ->with(self::LIB, $this->callback(fn (array $f) => !isset($f['watchStatus'])))->willReturn([]);
         $this->progressService->method('attachProgress')->willReturn([]);
 
         $this->controller()->index();
     }
 
-    public function testIndexShortCircuitsWhenNoSeriesHasTheStatus(): void {
-        $this->params(['watchStatus' => 'stopped']);
-        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
-        $this->progressService->method('idsWithStatus')->willReturn([]);
-        $this->service->expects($this->never())->method('findAll');
-
-        $data = $this->controller()->index()->getData();
-        $this->assertSame([[], 0, 0], [$data['series'], $data['total'], $data['totalPages']]);
-    }
-
-    public function testIndexIgnoresUnknownWatchStatus(): void {
+    public function testIndexRejectsAnUnknownWatchStatus(): void {
         $this->params(['watchStatus' => 'bogus']);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
-        $this->progressService->expects($this->never())->method('idsWithStatus');
-        $this->service->expects($this->once())->method('findAll')
-            ->with(self::LIB, $this->callback(fn (array $f) => !isset($f['ids'])))->willReturn([]);
-        $this->progressService->method('attachProgress')->willReturn([]);
+        $this->service->expects($this->never())->method('findAll');
 
-        $this->controller()->index();
+        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller()->index()->getStatus());
     }
 }

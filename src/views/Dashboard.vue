@@ -311,12 +311,6 @@ export default {
 		},
 
 		/**
-		 * After marking an episode or stopping a show: the row, the counters and
-		 * the progress bars on the other rows all change.
-		 *
-		 * @param series
-		 */
-		/**
 		 * A card marked an episode watched: reload, and keep the focus in the row.
 		 *
 		 * @param {object} series - The show the episode belongs to

@@ -11,10 +11,11 @@ use OCA\MovieDB\Db\SeriesMapper;
 
 /**
  * Episode progress and watch status for many series at once: progress bars on
- * list cards, the status filter of the series list and the dashboard
- * "continue watching" row. Counts come from one grouped query per library
- * (EpisodeMapper::progressByLibrary) and follow the same rule as
- * SeriesService::findWithProgress, so list and detail always agree.
+ * list cards and the dashboard "continue watching" row. Counts come from
+ * grouped queries (EpisodeMapper::progressByLibrary) and follow the same rule
+ * as SeriesService::findWithProgress, so list and detail always agree. The
+ * status filter of the list applies the same rules in SQL
+ * (SeriesMapper::applyWatchStatus), so it paginates for any library size.
  *
  * Episode progress and the stop-watching flag belong to the library, so all
  * members of a shared library see the same status.
@@ -25,6 +26,7 @@ class SeriesProgressService {
     public const STATUS_STOPPED = 'stopped';
     public const STATUSES = [self::STATUS_IN_PROGRESS, self::STATUS_FINISHED, self::STATUS_STOPPED];
 
+    public const CONTINUE_LIMIT_DEFAULT = 10;
     public const CONTINUE_LIMIT_MAX = 20;
 
     public function __construct(
@@ -59,28 +61,13 @@ class SeriesProgressService {
         if ($series === []) {
             return [];
         }
-        $progress = $this->episodeMapper->progressByLibrary($libraryId, $this->today());
+        // Only the rows on screen: at most one page, so the IN list stays small.
+        $ids = array_map(static fn (Series $s): int => $s->getId(), $series);
+        $progress = $this->episodeMapper->progressByLibrary($libraryId, $this->today(), $ids);
 
         return array_map(function (Series $s) use ($progress): array {
             return $this->withProgress($s, $progress[$s->getId()] ?? null);
         }, array_values($series));
-    }
-
-    /**
-     * Ids of the library's series with the given watch status, for the list filter.
-     *
-     * @return int[]
-     */
-    public function idsWithStatus(int $libraryId, string $status): array {
-        $progress = $this->episodeMapper->progressByLibrary($libraryId, $this->today());
-        $ids = [];
-        foreach ($this->seriesMapper->findAllByLibrary($libraryId) as $s) {
-            $p = $progress[$s->getId()] ?? null;
-            if (self::watchStatus((bool)$s->getStoppedWatching(), $p['watched'] ?? 0, $p['aired'] ?? 0) === $status) {
-                $ids[] = $s->getId();
-            }
-        }
-        return $ids;
     }
 
     /**
@@ -91,7 +78,8 @@ class SeriesProgressService {
      * @return array<int, array<string, mixed>>
      */
     public function continueWatching(int $libraryId, int $limit): array {
-        $limit = max(1, min($limit, self::CONTINUE_LIMIT_MAX));
+        // A missing or non-positive limit means the default, not "one row".
+        $limit = $limit > 0 ? min($limit, self::CONTINUE_LIMIT_MAX) : self::CONTINUE_LIMIT_DEFAULT;
         $today = $this->today();
         $progress = $this->episodeMapper->progressByLibrary($libraryId, $today);
 

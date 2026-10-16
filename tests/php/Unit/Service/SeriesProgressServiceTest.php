@@ -51,8 +51,9 @@ class SeriesProgressServiceTest extends TestCase {
     // ---- attachProgress ----
 
     public function testAttachProgressUsesOneQueryAndAddsFields(): void {
+        // Only the series on the page are counted, not the whole library.
         $this->episodeMapper->expects($this->once())->method('progressByLibrary')
-            ->with(self::LIB, $this->isType('string'))
+            ->with(self::LIB, $this->isType('string'), [1, 2])
             ->willReturn([1 => ['watched' => 3, 'aired' => 4, 'lastWatchedAt' => '2026-10-01 10:00:00']]);
 
         $rows = $this->service->attachProgress([$this->series(1), $this->series(2)], self::LIB);
@@ -70,23 +71,6 @@ class SeriesProgressServiceTest extends TestCase {
     public function testAttachProgressSkipsTheQueryForAnEmptyList(): void {
         $this->episodeMapper->expects($this->never())->method('progressByLibrary');
         $this->assertSame([], $this->service->attachProgress([], self::LIB));
-    }
-
-    // ---- idsWithStatus ----
-
-    public function testIdsWithStatus(): void {
-        $this->seriesMapper->method('findAllByLibrary')->willReturn([
-            $this->series(1), $this->series(2), $this->series(3, stopped: true), $this->series(4),
-        ]);
-        $this->episodeMapper->method('progressByLibrary')->willReturn([
-            1 => ['watched' => 2, 'aired' => 5, 'lastWatchedAt' => null],
-            2 => ['watched' => 5, 'aired' => 5, 'lastWatchedAt' => null],
-            3 => ['watched' => 1, 'aired' => 5, 'lastWatchedAt' => null],
-        ]);
-
-        $this->assertSame([1, 4], $this->service->idsWithStatus(self::LIB, 'in_progress'));
-        $this->assertSame([2], $this->service->idsWithStatus(self::LIB, 'finished'));
-        $this->assertSame([3], $this->service->idsWithStatus(self::LIB, 'stopped'));
     }
 
     // ---- continueWatching ----
@@ -130,7 +114,9 @@ class SeriesProgressServiceTest extends TestCase {
 
         $this->assertCount(2, $this->service->continueWatching(self::LIB, 2));
         $this->assertCount(SeriesProgressService::CONTINUE_LIMIT_MAX, $this->service->continueWatching(self::LIB, 500));
-        $this->assertCount(1, $this->service->continueWatching(self::LIB, 0));
+        // A missing or non-positive limit means the default, not "one row".
+        $this->assertCount(SeriesProgressService::CONTINUE_LIMIT_DEFAULT, $this->service->continueWatching(self::LIB, 0));
+        $this->assertCount(SeriesProgressService::CONTINUE_LIMIT_DEFAULT, $this->service->continueWatching(self::LIB, -3));
     }
 
     private function series(int $id, bool $stopped = false, string $createdAt = '2026-01-01 00:00:00'): Series {

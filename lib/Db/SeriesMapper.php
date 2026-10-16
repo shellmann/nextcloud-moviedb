@@ -139,14 +139,76 @@ class SeriesMapper extends QBMapper {
             $qb->andWhere($qb->expr()->iLike('m.title',
                 $qb->createNamedParameter('%' . $this->db->escapeLikeParameter($filters['search']) . '%')));
         }
-        if (isset($filters['ids']) && is_array($filters['ids'])) {
-            // Callers short-circuit an empty list; guard anyway so we never emit IN ().
-            $ids = array_values(array_map('intval', $filters['ids'])) ?: [0];
-            $qb->andWhere($qb->expr()->in('m.id', $qb->createNamedParameter($ids, IQueryBuilder::PARAM_INT_ARRAY)));
+        if (!empty($filters['watchStatus'])) {
+            $this->applyWatchStatus($qb, (string)$filters['watchStatus'], $filters['today'] ?? (new \DateTime())->format('Y-m-d'));
         }
         if (isset($filters['favorite']) && $filters['favorite']) {
             $qb->andWhere($qb->expr()->eq('m.is_favorite', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)));
         }
+    }
+
+    /**
+     * Filter by watch status in SQL, so pagination and counts stay right for
+     * libraries of any size. Joins the aired and the watched regular-episode
+     * counts per series (same rule as SeriesProgressService::watchStatus and
+     * SeriesService::findWithProgress: aired = air_date <= today, season 0
+     * excluded) and compares them:
+     *   stopped     — stopped_watching set
+     *   finished    — not stopped, aired > 0 and watched >= aired
+     *   in_progress — not stopped, nothing aired yet or watched < aired
+     * Unknown values match nothing; the controller rejects them before.
+     */
+    private function applyWatchStatus(IQueryBuilder $qb, string $status, string $today): void {
+        $stopped = $qb->expr()->eq('m.stopped_watching', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL));
+        $notStopped = $qb->expr()->orX(
+            $qb->expr()->eq('m.stopped_watching', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL)),
+            $qb->expr()->isNull('m.stopped_watching')
+        );
+
+        if ($status === 'stopped') {
+            $qb->andWhere($stopped);
+            return;
+        }
+
+        // Both subqueries share these placeholders, bound once on the outer builder.
+        $qb->createNamedParameter($today, IQueryBuilder::PARAM_STR, ':ws_today');
+        $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL, ':ws_watched');
+        $qb->leftJoin('m', $qb->createFunction('(' . $this->episodeCountSql(false) . ')'), 'ea', $qb->expr()->eq('m.id', 'ea.series_id'));
+        $qb->leftJoin('m', $qb->createFunction('(' . $this->episodeCountSql(true) . ')'), 'ew', $qb->expr()->eq('m.id', 'ew.series_id'));
+        $watched = 'COALESCE(ew.episode_count, 0)';
+
+        if ($status === 'finished') {
+            $qb->andWhere($notStopped)
+                ->andWhere($qb->expr()->isNotNull('ea.episode_count'))
+                ->andWhere($qb->createFunction($watched . ' >= ea.episode_count'));
+        } elseif ($status === 'in_progress') {
+            $qb->andWhere($notStopped)
+                ->andWhere($qb->expr()->orX(
+                    $qb->expr()->isNull('ea.episode_count'),
+                    $qb->createFunction($watched . ' < ea.episode_count')
+                ));
+        } else {
+            $qb->andWhere('1 = 0');
+        }
+    }
+
+    /**
+     * Aired regular episodes per series (only watched ones with $watchedOnly).
+     * Rows only exist for series with at least one, hence the LEFT JOINs.
+     */
+    private function episodeCountSql(bool $watchedOnly): string {
+        $sub = $this->db->getQueryBuilder();
+        $sub->select('e.series_id')
+            ->selectAlias($sub->func()->count('*'), 'episode_count')
+            ->from('moviedb_episodes', 'e')
+            ->where($sub->expr()->isNotNull('e.air_date'))
+            ->andWhere('e.air_date <= :ws_today')
+            ->andWhere('e.season_number > 0')
+            ->groupBy('e.series_id');
+        if ($watchedOnly) {
+            $sub->andWhere('e.watched = :ws_watched');
+        }
+        return $sub->getSQL();
     }
 
     public function findByTmdbId(int $libraryId, int $tmdbId): ?Series {
