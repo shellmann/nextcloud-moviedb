@@ -3,12 +3,20 @@ import { translate as t } from '@nextcloud/l10n'
 /**
  * Highlights shown in the "What's new" dialog, newest first. Keep it to two
  * to four points a user notices, in plain words; the CHANGELOG has the rest.
+ * Patch releases get an entry too when they fix something a user notices
+ * (one to four points); purely internal fixes need none.
  * Every text must be a literal t() call (the translation audit scans for them).
  *
  * @return {Array<{ version: string, items: string[] }>}
  */
 export function releaseNotes() {
 	return [
+		{
+			version: '1.9.1',
+			items: [
+				t('moviedb', 'The language you watched in is back: as a flag on movie and TV show cards, and with its name in the watch history of a movie and on the TV show page.'),
+			],
+		},
 		{
 			version: '1.9.0',
 			items: [

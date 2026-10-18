@@ -469,6 +469,7 @@ OC.L10N.register(
         "Got it": "Verstanden",
         "Continue watching: the dashboard shows the TV shows you are in the middle of, with the next episode, which you can mark as watched right there.": "Weiterschauen: Das Dashboard zeigt die Serien, die du gerade schaust, mit der nächsten Folge. Die kannst du direkt dort als gesehen markieren.",
         "Stop watching a show you gave up on. It leaves \"Continue watching\" but keeps its episodes and history, and you can resume it at any time.": "Nicht weiterschauen für Serien, die du abgebrochen hast. Sie verschwinden aus „Weiterschauen“, behalten aber Folgen und Verlauf, und du kannst sie jederzeit wieder aufnehmen.",
-        "Every TV show card shows your episode progress, and the TV show list can be filtered by in progress, finished and stopped.": "Jede Serienkarte zeigt deinen Fortschritt, und die Serienliste lässt sich nach laufend, fertig und abgebrochen filtern."
+        "Every TV show card shows your episode progress, and the TV show list can be filtered by in progress, finished and stopped.": "Jede Serienkarte zeigt deinen Fortschritt, und die Serienliste lässt sich nach laufend, fertig und abgebrochen filtern.",
+        "The language you watched in is back: as a flag on movie and TV show cards, and with its name in the watch history of a movie and on the TV show page.": "Die Sprache, in der du geschaut hast, ist zurück: als Flagge auf den Karten von Filmen und Serien und mit ihrem Namen im Verlauf eines Films und auf der Seite einer Serie."
     },
 "nplurals=2; plural=(n != 1);");

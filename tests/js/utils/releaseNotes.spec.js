@@ -39,12 +39,18 @@ describe('unseenNotes', () => {
 })
 
 describe('releaseNotes', () => {
-	it('has two to four highlights per version and valid versions', () => {
+	it('has two to four highlights per feature release, one to four per patch release', () => {
 		for (const release of releaseNotes()) {
 			expect(release.version).toMatch(/^\d+\.\d+\.\d+$/)
-			expect(release.items.length).toBeGreaterThanOrEqual(2)
+			const isPatch = !release.version.endsWith('.0')
+			expect(release.items.length).toBeGreaterThanOrEqual(isPatch ? 1 : 2)
 			expect(release.items.length).toBeLessThanOrEqual(4)
 		}
+	})
+
+	it('is sorted newest first', () => {
+		const versions = releaseNotes().map((r) => r.version)
+		expect([...versions].sort((a, b) => compareVersions(b, a))).toEqual(versions)
 	})
 
 	it('has notes for 1.9.0, the first version with the dialog', () => {

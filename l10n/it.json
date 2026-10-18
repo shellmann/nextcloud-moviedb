@@ -468,7 +468,8 @@
 		"Got it": "Ho capito",
 		"Continue watching: the dashboard shows the TV shows you are in the middle of, with the next episode, which you can mark as watched right there.": "Continua a guardare: la dashboard mostra le serie che stai guardando, con il prossimo episodio, che puoi segnare come visto direttamente lì.",
 		"Stop watching a show you gave up on. It leaves \"Continue watching\" but keeps its episodes and history, and you can resume it at any time.": "Smetti di guardare una serie che hai abbandonato. Esce da «Continua a guardare» ma conserva episodi e cronologia, e puoi riprenderla in qualsiasi momento.",
-		"Every TV show card shows your episode progress, and the TV show list can be filtered by in progress, finished and stopped.": "Ogni scheda di una serie mostra il tuo avanzamento, e l'elenco delle serie si può filtrare per in corso, finite e interrotte."
+		"Every TV show card shows your episode progress, and the TV show list can be filtered by in progress, finished and stopped.": "Ogni scheda di una serie mostra il tuo avanzamento, e l'elenco delle serie si può filtrare per in corso, finite e interrotte.",
+		"The language you watched in is back: as a flag on movie and TV show cards, and with its name in the watch history of a movie and on the TV show page.": "Torna la lingua in cui hai guardato: come bandiera sulle schede di film e serie TV, e con il suo nome nella cronologia di un film e nella pagina di una serie TV."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

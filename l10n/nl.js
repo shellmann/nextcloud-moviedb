@@ -469,6 +469,7 @@ OC.L10N.register(
         "Got it": "Begrepen",
         "Continue watching: the dashboard shows the TV shows you are in the middle of, with the next episode, which you can mark as watched right there.": "Verder kijken: het dashboard toont de series waar je mee bezig bent, met de volgende aflevering, die je daar meteen als bekeken kunt markeren.",
         "Stop watching a show you gave up on. It leaves \"Continue watching\" but keeps its episodes and history, and you can resume it at any time.": "Stop met kijken naar een serie die je hebt opgegeven. Ze verdwijnt uit ‘Verder kijken’, maar houdt haar afleveringen en geschiedenis, en je kunt haar altijd hervatten.",
-        "Every TV show card shows your episode progress, and the TV show list can be filtered by in progress, finished and stopped.": "Elke seriekaart toont je voortgang, en de serielijst kan worden gefilterd op bezig, uitgekeken en gestopt."
+        "Every TV show card shows your episode progress, and the TV show list can be filtered by in progress, finished and stopped.": "Elke seriekaart toont je voortgang, en de serielijst kan worden gefilterd op bezig, uitgekeken en gestopt.",
+        "The language you watched in is back: as a flag on movie and TV show cards, and with its name in the watch history of a movie and on the TV show page.": "De taal waarin je hebt gekeken is terug: als vlag op de kaarten van films en series, en met de naam in de kijkgeschiedenis van een film en op de pagina van een serie."
     },
 "nplurals=2; plural=(n != 1);");
