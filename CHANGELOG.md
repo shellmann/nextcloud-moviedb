@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- The language you watched in is shown again: as a flag on movie cards
+  (lost in 1.2.0, when rewatches moved the language to each watch) and,
+  new, on TV show cards; with flag and name for each entry in a movie's
+  watch history and next to the language of a TV show. Screen readers get
+  the language name instead of the flag.
+
 ## [1.9.0] - 2026-10-16
 
 ### Added

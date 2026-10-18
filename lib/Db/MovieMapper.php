@@ -88,9 +88,20 @@ class MovieMapper extends QBMapper {
             ->addOrderBy('wr.id', 'DESC')
             ->setMaxResults(1);
 
+        // Language of the same latest watch, for the flag on the movie card.
+        $languageSub = $this->db->getQueryBuilder();
+        $languageSub->select('wl.language_watched')
+            ->from('moviedb_movie_watches', 'wl')
+            ->where('wl.movie_id = m.id')
+            ->andWhere('wl.library_id = :lw_library_id')
+            ->orderBy('wl.watched_at', 'DESC')
+            ->addOrderBy('wl.id', 'DESC')
+            ->setMaxResults(1);
+
         $qb->select(array_map(static fn (string $c): string => 'm.' . $c, self::COLUMNS))
             ->addSelect('lw.watched_at AS last_watched_at')
             ->selectAlias($qb->createFunction('(' . $ratingSub->getSQL() . ')'), 'last_rating')
+            ->selectAlias($qb->createFunction('(' . $languageSub->getSQL() . ')'), 'last_language')
             ->from($this->getTableName(), 'm')
             ->leftJoin(
                 'm',

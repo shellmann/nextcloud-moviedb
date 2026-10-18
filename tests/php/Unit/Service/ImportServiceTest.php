@@ -161,6 +161,24 @@ class ImportServiceTest extends TestCase {
         $this->assertNull($watch->getEpisodeId());
     }
 
+    public function testImportsTheLanguageOfMovieAndSeriesWatches(): void {
+        $data = $this->validated([
+            'movies' => [[
+                'tmdbId' => 603, 'title' => 'The Matrix',
+                'watches' => [['watchedAt' => '2024-01-02', 'language' => 'de'], ['watchedAt' => '2025-01-02']],
+            ]],
+            'series' => [[
+                'tmdbId' => 1396, 'title' => 'Breaking Bad',
+                'watch' => ['watchedAt' => '2024-05-01', 'language' => 'en'],
+            ]],
+        ]);
+
+        $this->service->import(5, 'alice', $data);
+
+        $languages = array_map(fn (MovieWatch $w) => $w->getLanguageWatched(), $this->insertedOf(MovieWatch::class));
+        $this->assertSame(['de', null, 'en'], $languages);
+    }
+
     public function testWatchlistDuplicateKeyIncludesMediaType(): void {
         $data = $this->validated(['watchlist' => [
             ['tmdbId' => 10, 'title' => 'Movie', 'mediaType' => 'movie'],
