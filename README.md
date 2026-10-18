@@ -273,6 +273,8 @@ The app exposes the following REST API endpoints:
 
 Contributions are welcome! See [CONTRIBUTING.md](CONTRIBUTING.md) for development setup, code style, and PR guidelines. For testing (including PHP unit tests), see [TESTING.md](TESTING.md). For translation workflow, see [TRANSLATIONS.md](TRANSLATIONS.md).
 
+Questions and ideas are welcome in [Discussions](https://github.com/shellmann/nextcloud-moviedb/discussions). Everyone taking part is expected to follow the [Code of Conduct](CODE_OF_CONDUCT.md).
+
 ## Security
 
 Found a vulnerability? Please see [SECURITY.md](SECURITY.md) for the reporting process — do not open a public issue.

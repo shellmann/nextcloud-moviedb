@@ -4,7 +4,14 @@ Thank you for your interest in contributing to MovieDB! This document provides g
 
 ## Code of Conduct
 
-Please be respectful and constructive in all interactions. We aim to maintain a welcoming and inclusive environment for all contributors.
+This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md). By taking part, you agree to uphold it. Please report unacceptable behavior as described there.
+
+## Where to Start
+
+- **Questions and ideas**: ask in [Discussions](https://github.com/shellmann/nextcloud-moviedb/discussions)
+- **Bugs and feature requests**: open an issue with one of the [issue forms](https://github.com/shellmann/nextcloud-moviedb/issues/new/choose)
+- **Security vulnerabilities**: never in a public issue, see [SECURITY.md](SECURITY.md)
+- **First contribution?** Issues labeled [`good first issue`](https://github.com/shellmann/nextcloud-moviedb/labels/good%20first%20issue) are a good place to begin. Comment on the issue before you start, so nobody works on the same thing twice
 
 ## Getting Started
 
@@ -116,7 +123,7 @@ git checkout -b fix/your-bug-fix
    ```
 
 3. **Create Pull Request** on GitHub
-   - Provide a clear description of the changes
+   - Fill in the pull request template with a clear description of the changes
    - Reference any related issues
    - Ensure all CI checks pass
 
@@ -131,11 +138,15 @@ git checkout -b fix/your-bug-fix
 
 ## Reporting Issues
 
+Please use the [issue forms](https://github.com/shellmann/nextcloud-moviedb/issues/new/choose); they ask for everything listed below.
+
 ### Bug Reports
 
 When reporting bugs, please include:
+- MovieDB version
 - Nextcloud version
 - PHP version
+- Database (MySQL/MariaDB, PostgreSQL or SQLite)
 - Browser and version (for frontend issues)
 - Steps to reproduce
 - Expected vs actual behavior
@@ -185,7 +196,7 @@ To add a new language, create a new JSON file following the existing structure.
 
 ## Questions?
 
-Feel free to open an issue for any questions about contributing!
+Feel free to ask in [Discussions](https://github.com/shellmann/nextcloud-moviedb/discussions) about anything related to contributing!
 
 ## License
 
