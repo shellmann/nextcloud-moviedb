@@ -106,6 +106,7 @@
 								<span class="watch-date">{{ watch.watchedAt ? formatDate(watch.watchedAt) : t('moviedb', 'Unknown date') }}</span>
 								<span v-if="watch.rating" class="watch-rating">★ {{ watch.rating }}/10</span>
 								<span v-if="watch.platformName || getPlatformName(watch.platformId)" class="watch-platform">{{ watch.platformName || getPlatformName(watch.platformId) }}</span>
+								<span v-if="watch.languageWatched" class="watch-language"><span aria-hidden="true">{{ getLanguageFlag(watch.languageWatched) }}</span> {{ getLanguageName(watch.languageWatched) }}</span>
 								<span v-if="watch.review" class="watch-review-indicator" :title="watch.review">💬</span>
 								<NcActions v-if="activeCanEdit && watchesStore.watches.length > 1">
 									<NcActionButton @click="deleteWatch(watch.id)">
@@ -188,7 +189,7 @@ import Pencil from 'vue-material-design-icons/Pencil.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import RatingStars from '../components/RatingStars.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { getLanguageName } from '../constants.js'
+import { getLanguageFlag, getLanguageName } from '../constants.js'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
@@ -288,6 +289,7 @@ export default {
 
 		formatRuntime,
 		formatDate,
+		getLanguageFlag,
 		getLanguageName,
 		getPlatformName(platformId) {
 			if (!platformId) { return null }
@@ -553,6 +555,7 @@ export default {
     }
 
     .watch-platform,
+    .watch-language,
     .watch-review-indicator {
         color: var(--color-text-maxcontrast);
     }

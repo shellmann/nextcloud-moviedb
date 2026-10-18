@@ -4,9 +4,15 @@
 		role="button"
 		tabindex="0"
 		:aria-labelledby="'movie-title-' + movie.id"
+		:aria-describedby="languageName ? 'movie-desc-' + movie.id : undefined"
 		@click="$emit('click')"
 		@keydown.enter="$emit('click')"
 		@keydown.space.prevent="$emit('click')">
+		<!-- A role="button" exposes only its name, so the language goes into its description. -->
+		<span
+			v-if="languageName"
+			:id="'movie-desc-' + movie.id"
+			class="hidden-visually">{{ languageName }}</span>
 		<div class="poster">
 			<img
 				v-if="movie.posterPath"
@@ -39,6 +45,11 @@
 					<Calendar :size="12" />
 					{{ formatDate(movie.lastWatchedAt) }}
 				</span>
+				<span
+					v-if="movie.lastLanguage"
+					class="language"
+					:title="languageName"
+					aria-hidden="true">{{ getLanguageFlag(movie.lastLanguage) }}</span>
 			</div>
 		</div>
 	</div>
@@ -49,7 +60,7 @@ import Calendar from 'vue-material-design-icons/Calendar.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { GENRE_OPTIONS } from '../constants.js'
+import { GENRE_OPTIONS, getLanguageFlag, getLanguageName } from '../constants.js'
 import { formatDate } from '../utils/formatters.js'
 
 /**
@@ -67,7 +78,7 @@ export default {
 		/**
 		 * Movie object containing all movie data
 		 *
-		 * @type {{ id: number, title: string, posterPath?: string, releaseYear?: number, dateWatched?: string, languageWatched?: string, rating?: number, isFavorite?: boolean }}
+		 * @type {{ id: number, title: string, posterPath?: string, releaseYear?: number, lastWatchedAt?: string, lastLanguage?: string, lastRating?: number, isFavorite?: boolean }}
 		 */
 		movie: {
 			type: Object,
@@ -83,6 +94,10 @@ export default {
 	],
 
 	computed: {
+		languageName() {
+			return getLanguageName(this.movie.lastLanguage)
+		},
+
 		posterUrl() {
 			return getPosterUrl(this.movie.posterPath, 'w300')
 		},
@@ -100,12 +115,22 @@ export default {
 
 	methods: {
 		formatDate,
+		getLanguageFlag,
 	},
 }
 </script>
 
 <style lang="scss" scoped>
 @use '../assets/design-tokens' as tokens;
+
+.hidden-visually {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+}
 
 .movie-card {
     cursor: pointer;
@@ -248,6 +273,7 @@ export default {
 
     .language {
         font-size: 14px;
+        margin-inline-start: auto;
     }
 }
 </style>

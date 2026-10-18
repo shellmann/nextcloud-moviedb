@@ -8,7 +8,7 @@
 		@click="$emit('click')"
 		@keydown.enter="$emit('click')"
 		@keydown.space.prevent="$emit('click')">
-		<!-- A role="button" exposes only its name, so status and progress go into its description. -->
+		<!-- A role="button" exposes only its name, so status, progress and language go into its description. -->
 		<span
 			v-if="description"
 			:id="'series-desc-' + series.id"
@@ -53,6 +53,11 @@
 					<Calendar :size="12" />
 					{{ formatDate(series.lastWatchedAt) }}
 				</span>
+				<span
+					v-if="series.lastLanguage"
+					class="language"
+					:title="languageName"
+					aria-hidden="true">{{ getLanguageFlag(series.lastLanguage) }}</span>
 			</div>
 		</div>
 	</div>
@@ -65,7 +70,7 @@ import Heart from 'vue-material-design-icons/Heart.vue'
 import Television from 'vue-material-design-icons/Television.vue'
 import EpisodeProgress from './EpisodeProgress.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { TV_GENRE_OPTIONS } from '../constants.js'
+import { getLanguageFlag, getLanguageName, TV_GENRE_OPTIONS } from '../constants.js'
 import { formatDate } from '../utils/formatters.js'
 
 /**
@@ -104,6 +109,10 @@ export default {
 			return this.series.watchStatus === 'stopped'
 		},
 
+		languageName() {
+			return getLanguageName(this.series.lastLanguage)
+		},
+
 		description() {
 			const parts = []
 			if (this.stopped) {
@@ -111,6 +120,9 @@ export default {
 			}
 			if (this.series.airedEpisodeCount > 0) {
 				parts.push(t('moviedb', '{watched} of {aired} episodes watched', { watched: this.series.watchedEpisodeCount, aired: this.series.airedEpisodeCount }))
+			}
+			if (this.languageName) {
+				parts.push(this.languageName)
 			}
 			return parts.join(', ')
 		},
@@ -132,6 +144,7 @@ export default {
 
 	methods: {
 		formatDate,
+		getLanguageFlag,
 	},
 }
 </script>
@@ -306,6 +319,11 @@ export default {
         display: flex;
         align-items: center;
         gap: 4px;
+    }
+
+    .language {
+        font-size: 14px;
+        margin-inline-start: auto;
     }
 }
 </style>

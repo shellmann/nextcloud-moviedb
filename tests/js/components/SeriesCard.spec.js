@@ -56,4 +56,19 @@ describe('SeriesCard progress', () => {
 	it('has no description without status or progress', () => {
 		expect(mountCard({}).find('.series-card').attributes('aria-describedby')).toBeUndefined()
 	})
+
+	// Lost in 1.2.0 for movies and never shown for shows; guard both now.
+	it('shows the language watched as a flag and names it in the description', () => {
+		const wrapper = mountCard({ lastLanguage: 'de', watchedEpisodeCount: 3, airedEpisodeCount: 26 })
+		const flag = wrapper.find('.language')
+
+		expect(flag.text()).toBe('🇩🇪')
+		expect(flag.attributes('aria-hidden')).toBe('true')
+		expect(flag.attributes('title')).toBe('German')
+		expect(wrapper.find('#series-desc-1').text()).toBe('3 of 26 episodes watched, German')
+	})
+
+	it('shows no flag without a language', () => {
+		expect(mountCard({}).find('.language').exists()).toBe(false)
+	})
 })

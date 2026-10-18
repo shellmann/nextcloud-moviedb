@@ -44,6 +44,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setLastRating(?int $lastRating)
  * @method string|null getLastWatchedAt()
  * @method void setLastWatchedAt(?string $lastWatchedAt)
+ * @method string|null getLastLanguage()
+ * @method void setLastLanguage(?string $lastLanguage)
  * @method bool getIsFavorite()
  * @method void setIsFavorite(bool $isFavorite)
  * @method bool|null getStoppedWatching()
@@ -74,6 +76,7 @@ class Series extends Entity implements JsonSerializable {
     protected ?string $director = null;
     protected ?int $lastRating = null;
     protected ?string $lastWatchedAt = null;
+    protected ?string $lastLanguage = null;
     protected bool $isFavorite = false;
     protected ?bool $stoppedWatching = false;
     protected string $createdAt = '';
@@ -114,6 +117,7 @@ class Series extends Entity implements JsonSerializable {
             'director' => $this->director,
             'lastRating' => $this->lastRating,
             'lastWatchedAt' => $this->lastWatchedAt,
+            'lastLanguage' => $this->lastLanguage,
             'isFavorite' => $this->isFavorite,
             'stoppedWatching' => (bool)$this->stoppedWatching,
             'createdAt' => $this->createdAt,

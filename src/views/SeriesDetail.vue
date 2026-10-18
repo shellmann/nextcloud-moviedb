@@ -67,7 +67,7 @@
 							{{ t('moviedb', 'Watched on') }}: {{ series.platformName }}
 						</span>
 						<span v-if="series.languageWatched">
-							{{ t('moviedb', 'Language') }}: {{ languageLabel(series.languageWatched) }}
+							{{ t('moviedb', 'Language') }}: <span aria-hidden="true">{{ getLanguageFlag(series.languageWatched) }}</span> {{ languageLabel(series.languageWatched) }}
 						</span>
 						<span v-if="series.watchedAt">
 							{{ t('moviedb', 'Date watched') }}: {{ formatDate(series.watchedAt) }}
@@ -230,7 +230,7 @@ import Pencil from 'vue-material-design-icons/Pencil.vue'
 import PlayCircleOutline from 'vue-material-design-icons/PlayCircleOutline.vue'
 import Television from 'vue-material-design-icons/Television.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
-import { LANGUAGE_OPTIONS } from '../constants.js'
+import { getLanguageFlag, LANGUAGE_OPTIONS } from '../constants.js'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { useSeriesStore } from '../stores/series.js'
 import { episodeCode, formatDate, formatRuntime } from '../utils/formatters.js'
@@ -334,6 +334,7 @@ export default {
 	},
 
 	methods: {
+		getLanguageFlag,
 		formatDate,
 		formatRuntime,
 		languageLabel(code) {

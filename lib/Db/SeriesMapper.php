@@ -68,9 +68,20 @@ class SeriesMapper extends QBMapper {
             ->andWhere($sub->expr()->isNotNull('w.series_id'))
             ->groupBy('w.series_id');
 
+        // Language of the show's own watch row (episode_id NULL), the same row
+        // MovieWatchMapper::getSeriesWatchSummary reads, for the flag on the card.
+        $languageSub = $this->db->getQueryBuilder();
+        $languageSub->select('wl.language_watched')
+            ->from('moviedb_movie_watches', 'wl')
+            ->where('wl.series_id = m.id')
+            ->andWhere('wl.library_id = :lw_series_library_id')
+            ->andWhere($languageSub->expr()->isNull('wl.episode_id'))
+            ->setMaxResults(1);
+
         $qb->select(array_map(static fn (string $c): string => 'm.' . $c, self::COLUMNS))
             ->addSelect('lw.watched_at AS last_watched_at')
             ->addSelect('lw.rating AS last_rating')
+            ->selectAlias($qb->createFunction('(' . $languageSub->getSQL() . ')'), 'last_language')
             ->from($this->getTableName(), 'm')
             ->leftJoin(
                 'm',

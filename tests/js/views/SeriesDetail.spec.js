@@ -89,3 +89,19 @@ describe('SeriesDetail progress block', () => {
 		expect(store.setStopped).toHaveBeenCalledWith(3, true)
 	})
 })
+
+describe('SeriesDetail watch summary', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+	})
+
+	it('shows the language watched with its flag', async () => {
+		const { wrapper } = await mountDetail(show({ languageWatched: 'de' }))
+
+		expect(wrapper.find('.series-watch-summary').text()).toContain('Language: 🇩🇪 Deutsch (German)')
+	})
+})

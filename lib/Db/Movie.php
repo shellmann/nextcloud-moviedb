@@ -42,6 +42,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setLastRating(?int $lastRating)
  * @method string|null getLastWatchedAt()
  * @method void setLastWatchedAt(?string $lastWatchedAt)
+ * @method string|null getLastLanguage()
+ * @method void setLastLanguage(?string $lastLanguage)
  * @method bool getIsFavorite()
  * @method void setIsFavorite(bool $isFavorite)
  * @method int|null getLibraryId()
@@ -69,6 +71,7 @@ class Movie extends Entity implements JsonSerializable {
     protected string $mediaType = 'movie';
     protected ?int $lastRating = null;
     protected ?string $lastWatchedAt = null;
+    protected ?string $lastLanguage = null;
     protected bool $isFavorite = false;
     protected string $createdAt = '';
     protected ?string $updatedAt = null;
@@ -105,6 +108,7 @@ class Movie extends Entity implements JsonSerializable {
             'mediaType' => $this->mediaType,
             'lastRating' => $this->lastRating,
             'lastWatchedAt' => $this->lastWatchedAt,
+            'lastLanguage' => $this->lastLanguage,
             'isFavorite' => $this->isFavorite,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,

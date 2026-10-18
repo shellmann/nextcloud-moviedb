@@ -78,4 +78,21 @@ describe('MovieCard', () => {
 		const wrapper = mountComponent()
 		expect(wrapper.find('.poster img').exists()).toBe(true)
 	})
+
+	// The flag was dropped in 1.2.0 when the language moved to the watches table.
+	it('shows the language of the latest watch as a flag and names it in the description', () => {
+		const wrapper = mountComponent({ ...defaultMovie, lastLanguage: 'fr' })
+		const flag = wrapper.find('.language')
+
+		expect(flag.text()).toBe('🇫🇷')
+		expect(flag.attributes('aria-hidden')).toBe('true')
+		expect(wrapper.find('.movie-card').attributes('aria-describedby')).toBe('movie-desc-1')
+		expect(wrapper.find('#movie-desc-1').text()).toBe('French')
+	})
+
+	it('shows no flag and no description without a language', () => {
+		const wrapper = mountComponent()
+		expect(wrapper.find('.language').exists()).toBe(false)
+		expect(wrapper.find('.movie-card').attributes('aria-describedby')).toBeUndefined()
+	})
 })
