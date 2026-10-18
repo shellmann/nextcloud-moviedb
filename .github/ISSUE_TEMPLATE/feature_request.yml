@@ -1,0 +1,33 @@
+name: Feature request
+description: Suggest an idea or an improvement for MovieDB
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea! Please check the [open issues](https://github.com/shellmann/nextcloud-moviedb/issues) first, it may already be on the list. For open-ended ideas you'd like to discuss first, use [Discussions](https://github.com/shellmann/nextcloud-moviedb/discussions).
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe what you're trying to do and what gets in the way.
+      placeholder: When I …, I can't …
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How would you like it to work?
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives you've considered
+      description: Other solutions or workarounds you've tried.
+  - type: textarea
+    id: benefit
+    attributes:
+      label: Who else would benefit?
+      description: Why would this be useful to other MovieDB users?

@@ -2,37 +2,34 @@
 
 ## Supported Versions
 
-We currently provide security updates for the following versions:
+Security fixes go into the latest minor release and ship as a new patch release (for example 1.9.1). Please update to the latest version before you report an issue.
 
 | Version | Supported          |
 | ------- | ------------------ |
-| 1.4.x   | :white_check_mark: |
-| 1.3.x   | :white_check_mark: |
-| < 1.3   | :x:                |
+| 1.9.x   | :white_check_mark: |
+| < 1.9   | :x:                |
 
 ## Reporting a Vulnerability
 
-We take the security of MovieDB seriously. If you discover a security vulnerability, please follow these steps:
+I take the security of MovieDB seriously. If you discover a security vulnerability, please follow these steps:
 
 ### Reporting Process
 
-1. **DO NOT** open a public GitHub issue for security vulnerabilities
-2. **DO** report the vulnerability privately through one of these methods:
-   - Open a private security advisory on GitHub (preferred)
-   - Contact via GitHub discussions (mark as sensitive)
+1. **DO NOT** open a public GitHub issue, discussion or pull request for security vulnerabilities
+2. **DO** report the vulnerability privately through GitHub's [private vulnerability reporting form](https://github.com/shellmann/nextcloud-moviedb/security/advisories/new) (Security tab → "Report a vulnerability"). Only the maintainer can see the report.
 
 3. **Include the following information**:
    - Description of the vulnerability
    - Steps to reproduce the issue
+   - Affected MovieDB and Nextcloud versions
    - Potential impact
    - Suggested fix (if you have one)
-   - Your contact information
 
 ### What to Expect
 
 - **Acknowledgment**: I will try to acknowledge receipt of your report when I can
 - **Assessment**: I will assess the vulnerability and determine its severity when possible
-- **Updates**: I will try to keep you informed about progress
+- **Updates**: I will try to keep you informed about progress in the advisory
 - **Resolution**: I will try to work on fixes as my schedule allows - critical issues will be prioritized when feasible
 - **Credit**: If you wish, I will credit you in the security advisory (unless you prefer to remain anonymous)
 
@@ -50,10 +47,10 @@ When using MovieDB:
 
 ### Known Security Considerations
 
-- **TMDB API Key**: Your TMDB API key is stored in Nextcloud's encrypted user settings
+- **TMDB API Key**: A personal TMDB API key is stored in Nextcloud's user settings, an instance-wide key set by an admin in the app config. Both are stored as sensitive values, so Nextcloud encrypts them and hides them from config listings. All TMDB requests go through the server, so the key never reaches the browser
 - **Data Privacy**: Movie data is private to each user by default. Shared libraries allow users to intentionally share their collection with specific other Nextcloud users — access is controlled by the library owner via role assignments (viewer/editor)
 - **XSS Protection**: All user input is sanitized to prevent cross-site scripting
-- **SQL Injection**: We use Nextcloud's QueryBuilder to prevent SQL injection attacks
+- **SQL Injection**: Nextcloud's QueryBuilder is used to prevent SQL injection attacks
 - **CSRF Protection**: All forms use Nextcloud's built-in CSRF protection
 
 ### Security Features
@@ -68,13 +65,13 @@ When using MovieDB:
 
 ## Disclosure Policy
 
-- We follow responsible disclosure practices
-- Security advisories will be published on GitHub Security Advisories
-- Critical vulnerabilities will be announced in release notes
-- We will credit security researchers (unless anonymity is requested)
+- I follow responsible disclosure practices
+- Security advisories will be published on [GitHub Security Advisories](https://github.com/shellmann/nextcloud-moviedb/security/advisories)
+- Critical vulnerabilities will be announced in the release notes
+- I will credit security researchers (unless anonymity is requested)
 
 ## Questions
 
-If you have questions about this security policy, please open a GitHub discussion.
+If you have questions about this security policy, please ask in [Discussions](https://github.com/shellmann/nextcloud-moviedb/discussions). Don't include details of a vulnerability there, since discussions are public.
 
 Thank you for helping keep MovieDB and its users safe!
