@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.9.2] - 2026-10-20
+
 ### Added
 - TV shows stay up to date: a background job compares the episodes of every
   show with TMDB once a day and adds new seasons and episodes and updates air
