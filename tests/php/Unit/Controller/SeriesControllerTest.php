@@ -133,6 +133,47 @@ class SeriesControllerTest extends TestCase {
         $this->assertSame('no_api_key', $response->getData()['code']);
     }
 
+    public function testRefreshFallsBackToTheLibraryOwnersKeyForAnEditorWithoutOne(): void {
+        $this->params(['language' => 'en-US']);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->libraryService->method('getOwner')->with(self::LIB)->willReturn('anna');
+        $this->refreshService->method('hasApiKey')->willReturnCallback(fn (?string $u) => $u === 'anna');
+        $series = new \OCA\MovieDB\Db\Series();
+        $this->service->method('find')->willReturn($series);
+        $this->service->method('findWithProgress')->willReturn(['id' => 1]);
+        $this->refreshService->expects($this->once())->method('refresh')->with($series, 'anna', 'en-US', true)
+            ->willReturn(['newEpisodes' => 0, 'updatedEpisodes' => 0, 'newSeasons' => 0]);
+
+        $this->assertSame(Http::STATUS_OK, $this->controller()->refresh(1)->getStatus());
+    }
+
+    public function testRefreshPrefersTheUsersOwnKeyOverTheOwners(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->libraryService->expects($this->never())->method('getOwner');
+        $this->refreshService->method('hasApiKey')->willReturn(true);
+        $this->service->method('find')->willReturn(new \OCA\MovieDB\Db\Series());
+        $this->service->method('findWithProgress')->willReturn(['id' => 1]);
+        $this->refreshService->expects($this->once())->method('refresh')
+            ->with($this->anything(), 'alice', $this->anything(), true)
+            ->willReturn(['newEpisodes' => 0, 'updatedEpisodes' => 0, 'newSeasons' => 0]);
+
+        $this->controller()->refresh(1);
+    }
+
+    public function testRefreshWithNeitherUserNorOwnerKeyIsABadRequest(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->libraryService->method('getOwner')->willReturn('anna');
+        $this->refreshService->method('hasApiKey')->willReturn(false);
+        $this->refreshService->expects($this->never())->method('refresh');
+
+        $this->assertSame('no_api_key', $this->controller()->refresh(1)->getData()['code']);
+    }
+
     public function testRefreshForUnknownSeriesIsNotFound(): void {
         $this->params([]);
         $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);

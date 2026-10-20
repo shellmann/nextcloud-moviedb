@@ -62,6 +62,22 @@ class LibraryServiceTest extends TestCase {
         );
     }
 
+    // ── getOwner ──────────────────────────────────────────────────────────────
+
+    public function testGetOwnerReturnsTheLibraryOwner(): void {
+        $library = new Library();
+        $library->setOwner('anna');
+        $this->libraryMapper->method('find')->with(4)->willReturn($library);
+
+        $this->assertSame('anna', $this->service->getOwner(4));
+    }
+
+    public function testGetOwnerIsNullForAnUnknownLibrary(): void {
+        $this->libraryMapper->method('find')->willThrowException(new \OCP\AppFramework\Db\DoesNotExistException('x'));
+
+        $this->assertNull($this->service->getOwner(99));
+    }
+
     // ── create ────────────────────────────────────────────────────────────────
 
     public function testCreateReturnsNewLibrary(): void {

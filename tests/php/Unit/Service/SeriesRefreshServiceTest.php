@@ -320,13 +320,33 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->service->refresh($series, 'alice', 'en-US');
     }
 
-    public function testMarkRefreshedOnlyStampsTheTime(): void {
-        $series = $this->series();
-        $this->seriesMapper->expects($this->once())->method('update')->with($series);
+    public function testMarkRefreshedStampsTheStoredRowNotTheDirtyEntity(): void {
+        // A refresh that failed after changing the entity: the rolled-back values must not be saved.
+        $dirty = $this->series('Ended');
+        $dirty->setNumberOfSeasons(9);
+        $stored = $this->series('Returning Series');
+        $this->seriesMapper->method('find')->with($dirty->getId())->willReturn($stored);
+        $this->seriesMapper->expects($this->once())->method('update')->with($stored);
 
-        $this->service->markRefreshed($series);
+        $this->service->markRefreshed($dirty);
 
-        $this->assertNotNull($series->getTmdbRefreshedAt());
+        $this->assertNotNull($stored->getTmdbRefreshedAt());
+        $this->assertSame('Returning Series', $stored->getStatus());
+        $this->assertSame(1, $stored->getNumberOfSeasons());
+        $this->assertNull($dirty->getTmdbRefreshedAt());
+    }
+
+    public function testAnEpisodeRepeatedInThePayloadIsInsertedOnlyOnce(): void {
+        $this->episodeMapper->method('findBySeries')->willReturn([]);
+        $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 2, 2 => 1]));
+        $this->tmdb->method('getSeasonDetails')->willReturnCallback(fn (int $id, int $season) => ['episodes' => $season === 1
+            ? [$this->tmdbEp(1, 1, '2030-01-01'), $this->tmdbEp(1, 1, '2030-01-01')]
+            : [$this->tmdbEp(1, 1, '2030-01-01')]]);
+
+        $result = $this->service->refresh($this->series(), 'alice', 'en-US');
+
+        $this->assertSame(1, $result['newEpisodes']);
+        $this->assertCount(1, $this->inserted);
     }
 
     public function testRecognisesATooManyRequestsError(): void {

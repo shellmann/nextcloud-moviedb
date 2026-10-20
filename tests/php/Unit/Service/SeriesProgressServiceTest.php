@@ -224,6 +224,23 @@ class SeriesProgressServiceTest extends TestCase {
         $this->assertSame(3, $rows[0]['sameDayCount']);
     }
 
+    public function testComingUpCountsOnlyTheSameSeasonAndKnowsTheLastEpisode(): void {
+        $day = $this->in(7);
+        $this->episodeMapper->method('upcomingByLibrary')->willReturn([
+            $this->upcoming(1, 3, 1, $day),
+            $this->upcoming(1, 3, 2, $day),
+            $this->upcoming(1, 3, 4, $day),   // gap in the numbering
+            $this->upcoming(1, 4, 1, $day),   // another season, same day
+        ]);
+        $this->seriesMapper->method('findAllByLibrary')->willReturn([$this->series(1)]);
+        $this->episodeMapper->method('progressByLibrary')->willReturn([1 => ['watched' => 8, 'aired' => 8, 'lastWatchedAt' => null]]);
+
+        $rows = $this->service->comingUp(self::LIB);
+
+        $this->assertSame(3, $rows[0]['sameDayCount']);
+        $this->assertSame(4, $rows[0]['sameDayLastEpisode']);
+    }
+
     public function testComingUpSortsTiesByTitleAndHonoursTheLimit(): void {
         $day = $this->in(5);
         $this->episodeMapper->method('upcomingByLibrary')->willReturn([

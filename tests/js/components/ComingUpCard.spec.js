@@ -60,6 +60,13 @@ describe('ComingUpCard', () => {
 		expect(episode.find('.hidden-visually').text()).toBe('Season 2, episodes 1 to 8')
 	})
 
+	it('ends the range at the last episode of that day when the numbering has gaps', () => {
+		const wrapper = mountCard(show({}, { sameDayCount: 3, sameDayLastEpisode: 4 }))
+
+		expect(wrapper.find('.episode [aria-hidden="true"]').text()).toBe('S02E01–E04')
+		expect(wrapper.find('.episode .hidden-visually').text()).toBe('Season 2, episodes 1 to 4')
+	})
+
 	it('marks the first episode of a later season as a new season, in text', () => {
 		expect(mountCard().find('.badge').text()).toBe('New season')
 	})

@@ -59,7 +59,7 @@ export default {
 		/**
 		 * Series row from GET /api/series/upcoming
 		 *
-		 * @type {{ id: number, title: string, posterPath?: string, upcomingEpisode: object, sameDayCount: number }}
+		 * @type {{ id: number, title: string, posterPath?: string, upcomingEpisode: object, sameDayCount: number, sameDayLastEpisode?: number }}
 		 */
 		series: {
 			type: Object,
@@ -90,8 +90,9 @@ export default {
 			return this.count === 1 && Boolean(this.episode.name)
 		},
 
+		/** Last episode released that day; the count alone would be wrong for gaps in the numbering. */
 		lastNumber() {
-			return this.episode.episodeNumber + this.count - 1
+			return this.series.sameDayLastEpisode || this.episode.episodeNumber + this.count - 1
 		},
 
 		dateLabel() {

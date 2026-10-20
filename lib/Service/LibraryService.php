@@ -81,6 +81,18 @@ class LibraryService {
     }
 
     /**
+     * The owner of a library, or null if it does not exist. The owner's TMDB key
+     * is the one used for work done on behalf of the library.
+     */
+    public function getOwner(int $libraryId): ?string {
+        try {
+            return $this->libraryMapper->find($libraryId)->getOwner();
+        } catch (DoesNotExistException $e) {
+            return null;
+        }
+    }
+
+    /**
      * Return true if the user may write to the library (is owner, or is a
      * member with permission_edit=true).
      */

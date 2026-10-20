@@ -16,7 +16,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   instance-wide key) and slows down when TMDB asks it to. Until now episodes
   were only loaded once, when a show was added, so a new season never showed up.
 - "Update from TMDB" button on the TV show page (for editors, rate-limited to
-  10 updates a minute). It says what changed ("A new season was added.") and
+  10 updates a minute; an editor without a TMDB key of their own uses the
+  library owner's key, like the background job). It says what changed ("A new season was added.") and
   when the episodes were last updated.
 - "Coming up" on the dashboard: TV shows you are up to date on whose next
   episode airs in the next 30 days, soonest first, with a relative date ("Tomorrow"),

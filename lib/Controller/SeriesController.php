@@ -364,15 +364,22 @@ class SeriesController extends AuthenticatedController {
             return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
         }
 
-        if (!$this->refreshService->hasApiKey($this->userId)) {
-            return new JSONResponse(['error' => 'No TMDB API key configured.', 'code' => 'no_api_key'], Http::STATUS_BAD_REQUEST);
+        // The user's own key (or the instance-wide one); in a shared library an editor
+        // without one falls back to the owner's key, as the background job does.
+        $keyUser = $this->userId;
+        if (!$this->refreshService->hasApiKey($keyUser)) {
+            $owner = $this->libraryService->getOwner($libraryId);
+            if ($owner === null || !$this->refreshService->hasApiKey($owner)) {
+                return new JSONResponse(['error' => 'No TMDB API key configured.', 'code' => 'no_api_key'], Http::STATUS_BAD_REQUEST);
+            }
+            $keyUser = $owner;
         }
 
         $language = (string)$this->request->getParam('language', 'en-US');
 
         try {
             $series = $this->service->find($id, $libraryId);
-            $result = $this->refreshService->refresh($series, $this->userId, $language, true);
+            $result = $this->refreshService->refresh($series, $keyUser, $language, true);
             return new JSONResponse([
                 'series' => $this->service->findWithProgress($id, $libraryId),
                 'result' => $result,

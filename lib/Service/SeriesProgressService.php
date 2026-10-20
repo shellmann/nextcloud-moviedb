@@ -121,7 +121,8 @@ class SeriesProgressService {
      * Shows to look forward to: not stopped, nothing aired left to watch (shows
      * in progress belong to continueWatching), and the next regular episode airs
      * within $days. Soonest first. Each row carries its upcomingEpisode and the
-     * number of episodes of that show airing the same day (a whole season drop).
+     * number of episodes of that season airing the same day (a whole season drop)
+     * and the number of the last of them.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -131,16 +132,19 @@ class SeriesProgressService {
         $today = $this->today();
         $until = (new DateTime($today))->modify('+' . $days . ' days')->format('Y-m-d');
 
-        // First episode per show (the list is sorted by air date) and how many share its day.
+        // First episode per show (the list is sorted by air date) and the episodes of
+        // the same season released the same day: a whole season at once reads as a range.
         $next = [];
         $sameDay = [];
+        $lastOfDay = [];
         foreach ($this->episodeMapper->upcomingByLibrary($libraryId, $today, $until) as $episode) {
             $id = $episode->getSeriesId();
             if (!isset($next[$id])) {
                 $next[$id] = $episode;
             }
-            if ($episode->getAirDate() === $next[$id]->getAirDate()) {
+            if ($episode->getAirDate() === $next[$id]->getAirDate() && $episode->getSeasonNumber() === $next[$id]->getSeasonNumber()) {
                 $sameDay[$id] = ($sameDay[$id] ?? 0) + 1;
+                $lastOfDay[$id] = max($lastOfDay[$id] ?? 0, $episode->getEpisodeNumber());
             }
         }
         if ($next === []) {
@@ -167,6 +171,7 @@ class SeriesProgressService {
             $row = $this->withProgress($s, $progress[$s->getId()] ?? null);
             $row['upcomingEpisode'] = $next[$s->getId()]->jsonSerialize();
             $row['sameDayCount'] = $sameDay[$s->getId()];
+            $row['sameDayLastEpisode'] = $lastOfDay[$s->getId()];
             $rows[] = $row;
         }
         return $rows;

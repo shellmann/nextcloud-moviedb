@@ -7,6 +7,7 @@ namespace OCA\MovieDB\BackgroundJob;
 use DateTime;
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Db\LibraryMapper;
+use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Service\SeriesRefreshService;
 use OCA\MovieDB\Service\TmdbService;
@@ -65,7 +66,9 @@ class RefreshSeriesJob extends TimedJob {
         foreach ($due as $series) {
             $owner = $this->ownerOf($series->getLibraryId(), $series->getUserId());
             if (!$this->tmdbService->hasApiKey($owner)) {
-                // Nobody to ask TMDB for: leave it for when a key exists.
+                // Nobody to ask TMDB for. Stamp it anyway, otherwise key-less shows (never
+                // refreshed) sort first in every run and could fill the whole batch.
+                $this->markQuietly($series);
                 $skipped++;
                 continue;
             }
@@ -81,16 +84,20 @@ class RefreshSeriesJob extends TimedJob {
                 }
                 // Mark it as looked at, so a removed or broken show is retried at the normal interval.
                 $this->logger->warning('Could not refresh a TV show from TMDB.', ['exception' => $e, 'seriesId' => $series->getId()]);
-                try {
-                    $this->refreshService->markRefreshed($series);
-                } catch (\Throwable $inner) {
-                    $this->logger->warning('Could not record the failed refresh.', ['exception' => $inner, 'seriesId' => $series->getId()]);
-                }
+                $this->markQuietly($series);
             }
             $this->pause();
         }
 
         $this->logger->debug('TV show refresh finished.', ['refreshed' => $refreshed, 'skippedWithoutKey' => $skipped]);
+    }
+
+    private function markQuietly(Series $series): void {
+        try {
+            $this->refreshService->markRefreshed($series);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Could not record the refresh attempt.', ['exception' => $e, 'seriesId' => $series->getId()]);
+        }
     }
 
     /** Overridden in tests. */

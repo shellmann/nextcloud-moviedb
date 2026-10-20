@@ -117,12 +117,13 @@ class RefreshSeriesJobTest extends TestCase {
         $this->job()->runNow();
     }
 
-    public function testSkipsShowsWithoutAnyKeyAndDoesNotMarkThem(): void {
-        $this->seriesMapper->method('findDueForRefresh')->willReturn([$this->series(1)]);
+    public function testSkipsShowsWithoutAnyKeyButStampsThemSoTheyDoNotFillTheBatch(): void {
+        $show = $this->series(1);
+        $this->seriesMapper->method('findDueForRefresh')->willReturn([$show]);
         $this->libraryMapper->method('find')->willReturn($this->library('owner'));
         $this->tmdb->method('hasApiKey')->willReturn(false);
         $this->refreshService->expects($this->never())->method('refresh');
-        $this->refreshService->expects($this->never())->method('markRefreshed');
+        $this->refreshService->expects($this->once())->method('markRefreshed')->with($show);
 
         $this->job()->runNow();
     }

@@ -96,6 +96,11 @@ class SeriesRefreshService {
                         TmdbEpisode::apply($episode, $ep, $seasonNumber);
                         $episode->setCreatedAt($now);
                         $this->episodeMapper->insert($episode);
+                        // Known from now on: a repeated or moved episode in this run is an update, not a second row.
+                        if ($episode->getTmdbId() !== null) {
+                            $byTmdbId[$episode->getTmdbId()] = $episode;
+                        }
+                        $byPosition[$episode->getSeasonNumber() . 'x' . $episode->getEpisodeNumber()] = $episode;
                         $result['newEpisodes']++;
                         $added++;
                         continue;
@@ -129,8 +134,11 @@ class SeriesRefreshService {
      * does not block the queue and is retried at the normal interval.
      */
     public function markRefreshed(Series $series): void {
-        $series->setTmdbRefreshedAt((new DateTime())->format('Y-m-d H:i:s'));
-        $this->seriesMapper->update($series);
+        // Re-read the row: after a failed refresh the passed entity can still carry
+        // status and counts from the rolled-back write, which must not be saved now.
+        $fresh = $this->seriesMapper->find($series->getId());
+        $fresh->setTmdbRefreshedAt((new DateTime())->format('Y-m-d H:i:s'));
+        $this->seriesMapper->update($fresh);
     }
 
     private function applySeriesDetails(Series $series, array $details, string $now): void {
