@@ -29,6 +29,11 @@ class SeriesProgressService {
     public const CONTINUE_LIMIT_DEFAULT = 10;
     public const CONTINUE_LIMIT_MAX = 20;
 
+    public const COMING_UP_DAYS_DEFAULT = 30;
+    public const COMING_UP_DAYS_MAX = 90;
+    public const COMING_UP_LIMIT_DEFAULT = 10;
+    public const COMING_UP_LIMIT_MAX = 20;
+
     public function __construct(
         private SeriesMapper $seriesMapper,
         private EpisodeMapper $episodeMapper,
@@ -107,6 +112,66 @@ class SeriesProgressService {
             $next = $this->episodeMapper->findNextUnwatched($s->getId(), $today);
             $row['nextEpisode'] = $next?->jsonSerialize();
             $row['lastActivityAt'] = $p['lastWatchedAt'];
+            $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    /**
+     * Shows to look forward to: not stopped, nothing aired left to watch (shows
+     * in progress belong to continueWatching), and the next regular episode airs
+     * within $days. Soonest first. Each row carries its upcomingEpisode and the
+     * number of episodes of that season airing the same day (a whole season drop)
+     * and the number of the last of them.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function comingUp(int $libraryId, int $days = self::COMING_UP_DAYS_DEFAULT, int $limit = self::COMING_UP_LIMIT_DEFAULT): array {
+        $days = $days > 0 ? min($days, self::COMING_UP_DAYS_MAX) : self::COMING_UP_DAYS_DEFAULT;
+        $limit = $limit > 0 ? min($limit, self::COMING_UP_LIMIT_MAX) : self::COMING_UP_LIMIT_DEFAULT;
+        $today = $this->today();
+        $until = (new DateTime($today))->modify('+' . $days . ' days')->format('Y-m-d');
+
+        // First episode per show (the list is sorted by air date) and the episodes of
+        // the same season released the same day: a whole season at once reads as a range.
+        $next = [];
+        $sameDay = [];
+        $lastOfDay = [];
+        foreach ($this->episodeMapper->upcomingByLibrary($libraryId, $today, $until) as $episode) {
+            $id = $episode->getSeriesId();
+            if (!isset($next[$id])) {
+                $next[$id] = $episode;
+            }
+            if ($episode->getAirDate() === $next[$id]->getAirDate() && $episode->getSeasonNumber() === $next[$id]->getSeasonNumber()) {
+                $sameDay[$id] = ($sameDay[$id] ?? 0) + 1;
+                $lastOfDay[$id] = max($lastOfDay[$id] ?? 0, $episode->getEpisodeNumber());
+            }
+        }
+        if ($next === []) {
+            return [];
+        }
+
+        $progress = $this->episodeMapper->progressByLibrary($libraryId, $today, array_keys($next));
+        $candidates = [];
+        foreach ($this->seriesMapper->findAllByLibrary($libraryId) as $s) {
+            if (!isset($next[$s->getId()]) || $s->getStoppedWatching()) {
+                continue;
+            }
+            $p = $progress[$s->getId()] ?? null;
+            if ($p !== null && $p['aired'] > $p['watched']) {
+                continue;
+            }
+            $candidates[] = $s;
+        }
+
+        usort($candidates, static fn (Series $a, Series $b): int => [$next[$a->getId()]->getAirDate(), $a->getTitle(), $a->getId()] <=> [$next[$b->getId()]->getAirDate(), $b->getTitle(), $b->getId()]);
+
+        $rows = [];
+        foreach (array_slice($candidates, 0, $limit) as $s) {
+            $row = $this->withProgress($s, $progress[$s->getId()] ?? null);
+            $row['upcomingEpisode'] = $next[$s->getId()]->jsonSerialize();
+            $row['sameDayCount'] = $sameDay[$s->getId()];
+            $row['sameDayLastEpisode'] = $lastOfDay[$s->getId()];
             $rows[] = $row;
         }
         return $rows;

@@ -205,6 +205,32 @@ class EpisodeMapper extends QBMapper {
     }
 
     /**
+     * Regular episodes (season 0 excluded) airing after $today up to and
+     * including $until, for all shows of a library, soonest first. The
+     * dashboard "Coming up" row keeps the first one per show.
+     *
+     * @return Episode[]
+     */
+    public function upcomingByLibrary(int $libraryId, string $today, string $until): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('e.*')
+            ->from($this->getTableName(), 'e')
+            ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
+            ->where($qb->expr()->eq('s.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->isNotNull('e.air_date'))
+            ->andWhere($qb->expr()->gt('e.air_date', $qb->createNamedParameter($today)))
+            ->andWhere($qb->expr()->lte('e.air_date', $qb->createNamedParameter($until)))
+            ->andWhere($qb->expr()->gt('e.season_number', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)))
+            ->orderBy('e.air_date', 'ASC')
+            ->addOrderBy('e.series_id', 'ASC')
+            ->addOrderBy('e.season_number', 'ASC')
+            ->addOrderBy('e.episode_number', 'ASC');
+
+        return $this->findEntities($qb);
+    }
+
+    /**
      * Total watched episodes across all of a library's series. Episodes have no
      * library_id, so join through moviedb_series.
      */

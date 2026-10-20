@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { setActivePinia, createPinia } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
-import { useSeriesStore } from '@/stores/series.js'
+import { refreshMessage, useSeriesStore } from '@/stores/series.js'
 
 vi.mock('@/services/api.js', () => ({
 	default: {
@@ -14,6 +14,7 @@ vi.mock('@/services/api.js', () => ({
 		markSeasonWatched: vi.fn(),
 		markSeriesWatched: vi.fn(),
 		setSeriesStopped: vi.fn(),
+		refreshSeries: vi.fn(),
 	},
 }))
 
@@ -309,5 +310,84 @@ describe('Series Store', () => {
 			expect(await store.setStopped(5, true)).toBeNull()
 			expect(showError).toHaveBeenCalled()
 		})
+	})
+})
+
+describe('refresh from TMDB', () => {
+	let store
+
+	beforeEach(() => {
+		localStorage.clear()
+		setActivePinia(createPinia())
+		store = useSeriesStore()
+		vi.clearAllMocks()
+	})
+
+	const result = (extra = {}) => ({ newEpisodes: 0, updatedEpisodes: 0, newSeasons: 0, ...extra })
+
+	it('replaces the open show with the server copy and tells what changed', async () => {
+		store.currentSeries = { id: 3, title: 'Old' }
+		api.refreshSeries.mockResolvedValue({ data: { series: { id: 3, title: 'New' }, result: result({ newEpisodes: 2 }) } })
+
+		const response = await store.refresh(3, 'de-DE')
+
+		expect(api.refreshSeries).toHaveBeenCalledWith(3, 'de-DE', undefined)
+		expect(store.currentSeries).toEqual({ id: 3, title: 'New' })
+		expect(response.result.newEpisodes).toBe(2)
+		expect(showSuccess).toHaveBeenCalledWith('{count} new episodes were added.'.replace('{count}', '2'))
+	})
+
+	it('leaves another open show alone', async () => {
+		store.currentSeries = { id: 99 }
+		api.refreshSeries.mockResolvedValue({ data: { series: { id: 3 }, result: result() } })
+
+		await store.refresh(3, 'en-US')
+
+		expect(store.currentSeries).toEqual({ id: 99 })
+	})
+
+	it.each([
+		['no_api_key', 400, 'Add a TMDB API key in the settings to update this show.'],
+		['tmdb_busy', 400, 'TMDB or MovieDB is busy right now. Please try again in a minute.'],
+		[undefined, 429, 'TMDB or MovieDB is busy right now. Please try again in a minute.'],
+		['tmdb_error', 400, 'Could not update the show from TMDB. Please try again later.'],
+	])('explains a failure (%s, HTTP %s)', async (code, status, message) => {
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		api.refreshSeries.mockRejectedValue({ response: { status, data: { code } } })
+
+		expect(await store.refresh(3, 'en-US')).toBeNull()
+		expect(showError).toHaveBeenCalledWith(message)
+	})
+
+	it('has a fallback message for an error without a response', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		api.refreshSeries.mockRejectedValue(new Error('offline'))
+
+		await store.refresh(3, 'en-US')
+
+		expect(showError).toHaveBeenCalledWith('Could not update the show from TMDB. Please try again later.')
+	})
+})
+
+describe('refreshMessage', () => {
+	const base = { newEpisodes: 0, updatedEpisodes: 0, newSeasons: 0 }
+
+	it('puts a new season first', () => {
+		expect(refreshMessage({ ...base, newSeasons: 1, newEpisodes: 8 })).toBe('A new season was added.')
+		expect(refreshMessage({ ...base, newSeasons: 2, newEpisodes: 12 })).toBe('2 new seasons were added.')
+	})
+
+	it('counts new episodes, singular and plural', () => {
+		expect(refreshMessage({ ...base, newEpisodes: 1 })).toBe('1 new episode was added.')
+		expect(refreshMessage({ ...base, newEpisodes: 3 })).toBe('3 new episodes were added.')
+	})
+
+	it('mentions updated details when nothing is new', () => {
+		expect(refreshMessage({ ...base, updatedEpisodes: 4 })).toBe('Episode details were updated.')
+	})
+
+	it('says when everything was up to date', () => {
+		expect(refreshMessage(base)).toBe('Already up to date.')
+		expect(refreshMessage(undefined)).toBe('Already up to date.')
 	})
 })

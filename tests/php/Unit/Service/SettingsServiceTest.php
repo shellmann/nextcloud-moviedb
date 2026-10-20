@@ -87,6 +87,22 @@ class SettingsServiceTest extends TestCase {
         $this->assertFalse($this->service->getUserSettings('alice')['showContinueWatching']);
     }
 
+    public function testComingUpIsOnByDefault(): void {
+        $this->givenUserKey('');
+
+        $this->assertTrue($this->service->getUserSettings('alice')['showComingUp']);
+    }
+
+    public function testComingUpCanBeSwitchedOffIndependently(): void {
+        $this->userConfig->method('getValueString')->willReturnCallback(
+            fn (string $userId, string $app, string $key, string $default) => $key === 'show_coming_up' ? '0' : $default
+        );
+
+        $settings = $this->service->getUserSettings('alice');
+        $this->assertFalse($settings['showComingUp']);
+        $this->assertTrue($settings['showContinueWatching']);
+    }
+
     public function testIsAdmin(): void {
         $this->givenUserKey('');
         $this->groupManager->method('isAdmin')->with('alice')->willReturn(true);

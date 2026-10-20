@@ -12,6 +12,14 @@ import { translate as t } from '@nextcloud/l10n'
 export function releaseNotes() {
 	return [
 		{
+			version: '1.9.2',
+			items: [
+				t('moviedb', 'TV shows stay up to date: new seasons, new episodes and changed air dates now come in from TMDB by themselves, once a day.'),
+				t('moviedb', 'A new "Update from TMDB" button on the show page brings a show up to date right away.'),
+				t('moviedb', '"Coming up" on the dashboard lists the shows you are up to date on whose next episode airs soon, with the date.'),
+			],
+		},
+		{
 			version: '1.9.1',
 			items: [
 				t('moviedb', 'The language you watched in is back: as a flag on movie and TV show cards, and with its name in the watch history of a movie and on the TV show page.'),

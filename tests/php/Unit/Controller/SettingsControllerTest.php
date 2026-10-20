@@ -140,6 +140,39 @@ class SettingsControllerTest extends TestCase {
         $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
     }
 
+    /**
+     * @dataProvider continueWatchingProvider
+     */
+    public function testSavesComingUpAsString(mixed $value, string $stored): void {
+        $this->request->method('getParams')->willReturn(['showComingUp' => $value]);
+        $this->userConfig->expects($this->once())->method('setValueString')
+            ->with('alice', 'moviedb', 'show_coming_up', $stored);
+
+        $this->assertSame(Http::STATUS_OK, $this->controller->update()->getStatus());
+    }
+
+    public function testBadComingUpValueWritesNothing(): void {
+        $this->request->method('getParams')->willReturn([
+            'defaultLanguage' => 'en-US',
+            'showComingUp' => 'maybe',
+        ]);
+        $this->userConfig->expects($this->never())->method('setValueString');
+
+        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
+    }
+
+    public function testSavesBothDashboardSwitchesTogether(): void {
+        $this->request->method('getParams')->willReturn(['showContinueWatching' => false, 'showComingUp' => true]);
+        $written = [];
+        $this->userConfig->method('setValueString')->willReturnCallback(function ($user, $app, $key, $value) use (&$written) {
+            $written[$key] = $value;
+            return true;
+        });
+
+        $this->assertSame(Http::STATUS_OK, $this->controller->update()->getStatus());
+        $this->assertSame(['show_continue_watching' => '0', 'show_coming_up' => '1'], $written);
+    }
+
     public function testSavesTheLastSeenVersion(): void {
         $this->request->method('getParams')->willReturn(['lastSeenVersion' => '1.9.0']);
         $this->userConfig->expects($this->once())->method('setValueString')

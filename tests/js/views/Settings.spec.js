@@ -415,3 +415,58 @@ describe('Settings dashboard switch', () => {
 		expect(wrapper.vm.showContinueWatching).toBe(true)
 	})
 })
+
+describe('Settings dashboard switches', () => {
+	let wrapper
+	let settings
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		vi.clearAllMocks()
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		settings = useSettingsStore()
+		settings.update = vi.fn().mockResolvedValue()
+		wrapper = mount(Settings, {
+			global: {
+				stubs: { Eye: IconStub, EyeOff: IconStub, ContentSave: IconStub, Delete: IconStub, Download: IconStub, Upload: IconStub, Plus: IconStub },
+				mocks: { t: (app, text) => text },
+			},
+		})
+	})
+
+	const switchFor = (label) => wrapper.findAll('.switch').find((s) => s.text().includes(label))
+
+	it('has a switch for "Coming up", on by default, next to "Continue watching"', () => {
+		expect(switchFor('Show "Continue watching" on the dashboard').find('input').element.checked).toBe(true)
+		expect(switchFor('Show "Coming up" on the dashboard').find('input').element.checked).toBe(true)
+	})
+
+	it('saves only the switch that was changed', async () => {
+		await switchFor('Show "Coming up" on the dashboard').find('input').setValue(false)
+		await flushPromises()
+
+		expect(settings.update).toHaveBeenCalledTimes(1)
+		expect(settings.update).toHaveBeenCalledWith({ showComingUp: false })
+		expect(showSuccess).toHaveBeenCalled()
+	})
+
+	it('still saves "Continue watching" on its own', async () => {
+		await switchFor('Show "Continue watching" on the dashboard').find('input').setValue(false)
+		await flushPromises()
+
+		expect(settings.update).toHaveBeenCalledWith({ showContinueWatching: false })
+	})
+
+	it('flips the switch back and says so when saving fails', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		settings.update = vi.fn().mockRejectedValue(new Error('nope'))
+
+		await switchFor('Show "Coming up" on the dashboard').find('input').setValue(false)
+		await flushPromises()
+
+		expect(switchFor('Show "Coming up" on the dashboard').find('input').element.checked).toBe(true)
+		expect(showError).toHaveBeenCalled()
+	})
+})

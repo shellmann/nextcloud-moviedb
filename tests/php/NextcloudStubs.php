@@ -393,3 +393,46 @@ namespace OCP\User\Events {
         }
     }
 }
+
+namespace OCP\AppFramework\Utility {
+    interface ITimeFactory {
+        public function getTime(): int;
+    }
+}
+
+namespace OCP\BackgroundJob {
+    interface IJob {
+        public const TIME_INSENSITIVE = 0;
+        public const TIME_SENSITIVE = 1;
+    }
+
+    abstract class TimedJob implements IJob {
+        protected int $interval = 0;
+        protected int $timeSensitivity = self::TIME_SENSITIVE;
+
+        public function __construct(\OCP\AppFramework\Utility\ITimeFactory $time) {}
+
+        public function setInterval(int $seconds): void {
+            $this->interval = $seconds;
+        }
+
+        public function setTimeSensitivity(int $sensitivity): void {
+            $this->timeSensitivity = $sensitivity;
+        }
+
+        public function getInterval(): int {
+            return $this->interval;
+        }
+
+        public function getTimeSensitivity(): int {
+            return $this->timeSensitivity;
+        }
+
+        /** Run the job body directly (what the job list does after its checks). */
+        public function runNow($argument = null): void {
+            $this->run($argument);
+        }
+
+        abstract protected function run($argument);
+    }
+}

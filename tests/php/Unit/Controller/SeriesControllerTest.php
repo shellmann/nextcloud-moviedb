@@ -7,6 +7,7 @@ namespace OCA\MovieDB\Tests\Unit\Controller;
 use OCA\MovieDB\Controller\SeriesController;
 use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\SeriesProgressService;
+use OCA\MovieDB\Service\SeriesRefreshService;
 use OCA\MovieDB\Service\SeriesService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -23,6 +24,7 @@ class SeriesControllerTest extends TestCase {
     private SeriesService&MockObject $service;
     private LibraryService&MockObject $libraryService;
     private SeriesProgressService&MockObject $progressService;
+    private SeriesRefreshService&MockObject $refreshService;
     private IUserSession&MockObject $userSession;
 
     private const LIB = 4;
@@ -33,6 +35,7 @@ class SeriesControllerTest extends TestCase {
         $this->service = $this->createMock(SeriesService::class);
         $this->libraryService = $this->createMock(LibraryService::class);
         $this->progressService = $this->createMock(SeriesProgressService::class);
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
 
         $user = $this->createMock(IUser::class);
         $user->method('getUID')->willReturn('alice');
@@ -48,6 +51,7 @@ class SeriesControllerTest extends TestCase {
             $session ?? $this->userSession,
             $this->createMock(LoggerInterface::class),
             $this->progressService,
+            $this->refreshService,
         );
     }
 
@@ -62,6 +66,8 @@ class SeriesControllerTest extends TestCase {
 
         $this->assertSame(Http::STATUS_UNAUTHORIZED, $controller->continueWatching()->getStatus());
         $this->assertSame(Http::STATUS_UNAUTHORIZED, $controller->stopped(1)->getStatus());
+        $this->assertSame(Http::STATUS_UNAUTHORIZED, $controller->comingUp()->getStatus());
+        $this->assertSame(Http::STATUS_UNAUTHORIZED, $controller->refresh(1)->getStatus());
     }
 
     public function testContinueWatchingPassesLibraryAndLimit(): void {
@@ -79,6 +85,146 @@ class SeriesControllerTest extends TestCase {
         $this->progressService->expects($this->once())->method('continueWatching')->with(self::LIB, 10)->willReturn([]);
 
         $this->controller()->continueWatching();
+    }
+
+    public function testComingUpPassesLibraryDaysAndLimit(): void {
+        $this->params(['days' => '14', 'limit' => '5']);
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
+        $this->progressService->expects($this->once())->method('comingUp')->with(self::LIB, 14, 5)
+            ->willReturn([['id' => 3]]);
+
+        $this->assertSame(['series' => [['id' => 3]]], $this->controller()->comingUp()->getData());
+    }
+
+    public function testComingUpDefaultsToThirtyDaysAndTenShows(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
+        $this->progressService->expects($this->once())->method('comingUp')->with(self::LIB, 30, 10)->willReturn([]);
+
+        $this->controller()->comingUp();
+    }
+
+    public function testRefreshRequiresEditPermission(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(false);
+        $this->refreshService->expects($this->never())->method('refresh');
+
+        $this->assertSame(Http::STATUS_FORBIDDEN, $this->controller()->refresh(1)->getStatus());
+    }
+
+    public function testRefreshForInaccessibleLibraryIsForbidden(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveLibraryId')->willThrowException(new \InvalidArgumentException());
+
+        $this->assertSame(Http::STATUS_FORBIDDEN, $this->controller()->refresh(1)->getStatus());
+    }
+
+    public function testRefreshWithoutAnyTmdbKeyIsABadRequestWithACode(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->refreshService->method('hasApiKey')->with('alice')->willReturn(false);
+        $this->refreshService->expects($this->never())->method('refresh');
+
+        $response = $this->controller()->refresh(1);
+
+        $this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
+        $this->assertSame('no_api_key', $response->getData()['code']);
+    }
+
+    public function testRefreshFallsBackToTheLibraryOwnersKeyForAnEditorWithoutOne(): void {
+        $this->params(['language' => 'en-US']);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->libraryService->method('getOwner')->with(self::LIB)->willReturn('anna');
+        $this->refreshService->method('hasApiKey')->willReturnCallback(fn (?string $u) => $u === 'anna');
+        $series = new \OCA\MovieDB\Db\Series();
+        $this->service->method('find')->willReturn($series);
+        $this->service->method('findWithProgress')->willReturn(['id' => 1]);
+        $this->refreshService->expects($this->once())->method('refresh')->with($series, 'anna', 'en-US', true)
+            ->willReturn(['newEpisodes' => 0, 'updatedEpisodes' => 0, 'newSeasons' => 0]);
+
+        $this->assertSame(Http::STATUS_OK, $this->controller()->refresh(1)->getStatus());
+    }
+
+    public function testRefreshPrefersTheUsersOwnKeyOverTheOwners(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->libraryService->expects($this->never())->method('getOwner');
+        $this->refreshService->method('hasApiKey')->willReturn(true);
+        $this->service->method('find')->willReturn(new \OCA\MovieDB\Db\Series());
+        $this->service->method('findWithProgress')->willReturn(['id' => 1]);
+        $this->refreshService->expects($this->once())->method('refresh')
+            ->with($this->anything(), 'alice', $this->anything(), true)
+            ->willReturn(['newEpisodes' => 0, 'updatedEpisodes' => 0, 'newSeasons' => 0]);
+
+        $this->controller()->refresh(1);
+    }
+
+    public function testRefreshWithNeitherUserNorOwnerKeyIsABadRequest(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->libraryService->method('getOwner')->willReturn('anna');
+        $this->refreshService->method('hasApiKey')->willReturn(false);
+        $this->refreshService->expects($this->never())->method('refresh');
+
+        $this->assertSame('no_api_key', $this->controller()->refresh(1)->getData()['code']);
+    }
+
+    public function testRefreshForUnknownSeriesIsNotFound(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->refreshService->method('hasApiKey')->willReturn(true);
+        $this->service->method('find')->willThrowException(new DoesNotExistException('x'));
+
+        $this->assertSame(Http::STATUS_NOT_FOUND, $this->controller()->refresh(99)->getStatus());
+    }
+
+    public function testRefreshReadsEverySeasonWithTheCurrentUsersKeyAndTheRequestedLanguage(): void {
+        $this->params(['language' => 'de-DE']);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->refreshService->method('hasApiKey')->willReturn(true);
+        $series = new \OCA\MovieDB\Db\Series();
+        $this->service->method('find')->with(1, self::LIB)->willReturn($series);
+        $this->service->method('findWithProgress')->with(1, self::LIB)->willReturn(['id' => 1]);
+        $result = ['newEpisodes' => 2, 'updatedEpisodes' => 0, 'newSeasons' => 1];
+        $this->refreshService->expects($this->once())->method('refresh')->with($series, 'alice', 'de-DE', true)->willReturn($result);
+
+        $response = $this->controller()->refresh(1);
+
+        $this->assertSame(Http::STATUS_OK, $response->getStatus());
+        $this->assertSame(['series' => ['id' => 1], 'result' => $result], $response->getData());
+    }
+
+    public function testRefreshReportsTmdbFailuresWithoutLeakingDetails(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->refreshService->method('hasApiKey')->willReturn(true);
+        $this->service->method('find')->willReturn(new \OCA\MovieDB\Db\Series());
+        $this->refreshService->method('refresh')->willThrowException(new \RuntimeException('secret url with key', 500));
+
+        $response = $this->controller()->refresh(1);
+
+        $this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
+        $this->assertSame('tmdb_error', $response->getData()['code']);
+        $this->assertStringNotContainsString('secret', json_encode($response->getData()));
+    }
+
+    public function testRefreshTellsWhenTmdbIsBusy(): void {
+        $this->params([]);
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->refreshService->method('hasApiKey')->willReturn(true);
+        $this->service->method('find')->willReturn(new \OCA\MovieDB\Db\Series());
+        $this->refreshService->method('refresh')->willThrowException(new \RuntimeException('429', 429));
+
+        $this->assertSame('tmdb_busy', $this->controller()->refresh(1)->getData()['code']);
     }
 
     public function testStoppedRequiresEditPermission(): void {

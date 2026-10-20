@@ -199,6 +199,17 @@ export default {
 		if (libraryId !== undefined) { params.libraryId = libraryId }
 		return axios.get(`${baseUrl}/series/continue`, { params })
 	},
+	getComingUp(limit = 10, libraryId = undefined) {
+		const params = { limit }
+		if (libraryId !== undefined) { params.libraryId = libraryId }
+		return axios.get(`${baseUrl}/series/upcoming`, { params })
+	},
+	refreshSeries(id, language = undefined, libraryId = undefined) {
+		const body = {}
+		if (language !== undefined) { body.language = language }
+		if (libraryId !== undefined) { body.libraryId = libraryId }
+		return axios.post(`${baseUrl}/series/${id}/refresh`, body)
+	},
 	markSeasonWatched(id, seasonNumber, watched = true, libraryId = undefined) {
 		const body = { watched }
 		if (libraryId !== undefined) { body.libraryId = libraryId }

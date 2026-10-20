@@ -19,11 +19,13 @@ return [
         ['name' => 'series#create', 'url' => '/api/series', 'verb' => 'POST'],
         // Literal path, declared BEFORE series#show so it is not read as an {id}.
         ['name' => 'series#continueWatching', 'url' => '/api/series/continue', 'verb' => 'GET'],
+        ['name' => 'series#comingUp', 'url' => '/api/series/upcoming', 'verb' => 'GET'],
         ['name' => 'series#show', 'url' => '/api/series/{id}', 'verb' => 'GET', 'requirements' => ['id' => '\d+']],
         ['name' => 'series#update', 'url' => '/api/series/{id}', 'verb' => 'PUT', 'requirements' => ['id' => '\d+']],
         ['name' => 'series#destroy', 'url' => '/api/series/{id}', 'verb' => 'DELETE', 'requirements' => ['id' => '\d+']],
         ['name' => 'series#episodes', 'url' => '/api/series/{id}/episodes', 'verb' => 'GET', 'requirements' => ['id' => '\d+']],
         ['name' => 'series#markWatched', 'url' => '/api/series/{id}/watched', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
+        ['name' => 'series#refresh', 'url' => '/api/series/{id}/refresh', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
         ['name' => 'series#stopped', 'url' => '/api/series/{id}/stopped', 'verb' => 'POST', 'requirements' => ['id' => '\d+']],
         ['name' => 'series#markSeasonWatched', 'url' => '/api/series/{id}/seasons/{seasonNumber}/watched', 'verb' => 'POST', 'requirements' => ['id' => '\d+', 'seasonNumber' => '\d+']],
 

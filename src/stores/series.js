@@ -4,6 +4,33 @@ import { defineStore } from 'pinia'
 import api from '../services/api.js'
 import { useLibrariesStore } from './libraries.js'
 
+/**
+ * One sentence for the toast after "Update from TMDB". Whole texts instead of
+ * plural forms, like the rest of the app.
+ *
+ * @param {{ newEpisodes: number, updatedEpisodes: number, newSeasons: number }} result - What the server changed
+ * @return {string}
+ */
+export function refreshMessage(result) {
+	const { newEpisodes = 0, updatedEpisodes = 0, newSeasons = 0 } = result || {}
+	if (newSeasons === 1) {
+		return t('moviedb', 'A new season was added.')
+	}
+	if (newSeasons > 1) {
+		return t('moviedb', '{count} new seasons were added.', { count: newSeasons })
+	}
+	if (newEpisodes === 1) {
+		return t('moviedb', '1 new episode was added.')
+	}
+	if (newEpisodes > 1) {
+		return t('moviedb', '{count} new episodes were added.', { count: newEpisodes })
+	}
+	if (updatedEpisodes > 0) {
+		return t('moviedb', 'Episode details were updated.')
+	}
+	return t('moviedb', 'Already up to date.')
+}
+
 const STATUS_STORAGE_KEY = 'moviedb_seriesStatusFilter'
 const WATCH_STATUSES = ['in_progress', 'finished', 'stopped']
 
@@ -274,6 +301,38 @@ export const useSeriesStore = defineStore('series', {
 			} catch (error) {
 				console.error('Failed to mark series watched:', error)
 				showError(t('moviedb', 'Failed to mark series watched. Please try again.'))
+				return null
+			}
+		},
+
+		/**
+		 * Updates the series' seasons and episodes from TMDB and tells the user
+		 * what changed. Watched flags are never changed by the server.
+		 *
+		 * @param {number} id - Series ID
+		 * @param {string} language - TMDB language (e.g. "de-DE")
+		 * @return {Promise<object | null>} { series, result } or null on error
+		 */
+		async refresh(id, language) {
+			try {
+				const libraryId = useLibrariesStore().activeLibraryId
+				const response = await api.refreshSeries(id, language, libraryId !== null ? libraryId : undefined)
+				if (this.currentSeries?.id === id) {
+					this.currentSeries = response.data.series
+				}
+				showSuccess(refreshMessage(response.data.result))
+				return response.data
+			} catch (error) {
+				console.error('Failed to refresh series from TMDB:', error)
+				const code = error?.response?.data?.code
+				const status = error?.response?.status
+				if (code === 'no_api_key') {
+					showError(t('moviedb', 'Add a TMDB API key in the settings to update this show.'))
+				} else if (code === 'tmdb_busy' || status === 429) {
+					showError(t('moviedb', 'TMDB or MovieDB is busy right now. Please try again in a minute.'))
+				} else {
+					showError(t('moviedb', 'Could not update the show from TMDB. Please try again later.'))
+				}
 				return null
 			}
 		},

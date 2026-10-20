@@ -169,4 +169,71 @@ class SeriesProgressQueriesTest extends TestCase {
     private function lastSql(): string {
         return end($this->rec->executed) ?: '';
     }
+
+    // ---- EpisodeMapper::upcomingByLibrary ----
+
+    private function upcomingSql(): string {
+        $rec = $this->rec;
+        $mapper = new class ($this->db, $rec) extends EpisodeMapper {
+            public function __construct(IDBConnection $db, private SqlRecording $rec) {
+                parent::__construct($db);
+            }
+
+            protected function findEntities($qb): array {
+                $this->rec->executed[] = $qb->getSQL();
+                return [];
+            }
+        };
+        $mapper->upcomingByLibrary(7, '2026-10-20', '2026-11-19');
+        return $this->lastSql();
+    }
+
+    public function testUpcomingIsLimitedToTheWindowTheLibraryAndRegularEpisodes(): void {
+        $sql = $this->upcomingSql();
+
+        $this->assertSame('2026-10-20', $this->paramFor($sql, 'e.air_date', '>'));
+        $this->assertSame('2026-11-19', $this->paramFor($sql, 'e.air_date', '<='));
+        $this->assertSame(0, $this->paramFor($sql, 'e.season_number', '>'));
+        $this->assertSame(7, $this->paramFor($sql, 's.library_id', '='));
+        $this->assertStringContainsString('e.air_date IS NOT NULL', $sql);
+    }
+
+    public function testUpcomingIsSortedSoonestFirst(): void {
+        $this->assertStringContainsString('ORDER BY e.air_date ASC, e.series_id ASC, e.season_number ASC, e.episode_number ASC', $this->upcomingSql());
+    }
+
+    // ---- SeriesMapper::findDueForRefresh ----
+
+    private function dueSql(): string {
+        $rec = $this->rec;
+        $mapper = new class ($this->db, $rec) extends SeriesMapper {
+            public function __construct(IDBConnection $db, private SqlRecording $rec) {
+                parent::__construct($db);
+            }
+
+            protected function findEntities($qb): array {
+                $this->rec->executed[] = $qb->getSQL();
+                return [];
+            }
+        };
+        $mapper->findDueForRefresh(500, '2026-10-20 01:00:00', '2026-09-20 12:00:00');
+        return $this->lastSql();
+    }
+
+    public function testDueForRefreshPicksNeverRefreshedOngoingAndEndedShows(): void {
+        $sql = $this->dueSql();
+
+        $this->assertStringContainsString('tmdb_id IS NOT NULL', $sql);
+        $this->assertStringContainsString('tmdb_refreshed_at IS NULL', $sql);
+        $this->assertSame('2026-10-20 01:00:00', $this->paramFor($sql, 'tmdb_refreshed_at', '<'));
+        $this->assertContains('2026-09-20 12:00:00', $this->rec->params);
+        $this->assertContains(['Ended', 'Canceled'], $this->rec->params);
+        $this->assertStringContainsString('NOT IN', $sql);
+    }
+
+    public function testDueForRefreshListsNeverRefreshedFirstOnEveryDatabase(): void {
+        $sql = $this->dueSql();
+
+        $this->assertStringContainsString('ORDER BY CASE WHEN tmdb_refreshed_at IS NULL THEN 0 ELSE 1 END ASC, tmdb_refreshed_at ASC, id ASC', $sql);
+    }
 }

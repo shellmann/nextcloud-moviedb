@@ -82,15 +82,19 @@ class SettingsController extends AuthenticatedController {
             }
         }
 
-        $showContinueWatching = null;
-        if (array_key_exists('showContinueWatching', $data)) {
-            $raw = $data['showContinueWatching'];
+        // On/off switches, stored as '1'/'0'
+        $switches = [];
+        foreach (['showContinueWatching' => 'show_continue_watching', 'showComingUp' => 'show_coming_up'] as $field => $configKey) {
+            if (!array_key_exists($field, $data)) {
+                continue;
+            }
+            $raw = $data[$field];
             if (in_array($raw, [true, 'true', '1', 1], true)) {
-                $showContinueWatching = '1';
+                $switches[$configKey] = '1';
             } elseif (in_array($raw, [false, 'false', '0', 0], true)) {
-                $showContinueWatching = '0';
+                $switches[$configKey] = '0';
             } else {
-                return new JSONResponse(['error' => 'Invalid value for showContinueWatching'], Http::STATUS_BAD_REQUEST);
+                return new JSONResponse(['error' => 'Invalid value for ' . $field], Http::STATUS_BAD_REQUEST);
             }
         }
 
@@ -136,8 +140,8 @@ class SettingsController extends AuthenticatedController {
             $this->userConfig->setValueString($this->userId, Application::APP_ID, WhatsNewService::CONFIG_KEY, $lastSeenVersion);
         }
 
-        if ($showContinueWatching !== null) {
-            $this->userConfig->setValueString($this->userId, Application::APP_ID, 'show_continue_watching', $showContinueWatching);
+        foreach ($switches as $configKey => $value) {
+            $this->userConfig->setValueString($this->userId, Application::APP_ID, $configKey, $value);
         }
 
         return new JSONResponse(['success' => true]);
