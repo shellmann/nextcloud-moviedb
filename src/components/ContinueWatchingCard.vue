@@ -17,11 +17,11 @@
 			</div>
 		</div>
 		<div class="info">
-			<h3 :id="'continue-title-' + series.id" class="title">
+			<h4 :id="'continue-title-' + series.id" class="title">
 				<router-link class="title-link" :to="{ name: 'series-detail', params: { id: String(series.id) } }">
 					{{ series.title }}
 				</router-link>
-			</h3>
+			</h4>
 			<p v-if="next" class="next">
 				<!-- One line on purpose: the template compiler drops whitespace between tags across line breaks. -->
 				<span class="next-label">{{ started ? t('moviedb', 'Next:') : t('moviedb', 'Start with') }}</span> <strong>{{ episodeCode(next) }}</strong> <span v-if="next.name" class="next-name">{{ next.name }}</span>

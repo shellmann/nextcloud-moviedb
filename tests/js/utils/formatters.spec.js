@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { episodeCode, formatDate, formatRuntime, todayLocal } from '@/utils/formatters.js'
+import { episodeCode, formatDate, formatRuntime, relativeAirDate, todayLocal } from '@/utils/formatters.js'
 
 describe('Formatters', () => {
 	describe('formatDate', () => {
@@ -79,5 +79,36 @@ describe('episodeCode', () => {
 	it('pads season and episode to two digits', () => {
 		expect(episodeCode({ seasonNumber: 2, episodeNumber: 5 })).toBe('S02E05')
 		expect(episodeCode({ seasonNumber: 12, episodeNumber: 104 })).toBe('S12E104')
+	})
+})
+
+describe('relativeAirDate', () => {
+	it('says today, tomorrow and in N days, capitalised', () => {
+		expect(relativeAirDate('2026-10-20', '2026-10-20')).toBe('Today')
+		expect(relativeAirDate('2026-10-21', '2026-10-20')).toBe('Tomorrow')
+		expect(relativeAirDate('2026-10-23', '2026-10-20')).toBe('In 3 days')
+		expect(relativeAirDate('2026-10-26', '2026-10-20')).toBe('In 6 days')
+	})
+
+	it('leaves anything later than six days to the plain date', () => {
+		expect(relativeAirDate('2026-10-27', '2026-10-20')).toBeNull()
+		expect(relativeAirDate('2027-03-01', '2026-10-20')).toBeNull()
+	})
+
+	it('has nothing to say about dates in the past or invalid dates', () => {
+		expect(relativeAirDate('2026-10-19', '2026-10-20')).toBeNull()
+		expect(relativeAirDate('', '2026-10-20')).toBeNull()
+		expect(relativeAirDate(null, '2026-10-20')).toBeNull()
+		expect(relativeAirDate('not a date', '2026-10-20')).toBeNull()
+	})
+
+	it('counts calendar days across month and year ends', () => {
+		expect(relativeAirDate('2026-11-02', '2026-10-31')).toBe('In 2 days')
+		expect(relativeAirDate('2027-01-01', '2026-12-31')).toBe('Tomorrow')
+	})
+
+	it('counts whole days over a daylight saving change', () => {
+		// Europe switches clocks on 2026-10-25; a 23 or 25 hour day must still be one day.
+		expect(relativeAirDate('2026-10-26', '2026-10-24')).toBe('In 2 days')
 	})
 })

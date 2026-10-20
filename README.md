@@ -19,6 +19,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Movie Tracking**: Log movies with platform (Netflix, Disney+, etc.), language, and date watched
 - **TV Show Tracking**: Track series at the episode level — season progress, "up next" card, and bulk-mark seasons as watched
 - **Continue Watching**: The dashboard lists the shows you are in the middle of with the next episode; stop watching a show you gave up on, and filter the TV list by in progress, finished and stopped
+- **Coming up & always up to date**: The dashboard lists the shows you are up to date on whose next episode airs soon; new seasons and episodes come in from TMDB by themselves, or with "Update from TMDB" on the show page
 - **Rewatch Support**: Log multiple viewings with separate ratings, platforms, and dates
 - **TMDB Integration**: Automatically fetch movie and TV posters, cast, plot, and episode data
 - **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews
@@ -242,6 +243,10 @@ The key can also be set with occ. This skips the check with TMDB:
 php occ config:app:set moviedb tmdb_api_key --value="<Read Access Token>" --sensitive
 ```
 
+### Keeping TV shows up to date
+
+A background job brings the episodes of all TV shows up to date with TMDB once a day (ongoing shows daily, ended ones monthly), using the TMDB key of the library owner or the instance-wide key. It slows down when TMDB asks it to. Nextcloud runs it at a quiet moment, inside the maintenance window if you set `maintenance_window_start` in `config.php`; there is no separate setting for it. Nextcloud should run its background jobs with **Cron** (Administration settings → Basic settings), as it recommends: in "AJAX" mode the job only runs while someone uses Nextcloud. Users can always update one show right away with **Update from TMDB** on its page.
+
 ### Moving a library to another instance
 
 1. On the old instance, select the library and choose **Settings → Import / Export → Export library**. This downloads a JSON file with your movies, TV shows (including episode progress), rewatches, ratings, reviews, watchlist and custom platforms. Your TMDB API key is not included.
@@ -265,6 +270,9 @@ The app exposes the following REST API endpoints:
 | `/api/watchlist` | POST | Add to watchlist |
 | `/api/watchlist/{id}/watched` | POST | Move to watched |
 | `/api/tmdb/search` | GET | Search TMDB |
+| `/api/series/continue` | GET | TV shows to continue watching |
+| `/api/series/upcoming` | GET | TV shows whose next episode airs soon ("Coming up") |
+| `/api/series/{id}/refresh` | POST | Update a TV show's seasons and episodes from TMDB |
 | `/api/stats` | GET | Get statistics |
 | `/api/export` | GET | Download the active library as JSON |
 | `/api/import` | POST | Import an exported JSON file (multipart field `file`) |

@@ -7,10 +7,12 @@ namespace OCA\MovieDB\Controller;
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\SeriesProgressService;
+use OCA\MovieDB\Service\SeriesRefreshService;
 use OCA\MovieDB\Service\SeriesService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
+use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -24,6 +26,7 @@ class SeriesController extends AuthenticatedController {
     private LibraryService $libraryService;
     private LoggerInterface $logger;
     private SeriesProgressService $progressService;
+    private SeriesRefreshService $refreshService;
 
     public function __construct(
         IRequest $request,
@@ -31,13 +34,15 @@ class SeriesController extends AuthenticatedController {
         LibraryService $libraryService,
         IUserSession $userSession,
         LoggerInterface $logger,
-        SeriesProgressService $progressService
+        SeriesProgressService $progressService,
+        SeriesRefreshService $refreshService
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
         $this->libraryService = $libraryService;
         $this->logger = $logger;
         $this->progressService = $progressService;
+        $this->refreshService = $refreshService;
     }
 
     #[NoAdminRequired]
@@ -320,6 +325,69 @@ class SeriesController extends AuthenticatedController {
         $limit = (int)$this->request->getParam('limit', 10);
 
         return new JSONResponse(['series' => $this->progressService->continueWatching($libraryId, $limit)]);
+    }
+
+    /**
+     * Dashboard "coming up": shows you are up to date on whose next episode airs soon.
+     */
+    #[NoAdminRequired]
+    public function comingUp(): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+
+        $libraryId = $this->libraryService->resolveReadLibraryId($this->requestedLibraryId(), $this->userId);
+        $days = (int)$this->request->getParam('days', SeriesProgressService::COMING_UP_DAYS_DEFAULT);
+        $limit = (int)$this->request->getParam('limit', SeriesProgressService::COMING_UP_LIMIT_DEFAULT);
+
+        return new JSONResponse(['series' => $this->progressService->comingUp($libraryId, $days, $limit)]);
+    }
+
+    /**
+     * Update a show's seasons and episodes from TMDB (edit permission). Watched
+     * flags are never changed. At most 10 updates a minute per user.
+     */
+    #[NoAdminRequired]
+    #[UserRateLimit(limit: 10, period: 60)]
+    public function refresh(int $id): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->refreshService->hasApiKey($this->userId)) {
+            return new JSONResponse(['error' => 'No TMDB API key configured.', 'code' => 'no_api_key'], Http::STATUS_BAD_REQUEST);
+        }
+
+        $language = (string)$this->request->getParam('language', 'en-US');
+
+        try {
+            $series = $this->service->find($id, $libraryId);
+            $result = $this->refreshService->refresh($series, $this->userId, $language, true);
+            return new JSONResponse([
+                'series' => $this->service->findWithProgress($id, $libraryId),
+                'result' => $result,
+            ]);
+        } catch (DoesNotExistException $e) {
+            return new JSONResponse(['error' => 'Series not found'], Http::STATUS_NOT_FOUND);
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to refresh a series from TMDB', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'seriesId' => $id,
+            ]);
+            $code = SeriesRefreshService::isRateLimited($e) ? 'tmdb_busy' : 'tmdb_error';
+            return new JSONResponse(['error' => 'Could not update the show from TMDB. Please try again later.', 'code' => $code], Http::STATUS_BAD_REQUEST);
+        }
     }
 
     /**

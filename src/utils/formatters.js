@@ -69,3 +69,36 @@ export function episodeCode(episode) {
 	const e = String(episode.episodeNumber).padStart(2, '0')
 	return `S${s}E${e}`
 }
+
+/**
+ * Calendar days from one date to another (both "YYYY-MM-DD"), whole days, so
+ * daylight saving changes never give 6.96 days.
+ *
+ * @param {string} from - Start date
+ * @param {string} to - End date
+ * @return {number} Negative if `to` is before `from`
+ */
+function daysBetween(from, to) {
+	const a = parseCalendarDate(from)
+	const b = parseCalendarDate(to)
+	const utc = (d) => Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())
+	return Math.round((utc(b) - utc(a)) / 86400000)
+}
+
+/**
+ * "Today", "Tomorrow" or "In 3 days" for an air date up to six days away, in
+ * the user's language; null for anything later, earlier or invalid, where the
+ * plain date reads better.
+ *
+ * @param {string} dateString - Air date ("YYYY-MM-DD")
+ * @param {string} today - Today ("YYYY-MM-DD", defaults to the local date)
+ * @return {string|null}
+ */
+export function relativeAirDate(dateString, today = todayLocal()) {
+	if (!dateString || Number.isNaN(parseCalendarDate(dateString).getTime())) { return null }
+	const days = daysBetween(today, dateString)
+	if (days < 0 || days > 6) { return null }
+	const locale = getLocale().replace('_', '-')
+	const text = new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(days, 'day')
+	return text.charAt(0).toLocaleUpperCase(locale) + text.slice(1)
+}

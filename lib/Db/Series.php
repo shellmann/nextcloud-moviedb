@@ -50,6 +50,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setIsFavorite(bool $isFavorite)
  * @method bool|null getStoppedWatching()
  * @method void setStoppedWatching(?bool $stoppedWatching)
+ * @method string|null getTmdbRefreshedAt()
+ * @method void setTmdbRefreshedAt(?string $tmdbRefreshedAt)
  * @method int|null getLibraryId()
  * @method void setLibraryId(?int $libraryId)
  * @method string getCreatedAt()
@@ -79,6 +81,7 @@ class Series extends Entity implements JsonSerializable {
     protected ?string $lastLanguage = null;
     protected bool $isFavorite = false;
     protected ?bool $stoppedWatching = false;
+    protected ?string $tmdbRefreshedAt = null;
     protected string $createdAt = '';
     protected ?string $updatedAt = null;
 
@@ -120,6 +123,7 @@ class Series extends Entity implements JsonSerializable {
             'lastLanguage' => $this->lastLanguage,
             'isFavorite' => $this->isFavorite,
             'stoppedWatching' => (bool)$this->stoppedWatching,
+            'tmdbRefreshedAt' => $this->tmdbRefreshedAt,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
         ];

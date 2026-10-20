@@ -33,6 +33,19 @@
 							</p>
 						</div>
 						<div class="series-actions">
+							<!-- aria-disabled instead of disabled: a disabled button drops keyboard focus mid-update. -->
+							<NcButton
+								v-if="activeCanEdit && series.tmdbId"
+								class="refresh-button"
+								:aria-busy="refreshing ? 'true' : 'false'"
+								:aria-disabled="refreshing ? 'true' : null"
+								@click="refreshFromTmdb">
+								<template #icon>
+									<NcLoadingIcon v-if="refreshing" :size="20" />
+									<Refresh v-else :size="20" />
+								</template>
+								{{ t('moviedb', 'Update from TMDB') }}
+							</NcButton>
 							<NcButton v-if="activeCanEdit" @click="editSeries">
 								<template #icon>
 									<Pencil :size="20" />
@@ -56,6 +69,9 @@
 						<span v-if="series.status">{{ series.status }}</span>
 						<span v-if="series.director">{{ t('moviedb', 'Creator') }}: {{ series.director }}</span>
 					</div>
+					<p v-if="series.tmdbId && refreshedOn" class="refreshed-note">
+						{{ t('moviedb', 'Episodes last updated from TMDB: {date}', { date: refreshedOn }) }}
+					</p>
 
 					<!-- Series-level watch metadata (the show owns rating/platform/
 						 language/date, just like a movie). -->
@@ -152,22 +168,32 @@
 							v-for="season in series.seasons"
 							:key="season.seasonNumber"
 							class="season">
-							<div class="season-header" @click="toggleSeason(season.seasonNumber)">
-								<ChevronDown v-if="expandedSeasons.includes(season.seasonNumber)" :size="20" />
-								<ChevronRight v-else :size="20" />
-								<h3>{{ seasonLabel(season.seasonNumber) }}</h3>
-								<span v-if="season.seasonNumber !== 0" class="season-progress">
-									{{ season.watchedCount }} / {{ season.airedCount }} ({{ season.progress }}%)
-								</span>
+							<div class="season-header">
+								<h3>
+									<button
+										type="button"
+										class="season-toggle"
+										:aria-expanded="expandedSeasons.includes(season.seasonNumber) ? 'true' : 'false'"
+										:aria-controls="'season-episodes-' + season.seasonNumber"
+										@click="toggleSeason(season.seasonNumber)">
+										<ChevronDown v-if="expandedSeasons.includes(season.seasonNumber)" :size="20" aria-hidden="true" />
+										<ChevronRight v-else :size="20" aria-hidden="true" />
+										<!-- One line on purpose: the space between the spans is part of the button's accessible name. -->
+										<span class="season-name">{{ seasonLabel(season.seasonNumber) }}</span> <span v-if="season.seasonNumber !== 0" class="season-progress">{{ season.watchedCount }} / {{ season.airedCount }} ({{ season.progress }}%)</span>
+									</button>
+								</h3>
 								<NcButton
 									v-if="season.seasonNumber !== 0 && activeCanEdit"
 									:disabled="marking || season.watchedCount >= season.airedCount"
-									@click.stop="markSeasonWatched(season.seasonNumber, true)">
+									@click="markSeasonWatched(season.seasonNumber, true)">
 									{{ t('moviedb', 'Mark season watched') }}
 								</NcButton>
 							</div>
 
-							<ul v-show="expandedSeasons.includes(season.seasonNumber)" class="episode-list">
+							<ul
+								v-show="expandedSeasons.includes(season.seasonNumber)"
+								:id="'season-episodes-' + season.seasonNumber"
+								class="episode-list">
 								<li
 									v-for="ep in season.episodes"
 									:key="ep.id"
@@ -177,7 +203,7 @@
 										<NcCheckboxRadioSwitch
 											:modelValue="ep.watched"
 											:disabled="!ep.aired || marking || !activeCanEdit"
-											:aria-label="t('moviedb', 'Watched')"
+											:aria-label="t('moviedb', '{episode} watched', { episode: episodeCode(ep) + ' ' + (ep.name || t('moviedb', 'Episode {n}', { n: ep.episodeNumber })) })"
 											@update:modelValue="toggleEpisode(ep, $event)" />
 									</span>
 									<span class="episode-code">{{ ep.episodeNumber }}</span>
@@ -228,11 +254,13 @@ import Delete from 'vue-material-design-icons/Delete.vue'
 import EyeOff from 'vue-material-design-icons/EyeOff.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import PlayCircleOutline from 'vue-material-design-icons/PlayCircleOutline.vue'
+import Refresh from 'vue-material-design-icons/Refresh.vue'
 import Television from 'vue-material-design-icons/Television.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getLanguageFlag, LANGUAGE_OPTIONS } from '../constants.js'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { useSeriesStore } from '../stores/series.js'
+import { useSettingsStore } from '../stores/settings.js'
 import { episodeCode, formatDate, formatRuntime } from '../utils/formatters.js'
 
 export default {
@@ -254,6 +282,7 @@ export default {
 		ChevronRight,
 		EyeOff,
 		PlayCircleOutline,
+		Refresh,
 	},
 
 	props: {
@@ -266,13 +295,15 @@ export default {
 	setup() {
 		const seriesStore = useSeriesStore()
 		const librariesStore = useLibrariesStore()
-		return { seriesStore, librariesStore }
+		const settingsStore = useSettingsStore()
+		return { seriesStore, librariesStore, settingsStore }
 	},
 
 	data() {
 		return {
 			showDeleteDialog: false,
 			marking: false,
+			refreshing: false,
 			expandedSeasons: [],
 		}
 	},
@@ -302,6 +333,11 @@ export default {
 			return !!(this.series
 				&& (this.series.rating || this.series.platformName
 					|| this.series.languageWatched || this.series.watchedAt))
+		},
+
+		/** When the episodes were last compared with TMDB: the last refresh, else when the show was added. */
+		refreshedOn() {
+			return formatDate((this.series?.tmdbRefreshedAt || this.series?.createdAt || '').slice(0, 10))
 		},
 
 		activeCanEdit() {
@@ -348,6 +384,16 @@ export default {
 				return t('moviedb', 'Specials')
 			}
 			return t('moviedb', 'Season {n}', { n: seasonNumber })
+		},
+
+		async refreshFromTmdb() {
+			if (this.refreshing) { return }
+			this.refreshing = true
+			try {
+				await this.seriesStore.refresh(this.series.id, this.settingsStore.defaultLanguage || 'en-US')
+			} finally {
+				this.refreshing = false
+			}
 		},
 
 		toggleSeason(seasonNumber) {
@@ -478,11 +524,15 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
-    gap: 16px;
+    // With three buttons the actions drop below the title on a narrow window
+    // instead of squeezing the title or running off the right edge.
+    flex-wrap: wrap;
+    gap: 12px 16px;
     margin-bottom: 12px;
 
     .series-titles {
-        flex: 1;
+        flex: 1 1 240px;
+        min-width: 0;
 
         h2 {
             margin: 0;
@@ -499,8 +549,8 @@ export default {
 
     .series-actions {
         display: flex;
+        flex-wrap: wrap;
         gap: 8px;
-        flex-shrink: 0;
     }
 
     @media (max-width: 600px) {
@@ -624,22 +674,62 @@ export default {
 
 .season-header {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    padding: 12px 16px;
-    cursor: pointer;
+    gap: 4px 8px;
+    padding: 0 16px 4px 0;
     background: var(--color-background-dark);
 
+    // Room for the title and its progress; "Mark season watched" drops to its own line on a narrow window.
     h3 {
         margin: 0;
         font-size: 15px;
+        flex: 1 1 200px;
+        min-width: 0;
+    }
+
+    > :not(h3) {
+        margin-inline-start: 16px;
+    }
+}
+
+// The whole title row is one button: reachable by keyboard, announces expanded/collapsed.
+.season-toggle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 0 12px 16px;
+    border: 0;
+    background: none;
+    color: inherit;
+    font: inherit;
+    text-align: start;
+    cursor: pointer;
+    min-height: 44px;
+
+    &:focus-visible {
+        outline: 2px solid var(--color-main-text);
+        outline-offset: -2px;
+        border-radius: 8px;
+    }
+
+    .season-name {
         flex: 1;
+        font-weight: bold;
     }
 
     .season-progress {
         font-size: 13px;
+        font-weight: normal;
         color: var(--color-text-maxcontrast);
     }
+}
+
+.refreshed-note {
+    margin: 4px 0 0;
+    font-size: 13px;
+    color: var(--color-text-maxcontrast);
 }
 
 .episode-list {

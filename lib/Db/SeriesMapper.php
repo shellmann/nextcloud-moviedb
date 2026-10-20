@@ -23,7 +23,7 @@ class SeriesMapper extends QBMapper {
         'id', 'user_id', 'library_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
         'backdrop_path', 'overview', 'genre_ids', 'first_air_date', 'first_air_year',
         'number_of_seasons', 'number_of_episodes', 'status', 'cast_data', 'director',
-        'is_favorite', 'stopped_watching', 'created_at', 'updated_at',
+        'is_favorite', 'stopped_watching', 'tmdb_refreshed_at', 'created_at', 'updated_at',
     ];
 
     public function __construct(IDBConnection $db) {
@@ -269,5 +269,41 @@ class SeriesMapper extends QBMapper {
             ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
 
         $qb->executeStatement();
+    }
+
+    /**
+     * Shows whose episodes are due for a TMDB refresh, across all libraries.
+     * Never refreshed shows come first, then the longest waiting ones.
+     * Ongoing shows are due once $ongoingBefore has passed, ended or canceled
+     * ones once $endedBefore has passed (both "Y-m-d H:i:s" cut-offs).
+     *
+     * @return Series[]
+     */
+    public function findDueForRefresh(int $limit, string $ongoingBefore, string $endedBefore): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $endedStatuses = $qb->createNamedParameter(['Ended', 'Canceled'], IQueryBuilder::PARAM_STR_ARRAY);
+
+        $qb->select(...self::COLUMNS)
+            ->from($this->getTableName())
+            ->where($qb->expr()->isNotNull('tmdb_id'))
+            ->andWhere($qb->expr()->orX(
+                $qb->expr()->isNull('tmdb_refreshed_at'),
+                $qb->expr()->andX(
+                    $qb->expr()->orX($qb->expr()->isNull('status'), $qb->expr()->notIn('status', $endedStatuses)),
+                    $qb->expr()->lt('tmdb_refreshed_at', $qb->createNamedParameter($ongoingBefore))
+                ),
+                $qb->expr()->andX(
+                    $qb->expr()->in('status', $endedStatuses),
+                    $qb->expr()->lt('tmdb_refreshed_at', $qb->createNamedParameter($endedBefore))
+                )
+            ))
+            // NULL first on every database (Postgres sorts NULLs last by default).
+            ->orderBy($qb->createFunction('CASE WHEN tmdb_refreshed_at IS NULL THEN 0 ELSE 1 END'), 'ASC')
+            ->addOrderBy('tmdb_refreshed_at', 'ASC')
+            ->addOrderBy('id', 'ASC')
+            ->setMaxResults($limit);
+
+        return $this->findEntities($qb);
     }
 }

@@ -23,6 +23,7 @@ vi.mock('@/services/api.js', () => ({
 		getRecentMovies: vi.fn(),
 		getTopRatedMovies: vi.fn(),
 		getContinueWatching: vi.fn(),
+		getComingUp: vi.fn(),
 		getStatsByYear: vi.fn(),
 		getStatsByPlatform: vi.fn(),
 	},
@@ -36,6 +37,12 @@ const CardStub = {
 	template: '<article class="continue-card continue-card-stub" :data-series-id="series.id"><a class="title-link" href="#">{{ series.title }}</a><button class="watched-button">W</button></article>',
 }
 
+const ComingStub = {
+	props: ['series'],
+	emits: ['open'],
+	template: '<article class="coming-card-stub" :data-series-id="series.id">{{ series.title }}</article>',
+}
+
 function mountDashboard() {
 	return mount(Dashboard, {
 		attachTo: document.body,
@@ -47,6 +54,7 @@ function mountDashboard() {
 				PlatformChart: Stub,
 				ApiKeyAdminHint: Stub,
 				ContinueWatchingCard: CardStub,
+				ComingUpCard: ComingStub,
 			},
 			mocks: { t: (app, text) => text, $router: { push: vi.fn() } },
 		},
@@ -71,6 +79,8 @@ describe('Dashboard continue watching', () => {
 		api.getTopRatedMovies.mockResolvedValue({ data: { movies: [], series: [] } })
 		api.getStatsByYear.mockResolvedValue({ data: { years: {} } })
 		api.getStatsByPlatform.mockResolvedValue({ data: { platforms: [] } })
+		api.getContinueWatching.mockResolvedValue({ data: { series: [] } })
+		api.getComingUp.mockResolvedValue({ data: { series: [] } })
 	})
 
 	it('shows the row above "Recently Watched" with one card per show', async () => {
@@ -180,5 +190,98 @@ describe('Dashboard continue watching', () => {
 
 		expect(document.activeElement.textContent.trim()).toBe('Recently Watched')
 		wrapper.unmount()
+	})
+})
+
+describe('Dashboard coming up', () => {
+	let settings
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		vi.clearAllMocks()
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		settings = useSettingsStore()
+		settings.hasApiKey = true
+
+		api.getStats.mockResolvedValue({ data: {} })
+		api.getRecentMovies.mockResolvedValue({ data: { movies: [], series: [] } })
+		api.getTopRatedMovies.mockResolvedValue({ data: { movies: [], series: [] } })
+		api.getStatsByYear.mockResolvedValue({ data: { years: {} } })
+		api.getStatsByPlatform.mockResolvedValue({ data: { platforms: [] } })
+		api.getContinueWatching.mockResolvedValue({ data: { series: [{ id: 1, title: 'A' }] } })
+		api.getComingUp.mockResolvedValue({ data: { series: [] } })
+	})
+
+	it('shows the row between "Continue watching" and "Recently Watched"', async () => {
+		api.getComingUp.mockResolvedValue({ data: { series: [{ id: 5, title: 'Terminal' }, { id: 6, title: 'Other' }] } })
+		const wrapper = mountDashboard()
+		await flushPromises()
+
+		expect(api.getComingUp).toHaveBeenCalledWith(10, 1)
+		const headings = wrapper.findAll('h3').map((h) => h.text())
+		expect(headings.indexOf('Continue watching')).toBeLessThan(headings.indexOf('Coming up'))
+		expect(headings.indexOf('Coming up')).toBeLessThan(headings.indexOf('Recently Watched'))
+		expect(wrapper.findAll('.coming-card-stub')).toHaveLength(2)
+	})
+
+	it('is a labelled list with one item per show, for screen readers', async () => {
+		api.getComingUp.mockResolvedValue({ data: { series: [{ id: 5, title: 'Terminal' }, { id: 6, title: 'Other' }] } })
+		const wrapper = mountDashboard()
+		await flushPromises()
+
+		const list = wrapper.find('ul.coming-row')
+		expect(list.attributes('aria-labelledby')).toBe('coming-heading')
+		expect(wrapper.find('#coming-heading').text()).toBe('Coming up')
+		expect(list.findAll(':scope > li')).toHaveLength(2)
+	})
+
+	it('makes the continue watching row a labelled list too', async () => {
+		const wrapper = mountDashboard()
+		await flushPromises()
+
+		const list = wrapper.find('ul.continue-row')
+		expect(list.attributes('aria-labelledby')).toBe('continue-heading')
+		expect(list.findAll(':scope > li')).toHaveLength(1)
+	})
+
+	it('hides the row when nothing airs soon', async () => {
+		const wrapper = mountDashboard()
+		await flushPromises()
+
+		expect(wrapper.find('.coming-section').exists()).toBe(false)
+		expect(wrapper.findAll('h3').map((h) => h.text())).not.toContain('Coming up')
+	})
+
+	it('does not even load the row when the user switched it off', async () => {
+		settings.showComingUp = false
+		const wrapper = mountDashboard()
+		await flushPromises()
+
+		expect(api.getComingUp).not.toHaveBeenCalled()
+		expect(wrapper.find('.coming-section').exists()).toBe(false)
+	})
+
+	it('keeps the rest of the dashboard when the row fails to load', async () => {
+		api.getComingUp.mockRejectedValue(new Error('nope'))
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		const wrapper = mountDashboard()
+		await flushPromises()
+
+		expect(wrapper.find('.coming-section').exists()).toBe(false)
+		expect(wrapper.findAll('h3').map((h) => h.text())).toContain('Recently Watched')
+		expect(wrapper.find('.continue-section').exists()).toBe(true)
+	})
+
+	it('opens the show from a card', async () => {
+		api.getComingUp.mockResolvedValue({ data: { series: [{ id: 5, title: 'Terminal' }] } })
+		const wrapper = mountDashboard()
+		await flushPromises()
+
+		await wrapper.findComponent(ComingStub).vm.$emit('open')
+
+		expect(wrapper.vm.$router.push).toHaveBeenCalled()
 	})
 })

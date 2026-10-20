@@ -70,11 +70,21 @@
 				:modelValue="showContinueWatching"
 				type="switch"
 				:disabled="savingDashboard"
-				@update:modelValue="saveShowContinueWatching">
+				@update:modelValue="saveDashboardSwitch('showContinueWatching', $event)">
 				{{ t('moviedb', 'Show "Continue watching" on the dashboard') }}
 			</NcCheckboxRadioSwitch>
 			<p class="hint">
 				{{ t('moviedb', 'Lists the TV shows you are in the middle of, with the next episode.') }}
+			</p>
+			<NcCheckboxRadioSwitch
+				:modelValue="showComingUp"
+				type="switch"
+				:disabled="savingDashboard"
+				@update:modelValue="saveDashboardSwitch('showComingUp', $event)">
+				{{ t('moviedb', 'Show "Coming up" on the dashboard') }}
+			</NcCheckboxRadioSwitch>
+			<p class="hint">
+				{{ t('moviedb', 'Lists the TV shows you are up to date on whose next episode airs in the next 30 days.') }}
 			</p>
 		</div>
 
@@ -323,6 +333,7 @@ export default {
 			saving: false,
 			savingDashboard: false,
 			showContinueWatching: this.settingsStore.showContinueWatching,
+			showComingUp: this.settingsStore.showComingUp,
 			showDeletePlatformDialog: false,
 			showRemoveApiKeyDialog: false,
 			pendingDeletePlatformId: null,
@@ -425,20 +436,21 @@ export default {
 		},
 
 		/**
-		 * Saves the dashboard switch right away; on failure it flips back.
+		 * Saves a dashboard switch right away; on failure it flips back.
 		 *
+		 * @param {'showContinueWatching'|'showComingUp'} field - Setting to change
 		 * @param {boolean} value - New switch state
 		 */
-		async saveShowContinueWatching(value) {
-			const previous = this.showContinueWatching
-			this.showContinueWatching = value
+		async saveDashboardSwitch(field, value) {
+			const previous = this[field]
+			this[field] = value
 			this.savingDashboard = true
 			try {
-				await this.settingsStore.update({ showContinueWatching: value })
+				await this.settingsStore.update({ [field]: value })
 				showSuccess(t('moviedb', 'Settings saved successfully.'))
 			} catch (error) {
 				console.error('Failed to save dashboard setting:', error)
-				this.showContinueWatching = previous
+				this[field] = previous
 				showError(t('moviedb', 'Failed to save settings. Please try again.'))
 			} finally {
 				this.savingDashboard = false

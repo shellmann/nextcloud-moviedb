@@ -138,4 +138,100 @@ class SeriesProgressServiceTest extends TestCase {
         $e->setName('Next');
         return $e;
     }
+
+    // ---- comingUp ----
+
+    private function in(int $days): string {
+        return (new \DateTime())->modify('+' . $days . ' days')->format('Y-m-d');
+    }
+
+    private function upcoming(int $seriesId, int $season, int $number, string $airDate): Episode {
+        $e = new Episode();
+        $e->setId($seriesId * 1000 + $season * 100 + $number);
+        $e->setSeriesId($seriesId);
+        $e->setSeasonNumber($season);
+        $e->setEpisodeNumber($number);
+        $e->setName('Ep ' . $number);
+        $e->setAirDate($airDate);
+        return $e;
+    }
+
+    public function testComingUpAsksForTheNextThirtyDaysByDefault(): void {
+        $this->episodeMapper->expects($this->once())->method('upcomingByLibrary')
+            ->with(self::LIB, $this->in(0), $this->in(30))->willReturn([]);
+
+        $this->assertSame([], $this->service->comingUp(self::LIB));
+    }
+
+    public function testComingUpClampsTheWindowAndTheLimit(): void {
+        $this->episodeMapper->expects($this->once())->method('upcomingByLibrary')
+            ->with(self::LIB, $this->in(0), $this->in(90))->willReturn([]);
+
+        $this->service->comingUp(self::LIB, 500, 500);
+    }
+
+    public function testComingUpListsCaughtUpShowsSoonestFirst(): void {
+        $this->episodeMapper->method('upcomingByLibrary')->willReturn([
+            $this->upcoming(1, 2, 1, $this->in(3)),
+            $this->upcoming(2, 1, 1, $this->in(10)),
+        ]);
+        $this->seriesMapper->method('findAllByLibrary')->willReturn([$this->series(2), $this->series(1)]);
+        $this->episodeMapper->method('progressByLibrary')->willReturn([
+            1 => ['watched' => 8, 'aired' => 8, 'lastWatchedAt' => '2026-10-16 10:00:00'],
+        ]);
+
+        $rows = $this->service->comingUp(self::LIB);
+
+        $this->assertSame([1, 2], array_column($rows, 'id'));
+        $this->assertSame(2, $rows[0]['upcomingEpisode']['seasonNumber']);
+        $this->assertSame(1, $rows[0]['sameDayCount']);
+        $this->assertSame('finished', $rows[0]['watchStatus']);
+        // An unstarted show with a premiere is included too.
+        $this->assertSame('in_progress', $rows[1]['watchStatus']);
+    }
+
+    public function testComingUpLeavesOutShowsStillInProgressAndStoppedShows(): void {
+        $this->episodeMapper->method('upcomingByLibrary')->willReturn([
+            $this->upcoming(1, 2, 1, $this->in(3)),
+            $this->upcoming(2, 2, 1, $this->in(4)),
+            $this->upcoming(3, 2, 1, $this->in(5)),
+        ]);
+        $this->seriesMapper->method('findAllByLibrary')->willReturn([$this->series(1), $this->series(2, true), $this->series(3)]);
+        $this->episodeMapper->method('progressByLibrary')->willReturn([
+            1 => ['watched' => 3, 'aired' => 8, 'lastWatchedAt' => null],  // episodes left: Continue watching
+            2 => ['watched' => 8, 'aired' => 8, 'lastWatchedAt' => null],  // stopped
+            3 => ['watched' => 8, 'aired' => 8, 'lastWatchedAt' => null],
+        ]);
+
+        $this->assertSame([3], array_column($this->service->comingUp(self::LIB), 'id'));
+    }
+
+    public function testComingUpUsesTheFirstEpisodeAndCountsTheSameDay(): void {
+        $day = $this->in(7);
+        $this->episodeMapper->method('upcomingByLibrary')->willReturn([
+            $this->upcoming(1, 3, 1, $day),
+            $this->upcoming(1, 3, 2, $day),
+            $this->upcoming(1, 3, 3, $day),
+            $this->upcoming(1, 3, 4, $this->in(14)),
+        ]);
+        $this->seriesMapper->method('findAllByLibrary')->willReturn([$this->series(1)]);
+        $this->episodeMapper->method('progressByLibrary')->willReturn([1 => ['watched' => 8, 'aired' => 8, 'lastWatchedAt' => null]]);
+
+        $rows = $this->service->comingUp(self::LIB);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame(1, $rows[0]['upcomingEpisode']['episodeNumber']);
+        $this->assertSame(3, $rows[0]['sameDayCount']);
+    }
+
+    public function testComingUpSortsTiesByTitleAndHonoursTheLimit(): void {
+        $day = $this->in(5);
+        $this->episodeMapper->method('upcomingByLibrary')->willReturn([
+            $this->upcoming(1, 2, 1, $day), $this->upcoming(2, 2, 1, $day), $this->upcoming(3, 2, 1, $day),
+        ]);
+        $this->seriesMapper->method('findAllByLibrary')->willReturn([$this->series(3), $this->series(1), $this->series(2)]);
+        $this->episodeMapper->method('progressByLibrary')->willReturn([]);
+
+        $this->assertSame([1, 2], array_column($this->service->comingUp(self::LIB, 30, 2), 'id'));
+    }
 }

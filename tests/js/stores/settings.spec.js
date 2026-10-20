@@ -56,6 +56,15 @@ describe('Settings Store', () => {
 			expect(store.showContinueWatching).toBe(true)
 		})
 
+		it('should show coming up by default and keep it off once switched off', () => {
+			expect(useSettingsStore().showComingUp).toBe(true)
+			loadState.mockReturnValueOnce({ showComingUp: false, showContinueWatching: true })
+			setActivePinia(createPinia())
+			const store = useSettingsStore()
+			expect(store.showComingUp).toBe(false)
+			expect(store.showContinueWatching).toBe(true)
+		})
+
 		it('should keep continue watching off once the user switched it off', () => {
 			loadState.mockReturnValueOnce({ showContinueWatching: false })
 			setActivePinia(createPinia())

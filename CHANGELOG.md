@@ -7,9 +7,36 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- TV shows stay up to date: a background job compares the episodes of every
+  show with TMDB once a day and adds new seasons and episodes and updates air
+  dates and names. Watched episodes are never touched, and episodes TMDB no
+  longer lists are kept. Ongoing shows are checked daily; ended or canceled
+  shows monthly, in Nextcloud's maintenance window if the admin set one. It uses the TMDB key of the library owner (or the
+  instance-wide key) and slows down when TMDB asks it to. Until now episodes
+  were only loaded once, when a show was added, so a new season never showed up.
+- "Update from TMDB" button on the TV show page (for editors, rate-limited to
+  10 updates a minute). It says what changed ("A new season was added.") and
+  when the episodes were last updated.
+- "Coming up" on the dashboard: TV shows you are up to date on whose next
+  episode airs in the next 30 days, soonest first, with a relative date ("Tomorrow"),
+  "New season" or "Premiere", and a range for a whole season released at once.
+  It can be switched off in the settings, like "Continue watching".
+- Show details are updated in the database (new column `tmdb_refreshed_at`).
+
 ### Changed
 - The "What's new" dialog also covers patch releases that fix something you
   notice, starting with the language flag from 1.9.1.
+- The "Continue watching" and "Coming up" rows are lists for screen readers
+  ("list, 3 items"), and the show titles in the cards are level 4 headings
+  under the section heading.
+
+### Fixed
+- A finished show comes back into "Continue watching" when a new season airs
+  (this needed the episodes of the new season, which were never loaded).
+- Season headers on the TV show page are real buttons: reachable by keyboard
+  and they announce whether the season is expanded. The checkbox of an episode
+  is named after it ("S01E02 Pilot watched") instead of just "Watched".
 
 ## [1.9.1] - 2026-10-18
 

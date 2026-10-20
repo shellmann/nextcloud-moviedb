@@ -186,8 +186,10 @@ class SqlRecordingQB implements IQueryBuilder {
         return new class {
             public function eq($a, $b): string { return "$a = $b"; }
             public function lte($a, $b): string { return "$a <= $b"; }
+            public function lt($a, $b): string { return "$a < $b"; }
             public function gt($a, $b): string { return "$a > $b"; }
             public function in($a, $b): string { return "$a IN ($b)"; }
+            public function notIn($a, $b): string { return "$a NOT IN ($b)"; }
             public function isNull($a): string { return "$a IS NULL"; }
             public function isNotNull($a): string { return "$a IS NOT NULL"; }
             public function like($a, $b): string { return "$a LIKE $b"; }

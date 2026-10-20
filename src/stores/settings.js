@@ -27,6 +27,8 @@ function fromServer(data) {
 		appLanguage: data.appLanguage || 'auto',
 		/** @type {boolean} Whether the dashboard shows the "continue watching" row (on unless switched off) */
 		showContinueWatching: data.showContinueWatching !== false,
+		/** @type {boolean} Whether the dashboard shows the "coming up" row (on unless switched off) */
+		showComingUp: data.showComingUp !== false,
 	}
 }
 

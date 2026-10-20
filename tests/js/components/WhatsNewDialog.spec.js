@@ -75,11 +75,11 @@ describe('WhatsNewDialog', () => {
 	})
 
 	it('moves on quietly after an update without highlights', async () => {
-		const wrapper = await mountWith({ currentVersion: '1.9.99', lastSeenVersion: '1.9.1' })
+		const wrapper = await mountWith({ currentVersion: '99.0.1', lastSeenVersion: '99.0.0' })
 		await flushPromises()
 
 		expect(wrapper.find('.dialog').exists()).toBe(false)
-		expect(api.updateSettings).toHaveBeenCalledWith({ lastSeenVersion: '1.9.99' })
+		expect(api.updateSettings).toHaveBeenCalledWith({ lastSeenVersion: '99.0.1' })
 	})
 
 	it('does nothing without version information', async () => {

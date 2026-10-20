@@ -12,6 +12,7 @@ use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
+use OCA\MovieDB\Util\TmdbEpisode;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
 
@@ -152,14 +153,7 @@ class SeriesService {
             }
             $episode = new Episode();
             $episode->setSeriesId($seriesId);
-            $episode->setTmdbId($epTmdbId);
-            $episode->setSeasonNumber((int)($ep['season_number'] ?? $seasonNumber));
-            $episode->setEpisodeNumber((int)($ep['episode_number'] ?? 0));
-            $episode->setName((string)($ep['name'] ?? ''));
-            $episode->setOverview($ep['overview'] ?? null);
-            $episode->setAirDate(!empty($ep['air_date']) ? $ep['air_date'] : null);
-            $episode->setRuntime(isset($ep['runtime']) ? (int)$ep['runtime'] : null);
-            $episode->setStillPath($ep['still_path'] ?? null);
+            TmdbEpisode::apply($episode, $ep, $seasonNumber);
             $episode->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
             $this->episodeMapper->insert($episode);
         }

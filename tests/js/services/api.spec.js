@@ -119,3 +119,23 @@ describe('api continue watching', () => {
 		expect(axios.post).toHaveBeenNthCalledWith(2, '/index.php/apps/moviedb/api/series/7/stopped', { stopped: false })
 	})
 })
+
+describe('api coming up and refresh', () => {
+	beforeEach(() => {
+		vi.clearAllMocks()
+	})
+
+	it('loads the coming up row for a library', () => {
+		api.getComingUp(10, 3)
+		api.getComingUp()
+		expect(axios.get).toHaveBeenNthCalledWith(1, '/index.php/apps/moviedb/api/series/upcoming', { params: { limit: 10, libraryId: 3 } })
+		expect(axios.get).toHaveBeenNthCalledWith(2, '/index.php/apps/moviedb/api/series/upcoming', { params: { limit: 10 } })
+	})
+
+	it('asks the server to update a show from TMDB', () => {
+		api.refreshSeries(7, 'de-DE', 3)
+		api.refreshSeries(7)
+		expect(axios.post).toHaveBeenNthCalledWith(1, '/index.php/apps/moviedb/api/series/7/refresh', { language: 'de-DE', libraryId: 3 })
+		expect(axios.post).toHaveBeenNthCalledWith(2, '/index.php/apps/moviedb/api/series/7/refresh', {})
+	})
+})

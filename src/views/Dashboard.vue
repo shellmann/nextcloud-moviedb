@@ -86,18 +86,33 @@
 		<div class="dashboard-sections">
 			<!-- Hidden when switched off in the settings or when nothing is left to watch. -->
 			<div v-if="showContinueWatching && continueWatching.length" class="section continue-section">
-				<h3>{{ t('moviedb', 'Continue watching') }}</h3>
-				<div class="movie-row continue-row">
-					<ContinueWatchingCard
-						v-for="item in continueWatching"
-						:key="'continue-' + item.id"
-						:series="item"
-						:canEdit="librariesStore.activeCanEdit"
-						:libraryId="librariesStore.activeLibraryId"
-						@open="goToSeries(item.id)"
-						@changed="refreshAfterChange"
-						@stopped="onStopped" />
-				</div>
+				<h3 id="continue-heading">
+					{{ t('moviedb', 'Continue watching') }}
+				</h3>
+				<ul class="movie-row continue-row" aria-labelledby="continue-heading" role="list">
+					<li v-for="item in continueWatching" :key="'continue-' + item.id">
+						<ContinueWatchingCard
+							:series="item"
+							:canEdit="librariesStore.activeCanEdit"
+							:libraryId="librariesStore.activeLibraryId"
+							@open="goToSeries(item.id)"
+							@changed="refreshAfterChange"
+							@stopped="onStopped" />
+					</li>
+				</ul>
+			</div>
+
+			<!-- Shows you are up to date on whose next episode is announced. Hidden when
+				 switched off in the settings or when nothing airs soon. -->
+			<div v-if="showComingUp && comingUp.length" class="section coming-section">
+				<h3 id="coming-heading">
+					{{ t('moviedb', 'Coming up') }}
+				</h3>
+				<ul class="movie-row coming-row" aria-labelledby="coming-heading" role="list">
+					<li v-for="item in comingUp" :key="'coming-' + item.id">
+						<ComingUpCard :series="item" @open="goToSeries(item.id)" />
+					</li>
+				</ul>
 			</div>
 
 			<div class="section">
@@ -170,6 +185,7 @@ import { showUndo } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import { NcNoteCard, NcSelect } from '@nextcloud/vue'
 import ApiKeyAdminHint from '../components/ApiKeyAdminHint.vue'
+import ComingUpCard from '../components/ComingUpCard.vue'
 import ContinueWatchingCard from '../components/ContinueWatchingCard.vue'
 import MovieCard from '../components/MovieCard.vue'
 import PlatformChart from '../components/PlatformChart.vue'
@@ -190,6 +206,7 @@ export default {
 		YearChart,
 		PlatformChart,
 		ApiKeyAdminHint,
+		ComingUpCard,
 		ContinueWatchingCard,
 	},
 
@@ -212,6 +229,7 @@ export default {
 			},
 
 			continueWatching: [],
+			comingUp: [],
 			recentMovies: [],
 			recentSeries: [],
 			topRatedMovies: [],
@@ -240,6 +258,10 @@ export default {
 
 		showContinueWatching() {
 			return this.settingsStore.showContinueWatching
+		},
+
+		showComingUp() {
+			return this.settingsStore.showComingUp
 		},
 
 		recentItems() {
@@ -277,6 +299,7 @@ export default {
 					api.getRecentMovies(5, lid),
 					api.getTopRatedMovies(5, lid),
 					this.loadContinueWatching(),
+					this.loadComingUp(),
 				])
 				this.stats = statsRes.data
 				this.recentMovies = recentRes.data.movies
@@ -307,6 +330,25 @@ export default {
 			} catch (error) {
 				console.error('Failed to load continue watching:', error)
 				this.continueWatching = []
+			}
+		},
+
+		/**
+		 * Loads the "coming up" row; skipped when the user switched it off.
+		 * A failure only hides the row, like "continue watching".
+		 */
+		async loadComingUp() {
+			if (!this.showComingUp) {
+				this.comingUp = []
+				return
+			}
+			try {
+				const libraryId = this.librariesStore.activeLibraryId
+				const response = await api.getComingUp(10, libraryId !== null ? libraryId : undefined)
+				this.comingUp = response.data.series || []
+			} catch (error) {
+				console.error('Failed to load coming up:', error)
+				this.comingUp = []
 			}
 		},
 
@@ -538,9 +580,26 @@ export default {
     }
 
     // Room for the next episode and the quick actions.
-    &.continue-row > * {
+    &.continue-row > *,
+    &.coming-row > * {
         flex-basis: 170px;
         width: 170px;
+    }
+}
+
+// The rows are lists for screen readers; drop the bullets and let each card fill its item.
+ul.movie-row {
+    list-style: none;
+    margin: 0;
+    padding: 0 0 8px;
+
+    > li {
+        display: flex;
+
+        > * {
+            flex: 1;
+            min-width: 0;
+        }
     }
 }
 
@@ -559,7 +618,8 @@ export default {
         width: 110px;
     }
 
-    .movie-row.continue-row > * {
+    .movie-row.continue-row > *,
+    .movie-row.coming-row > * {
         flex-basis: 150px;
         width: 150px;
     }
