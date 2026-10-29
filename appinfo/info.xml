@@ -59,6 +59,7 @@ Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.th
     </dependencies>
     <background-jobs>
         <job>OCA\MovieDB\BackgroundJob\RefreshSeriesJob</job>
+        <job>OCA\MovieDB\BackgroundJob\RefreshWatchlistReleaseDatesJob</job>
     </background-jobs>
     <settings>
         <admin>OCA\MovieDB\Settings\Admin</admin>

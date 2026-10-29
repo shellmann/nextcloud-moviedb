@@ -7,6 +7,7 @@ namespace OCA\MovieDB\Service;
 use DateTime;
 use OCA\MovieDB\Db\WatchlistItem;
 use OCA\MovieDB\Db\WatchlistMapper;
+use OCA\MovieDB\Util\DateValue;
 use OCP\AppFramework\Db\DoesNotExistException;
 
 class WatchlistService {
@@ -117,7 +118,7 @@ class WatchlistService {
         $item->setPosterPath($data['posterPath'] ?? null);
         $item->setOverview($data['overview'] ?? null);
         $item->setGenreIds($data['genreIds'] ?? null);
-        $item->setReleaseDate($data['releaseDate'] ?? null);
+        $item->setReleaseDate(DateValue::normalize($data['releaseDate'] ?? null));
         $item->setAddedAt((new DateTime())->format('Y-m-d H:i:s'));
         $item->setPriority($data['priority'] ?? 0);
         $item->setNotes($data['notes'] ?? null);
@@ -141,6 +142,20 @@ class WatchlistService {
         if (array_key_exists('notes', $data)) {
             $item->setNotes($data['notes']);
         }
+        // Whoever edits the item has seen the "New date" badge.
+        $item->setReleaseDateChangedAt(null);
+
+        return $this->mapper->update($item);
+    }
+
+    /**
+     * Dismisses the "New date" badge of an item.
+     *
+     * @throws DoesNotExistException
+     */
+    public function acknowledgeReleaseDate(int $id, int $libraryId): WatchlistItem {
+        $item = $this->mapper->find($id, $libraryId);
+        $item->setReleaseDateChangedAt(null);
 
         return $this->mapper->update($item);
     }

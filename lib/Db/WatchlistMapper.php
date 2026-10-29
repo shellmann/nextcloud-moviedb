@@ -167,4 +167,26 @@ class WatchlistMapper extends QBMapper {
 
         $qb->executeStatement();
     }
+
+    /**
+     * Items whose release date can still change at TMDB: no date yet, or one
+     * that is today or later. Released titles are never asked again.
+     *
+     * @return WatchlistItem[]
+     */
+    public function findDueForReleaseCheck(int $limit, string $today): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->isNotNull('tmdb_id'))
+            ->andWhere($qb->expr()->orX(
+                $qb->expr()->isNull('release_date'),
+                $qb->expr()->gte('release_date', $qb->createNamedParameter($today))
+            ))
+            ->orderBy('id', 'ASC')
+            ->setMaxResults($limit);
+
+        return $this->findEntities($qb);
+    }
 }

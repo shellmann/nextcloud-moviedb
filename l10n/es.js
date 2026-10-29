@@ -492,6 +492,11 @@ OC.L10N.register(
         "{count} new episodes were added.": "Se añadieron {count} episodios nuevos.",
         "{count} new seasons were added.": "Se añadieron {count} temporadas nuevas.",
         "{episode} watched": "{episode} visto",
-        "TV shows stay up to date: new seasons, new episodes and changed air dates now come in from TMDB by themselves, once a day.": "Las series se mantienen al día: las nuevas temporadas, los nuevos episodios y los cambios de fecha de emisión llegan ahora solos desde TMDB, una vez al día."
+        "TV shows stay up to date: new seasons, new episodes and changed air dates now come in from TMDB by themselves, once a day.": "Las series se mantienen al día: las nuevas temporadas, los nuevos episodios y los cambios de fecha de emisión llegan ahora solos desde TMDB, una vez al día.",
+        "New date": "Nueva fecha",
+        "Dismiss": "Descartar",
+        "Titles without a release date can be added to your watchlist again.": "Los títulos sin fecha de estreno vuelven a poder añadirse a tu lista de seguimiento.",
+        "Release dates on your watchlist stay up to date: once a day MovieDB asks TMDB and fills in or moves the date by itself.": "Las fechas de estreno de tu lista de seguimiento se mantienen al día: una vez al día MovieDB consulta TMDB y completa o cambia la fecha por sí solo.",
+        "A \"New date\" badge on the poster shows when a date was set or changed. Dismiss it with the cross.": "Una insignia «Nueva fecha» en el póster indica cuándo se ha fijado o cambiado una fecha. Descártala con la cruz."
     },
 "nplurals=2; plural=(n != 1);");

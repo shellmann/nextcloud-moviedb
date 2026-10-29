@@ -56,6 +56,17 @@
 					<div v-else class="no-poster">
 						{{ t('moviedb', 'No poster') }}
 					</div>
+					<div v-if="item.releaseDateNews" class="date-news-badge">
+						<span>{{ t('moviedb', 'New date') }}</span>
+						<button
+							v-if="activeCanEdit"
+							type="button"
+							class="date-news-dismiss"
+							:aria-label="t('moviedb', 'Dismiss')"
+							@click="watchlistStore.acknowledgeReleaseDate(item.id)">
+							<Close :size="14" />
+						</button>
+					</div>
 				</div>
 				<div class="item-info">
 					<div class="item-header">
@@ -68,7 +79,7 @@
 						</span>
 					</div>
 					<p v-if="item.releaseDate" class="release-date">
-						{{ item.releaseDate.substring(0, 4) }}
+						{{ item.releaseDateNews ? formatDate(item.releaseDate) : item.releaseDate.substring(0, 4) }}
 						<span v-if="getGenreNames(item).length" class="genre-tags">
 							<span v-for="genre in getGenreNames(item)" :key="genre" class="genre-tag">{{ genre }}</span>
 						</span>
@@ -228,6 +239,7 @@
 <script>
 import { NcButton, NcDialog, NcEmptyContent, NcLoadingIcon, NcModal, NcSelect, NcTextField } from '@nextcloud/vue'
 import Check from 'vue-material-design-icons/Check.vue'
+import Close from 'vue-material-design-icons/Close.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
 import FerrisWheel from 'vue-material-design-icons/FerrisWheel.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
@@ -240,7 +252,7 @@ import { useLibrariesStore } from '../stores/libraries.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
-import { todayLocal } from '../utils/formatters.js'
+import { formatDate, todayLocal } from '../utils/formatters.js'
 
 export default {
 	name: 'Watchlist',
@@ -254,6 +266,7 @@ export default {
 		NcDialog,
 		WatchlistPicker,
 		Check,
+		Close,
 		Delete,
 		FerrisWheel,
 		Pencil,
@@ -350,6 +363,7 @@ export default {
 	},
 
 	methods: {
+		formatDate,
 		getPosterUrl,
 		getPriorityLabel,
 		getPriorityColor,
@@ -513,8 +527,45 @@ export default {
 }
 
 .item-poster {
+    position: relative;
     flex-shrink: 0;
     width: 100px;
+
+    .date-news-badge {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 2px;
+        padding: 2px 4px 2px 6px;
+        border-radius: 0 0 4px 4px;
+        font-size: 10px;
+        font-weight: bold;
+        text-transform: uppercase;
+        background: var(--color-primary-element);
+        color: var(--color-primary-element-text);
+    }
+
+    .date-news-dismiss {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        min-height: 0;
+        padding: 0;
+        border: none;
+        border-radius: 50%;
+        background: transparent;
+        color: inherit;
+        cursor: pointer;
+
+        &:hover,
+        &:focus-visible {
+            background: rgba(255, 255, 255, 0.25);
+        }
+    }
 
     img {
         width: 100%;

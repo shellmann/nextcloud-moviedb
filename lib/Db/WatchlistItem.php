@@ -32,10 +32,15 @@ use OCP\AppFramework\Db\Entity;
  * @method void setNotes(?string $notes)
  * @method string getMediaType()
  * @method void setMediaType(string $mediaType)
+ * @method string|null getReleaseDateChangedAt()
+ * @method void setReleaseDateChangedAt(?string $releaseDateChangedAt)
  * @method int|null getLibraryId()
  * @method void setLibraryId(?int $libraryId)
  */
 class WatchlistItem extends Entity implements JsonSerializable {
+    /** How long the "New date" badge stays after a release date was set or moved. */
+    public const NEWS_DAYS = 30;
+
     protected string $userId = '';
     protected ?int $libraryId = null;
     protected ?int $tmdbId = null;
@@ -44,6 +49,7 @@ class WatchlistItem extends Entity implements JsonSerializable {
     protected ?string $overview = null;
     protected ?array $genreIds = null;
     protected ?string $releaseDate = null;
+    protected ?string $releaseDateChangedAt = null;
     protected string $addedAt = '';
     protected int $priority = 0;
     protected ?string $notes = null;
@@ -57,6 +63,15 @@ class WatchlistItem extends Entity implements JsonSerializable {
         $this->addType('priority', 'integer');
     }
 
+    /** True while a release date set or moved by the TMDB check is recent news. */
+    public function hasReleaseDateNews(): bool {
+        if ($this->releaseDateChangedAt === null) {
+            return false;
+        }
+        $since = (new \DateTime())->modify('-' . self::NEWS_DAYS . ' days')->format('Y-m-d H:i:s');
+        return $this->releaseDateChangedAt >= $since;
+    }
+
     public function jsonSerialize(): array {
         return [
             'id' => $this->id,
@@ -68,6 +83,7 @@ class WatchlistItem extends Entity implements JsonSerializable {
             'overview' => $this->overview,
             'genreIds' => $this->genreIds,
             'releaseDate' => $this->releaseDate,
+            'releaseDateNews' => $this->hasReleaseDateNews(),
             'addedAt' => $this->addedAt,
             'priority' => $this->priority,
             'notes' => $this->notes,

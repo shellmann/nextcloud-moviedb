@@ -40,6 +40,7 @@ return [
         ['name' => 'watchlist#update', 'url' => '/api/watchlist/{id}', 'verb' => 'PUT'],
         ['name' => 'watchlist#destroy', 'url' => '/api/watchlist/{id}', 'verb' => 'DELETE'],
         ['name' => 'watchlist#moveToWatched', 'url' => '/api/watchlist/{id}/watched', 'verb' => 'POST'],
+        ['name' => 'watchlist#acknowledgeReleaseDate', 'url' => '/api/watchlist/{id}/release-seen', 'verb' => 'POST'],
 
         // Platforms CRUD
         ['name' => 'platform#index', 'url' => '/api/platforms', 'verb' => 'GET'],

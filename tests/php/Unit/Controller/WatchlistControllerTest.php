@@ -157,6 +157,25 @@ class WatchlistControllerTest extends TestCase {
         $this->assertSame(99, $data['movie']->getId());
     }
 
+    public function testAcknowledgeReleaseDateReturnsTheItem(): void {
+        $item = $this->makeItem(5, 'movie', 1);
+        $this->service->expects($this->once())->method('acknowledgeReleaseDate')
+            ->with(5, self::LIBRARY_ID)
+            ->willReturn($item);
+
+        $response = $this->controller->acknowledgeReleaseDate(5);
+
+        $this->assertEquals(Http::STATUS_OK, $response->getStatus());
+        $this->assertSame($item, $response->getData()['item']);
+    }
+
+    public function testAcknowledgeReleaseDateReturnsNotFoundForAnUnknownItem(): void {
+        $this->service->method('acknowledgeReleaseDate')
+            ->willThrowException(new \OCP\AppFramework\Db\DoesNotExistException('x'));
+
+        $this->assertEquals(Http::STATUS_NOT_FOUND, $this->controller->acknowledgeReleaseDate(5)->getStatus());
+    }
+
     public function testIndexDefaultsToPageOneAndLimitFifty(): void {
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $this->request->method('getParam')->willReturnCallback(

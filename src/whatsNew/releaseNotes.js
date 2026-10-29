@@ -12,6 +12,14 @@ import { translate as t } from '@nextcloud/l10n'
 export function releaseNotes() {
 	return [
 		{
+			version: '1.10.0',
+			items: [
+				t('moviedb', 'Titles without a release date can be added to your watchlist again.'),
+				t('moviedb', 'Release dates on your watchlist stay up to date: once a day MovieDB asks TMDB and fills in or moves the date by itself.'),
+				t('moviedb', 'A "New date" badge on the poster shows when a date was set or changed. Dismiss it with the cross.'),
+			],
+		},
+		{
 			version: '1.9.2',
 			items: [
 				t('moviedb', 'TV shows stay up to date: new seasons, new episodes and changed air dates now come in from TMDB by themselves, once a day.'),

@@ -491,7 +491,12 @@
 		"{count} new episodes were added.": "{count} nieuwe afleveringen zijn toegevoegd.",
 		"{count} new seasons were added.": "{count} nieuwe seizoenen zijn toegevoegd.",
 		"{episode} watched": "{episode} bekeken",
-		"TV shows stay up to date: new seasons, new episodes and changed air dates now come in from TMDB by themselves, once a day.": "Series blijven actueel: nieuwe seizoenen, nieuwe afleveringen en gewijzigde uitzenddata komen nu één keer per dag vanzelf binnen van TMDB."
+		"TV shows stay up to date: new seasons, new episodes and changed air dates now come in from TMDB by themselves, once a day.": "Series blijven actueel: nieuwe seizoenen, nieuwe afleveringen en gewijzigde uitzenddata komen nu één keer per dag vanzelf binnen van TMDB.",
+		"New date": "Nieuwe datum",
+		"Dismiss": "Negeren",
+		"Titles without a release date can be added to your watchlist again.": "Titels zonder releasedatum kunnen weer aan je kijklijst worden toegevoegd.",
+		"Release dates on your watchlist stay up to date: once a day MovieDB asks TMDB and fills in or moves the date by itself.": "Releasedata op je kijklijst blijven actueel: één keer per dag vraagt MovieDB het aan TMDB en vult de datum zelf in of verschuift die.",
+		"A \"New date\" badge on the poster shows when a date was set or changed. Dismiss it with the cross.": "Een badge ‘Nieuwe datum’ op de poster laat zien wanneer een datum is ingesteld of gewijzigd. Verberg hem met het kruisje."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }
