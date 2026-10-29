@@ -110,6 +110,27 @@ class MovieWatchServiceTest extends TestCase {
         $this->service->create(1, 'testuser', self::LIBRARY_ID, ['rating' => 11]);
     }
 
+    public function testCreateStoresNullForAnEmptyWatchedDate(): void {
+        // A cleared date field sends ""; a DATE column rejects it on MySQL/PostgreSQL.
+        $this->mapper->expects($this->once())
+            ->method('insert')
+            ->with($this->callback(fn (MovieWatch $w) => $w->getWatchedAt() === null))
+            ->willReturnArgument(0);
+
+        $this->service->create(5, 'testuser', self::LIBRARY_ID, ['watchedAt' => '']);
+    }
+
+    public function testUpdateStoresNullForAnEmptyWatchedDate(): void {
+        $watch = $this->createWatch(1, 7);
+        $watch->setWatchedAt('2026-08-24');
+        $this->mapper->method('find')->willReturn($watch);
+        $this->mapper->method('update')->willReturnArgument(0);
+
+        $result = $this->service->update(1, self::LIBRARY_ID, ['watchedAt' => '']);
+
+        $this->assertNull($result->getWatchedAt());
+    }
+
     public function testUpdateAppliesOnlyProvidedFields(): void {
         $watch = $this->createWatch(1, 7);
         $watch->setRating(5);

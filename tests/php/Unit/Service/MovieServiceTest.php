@@ -230,6 +230,19 @@ class MovieServiceTest extends TestCase {
         $this->assertNull($result->getReleaseYear());
     }
 
+    public function testCreateStoresNullForAnEmptyDateWatched(): void {
+        $this->mapper->method('insert')->willReturnCallback(function (Movie $movie) {
+            $movie->setId(1);
+            return $movie;
+        });
+        $this->watchMapper->expects($this->once())
+            ->method('insert')
+            ->with($this->callback(fn (MovieWatch $w) => $w->getWatchedAt() === null))
+            ->willReturnArgument(0);
+
+        $this->service->create('testuser', self::LIBRARY_ID, ['title' => 'Heat 2', 'rating' => 4, 'dateWatched' => '']);
+    }
+
     public function testUpdate(): void {
         $movieId = 1;
         $existingMovie = $this->createMovieEntity($movieId, 'Old Title');

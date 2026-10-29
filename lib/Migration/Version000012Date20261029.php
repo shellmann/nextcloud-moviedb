@@ -40,7 +40,11 @@ class Version000012Date20261029 extends SimpleMigrationStep {
             return;
         }
 
+        $schema = $schemaClosure();
         foreach (self::DATE_TABLES as $tableName) {
+            if (!$schema->hasTable($tableName)) {
+                continue;
+            }
             $qb = $this->db->getQueryBuilder();
             $qb->update($tableName)
                 ->set('release_date', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))

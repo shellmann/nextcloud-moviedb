@@ -116,7 +116,7 @@ class MovieService {
             $watch->setMovieId($movie->getId());
             $watch->setUserId($userId);
             $watch->setLibraryId($libraryId);
-            $watch->setWatchedAt($data['dateWatched'] ?? null);
+            $watch->setWatchedAt(DateValue::normalize($data['dateWatched'] ?? null));
             $watch->setRating($data['rating'] ?? null);
             $watch->setReview($data['review'] ?? null);
             $watch->setPlatformId($data['platformId'] ?? null);

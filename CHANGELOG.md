@@ -22,7 +22,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 - Titles without a release date (not released yet, e.g. "Heat 2") can be added
   to the watchlist and as watched movies again on MySQL/MariaDB and PostgreSQL;
-  they failed with "Incorrect date value: ''". (#90)
+  they failed with "Incorrect date value: ''". Clearing the "date watched"
+  field of a movie failed the same way and is fixed too. (#90)
 - Nextcloud 35's database check (`occ db:schema:check`, also shown after
   `occ upgrade`) no longer reports `moviedb_episodes.watched`,
   `moviedb_libraries.is_personal` and `moviedb_library_members.permission_edit`
