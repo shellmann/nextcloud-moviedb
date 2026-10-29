@@ -100,8 +100,13 @@ run_sql() { # usage: run_sql <sql> -> prints the first column of every row
 echo "== Seeding rows"
 run_sql "INSERT INTO oc_moviedb_libraries (owner, name, is_personal, created_at) VALUES ('admin', 'Upgrade check', 1, '2026-01-01 00:00:00')"
 run_sql "INSERT INTO oc_moviedb_watchlist (user_id, library_id, title, tmdb_id, added_at, priority) VALUES ('admin', (SELECT MIN(id) FROM oc_moviedb_libraries), 'Upgrade seed', 1, '2026-01-01 00:00:00', 0)"
-# SQLite accepted "" (TMDB's date for unreleased titles) in DATE columns; Version000012 repairs such rows.
-if [ "$DB" = "sqlite" ]; then
+# SQLite accepted "" (TMDB's date for unreleased titles) in DATE columns; Version000012 repairs such rows
+# once, so this only applies when the old release predates that migration.
+REPAIR_CHECK=false
+if [ "$DB" = "sqlite" ] && ! git cat-file -e "${FROM_REF}:lib/Migration/Version000012Date20261029.php" 2>/dev/null; then
+	REPAIR_CHECK=true
+fi
+if [ "$REPAIR_CHECK" = true ]; then
 	run_sql "INSERT INTO oc_moviedb_watchlist (user_id, library_id, title, tmdb_id, added_at, priority, release_date) VALUES ('admin', (SELECT MIN(id) FROM oc_moviedb_libraries), 'Upgrade seed empty date', 2, '2026-01-01 00:00:00', 0, '')"
 fi
 
@@ -140,7 +145,7 @@ fi
 echo "== Checking the data"
 [ "$(run_sql "SELECT COUNT(*) FROM oc_moviedb_watchlist WHERE title = 'Upgrade seed'")" = "1" ] || fail "The seeded watchlist row is gone"
 [ "$(run_sql "SELECT COUNT(*) FROM oc_moviedb_libraries WHERE name = 'Upgrade check'")" -ge 1 ] || fail "The seeded library row is gone"
-if [ "$DB" = "sqlite" ]; then
+if [ "$REPAIR_CHECK" = true ]; then
 	[ "$(run_sql "SELECT COUNT(*) FROM oc_moviedb_watchlist WHERE release_date = ''")" = "0" ] || fail "An empty release date was not repaired"
 	[ "$(run_sql "SELECT COUNT(*) FROM oc_moviedb_watchlist WHERE title = 'Upgrade seed empty date' AND release_date IS NULL")" = "1" ] || fail "The row with an empty release date is gone or was not set to NULL"
 fi
