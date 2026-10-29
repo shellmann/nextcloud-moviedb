@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-Security fixes go into the latest minor release and ship as a new patch release (for example 1.9.2). Please update to the latest version before you report an issue.
+Security fixes go into the latest minor release and ship as a new patch release (for example 1.10.1). Please update to the latest version before you report an issue.
 
 | Version | Supported          |
 | ------- | ------------------ |

@@ -7,14 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-10-29
+
 ### Added
 - Release dates on the watchlist stay up to date. Once a day MovieDB asks TMDB
   for every watchlist title that has no release date yet or one that is still
   ahead, and fills in or moves the date. A "New date" badge on the poster shows
   for 30 days after a change; the cross on it, or editing the item, dismisses it
   (for everyone who shares the library).
-- Release dates saved as an empty string (possible on SQLite installs only) are
-  set to NULL by a migration, so they are checked like any other undated title.
 - A CI job that installs an old release (v1.5.2 and the latest tag) on
   Nextcloud 35, upgrades it to the branch code and fails on any `moviedb`
   finding of `occ db:schema:check`, or when seeded rows are lost.
@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   to the watchlist and as watched movies again on MySQL/MariaDB and PostgreSQL;
   they failed with "Incorrect date value: ''". Clearing the "date watched"
   field of a movie failed the same way and is fixed too. (#90)
+- Release dates saved as an empty string (possible on SQLite installs only) are
+  set to NULL by a migration, so they are checked like any other undated title.
 - Nextcloud 35's database check (`occ db:schema:check`, also shown after
   `occ upgrade`) no longer reports `moviedb_episodes.watched`,
   `moviedb_libraries.is_personal` and `moviedb_library_members.permission_edit`
