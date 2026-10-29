@@ -103,7 +103,8 @@ run_sql "INSERT INTO oc_moviedb_watchlist (user_id, library_id, title, tmdb_id, 
 # SQLite accepted "" (TMDB's date for unreleased titles) in DATE columns; Version000012 repairs such rows
 # once, so this only applies when the old release predates that migration.
 REPAIR_CHECK=false
-if [ "$DB" = "sqlite" ] && ! git cat-file -e "${FROM_REF}:lib/Migration/Version000012Date20261029.php" 2>/dev/null; then
+OLD_MIGRATIONS=$(git ls-tree --name-only "$FROM_REF" lib/Migration/)
+if [ "$DB" = "sqlite" ] && [[ "$OLD_MIGRATIONS" != *"/Version000012"* ]]; then
 	REPAIR_CHECK=true
 fi
 if [ "$REPAIR_CHECK" = true ]; then
