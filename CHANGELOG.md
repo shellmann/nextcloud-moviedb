@@ -13,6 +13,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   ahead, and fills in or moves the date. A "New date" badge on the poster shows
   for 30 days after a change; the cross on it, or editing the item, dismisses it
   (for everyone who shares the library).
+- Release dates saved as an empty string (possible on SQLite installs only) are
+  set to NULL by a migration, so they are checked like any other undated title.
 - A CI job that installs an old release (v1.5.2 and the latest tag) on
   Nextcloud 35, upgrades it to the branch code and fails on any `moviedb`
   finding of `occ db:schema:check`, or when seeded rows are lost.
