@@ -97,7 +97,7 @@ run_sql() { # usage: run_sql <sql> -> prints the first column of every row
 
 echo "== Seeding rows"
 run_sql "INSERT INTO oc_moviedb_libraries (owner, name, is_personal, created_at) VALUES ('admin', 'Upgrade check', 1, '2026-01-01 00:00:00')"
-run_sql "INSERT INTO oc_moviedb_watchlist (user_id, title, tmdb_id, added_at, priority) VALUES ('admin', 'Upgrade seed', 1, '2026-01-01 00:00:00', 0)"
+run_sql "INSERT INTO oc_moviedb_watchlist (user_id, library_id, title, tmdb_id, added_at, priority) VALUES ('admin', (SELECT MIN(id) FROM oc_moviedb_libraries), 'Upgrade seed', 1, '2026-01-01 00:00:00', 0)"
 
 echo "== Swapping in this checkout and upgrading"
 git archive --prefix=moviedb/ HEAD | docker exec -i "$NC" sh -c 'rm -rf /var/www/html/custom_apps/moviedb && tar -x -C /var/www/html/custom_apps'
