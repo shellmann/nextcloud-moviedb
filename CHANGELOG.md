@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- Nextcloud 35's database check (`occ db:schema:check`, also shown after
+  `occ upgrade`) no longer reports `moviedb_episodes.watched`,
+  `moviedb_libraries.is_personal` and `moviedb_library_members.permission_edit`
+  as "differs in: nullable" on installs from before 1.5.3. A new migration
+  makes these columns nullable, as on fresh installs. Data is not changed.
+
 ## [1.9.2] - 2026-10-20
 
 ### Added
