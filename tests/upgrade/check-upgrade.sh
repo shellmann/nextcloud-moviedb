@@ -79,20 +79,25 @@ occ app:enable moviedb
 # Seed through PDO so the script does not depend on any client binary in the image.
 run_sql() { # usage: run_sql <sql> -> prints the first column of every row
 	docker exec -i -e DB_KIND="$DB" -e DB_HOST="$DBC" -e DB_PASS="$DB_PASSWORD" -e SQL="$1" "$NC" php -r '
-		$pdo = getenv("DB_KIND") === "sqlite"
-			? new PDO("sqlite:/var/www/html/data/nextcloud.db")
-			: new PDO("mysql:host=" . getenv("DB_HOST") . ";dbname=nextcloud", "root", getenv("DB_PASS"));
-		$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-		$stmt = $pdo->query(getenv("SQL"));
-		if ($stmt !== false && $stmt->columnCount() > 0) {
-			foreach ($stmt->fetchAll(PDO::FETCH_NUM) as $row) { echo $row[0], PHP_EOL; }
+		try {
+			$pdo = getenv("DB_KIND") === "sqlite"
+				? new PDO("sqlite:/var/www/html/data/nextcloud.db")
+				: new PDO("mysql:host=" . getenv("DB_HOST") . ";dbname=nextcloud", "root", getenv("DB_PASS"));
+			$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+			$stmt = $pdo->query(getenv("SQL"));
+			if ($stmt !== false && $stmt->columnCount() > 0) {
+				foreach ($stmt->fetchAll(PDO::FETCH_NUM) as $row) { echo $row[0], PHP_EOL; }
+			}
+		} catch (Throwable $e) {
+			fwrite(STDERR, "SQL failed: " . $e->getMessage() . PHP_EOL . getenv("SQL") . PHP_EOL);
+			exit(1);
 		}
 	'
 }
 
 echo "== Seeding rows"
-run_sql "INSERT INTO oc_moviedb_libraries (owner, name, is_personal, created_at) VALUES ('admin', 'Upgrade check', 1, '2026-01-01 00:00:00')" >/dev/null
-run_sql "INSERT INTO oc_moviedb_watchlist (user_id, title, tmdb_id, added_at, priority) VALUES ('admin', 'Upgrade seed', 1, '2026-01-01 00:00:00', 0)" >/dev/null
+run_sql "INSERT INTO oc_moviedb_libraries (owner, name, is_personal, created_at) VALUES ('admin', 'Upgrade check', 1, '2026-01-01 00:00:00')"
+run_sql "INSERT INTO oc_moviedb_watchlist (user_id, title, tmdb_id, added_at, priority) VALUES ('admin', 'Upgrade seed', 1, '2026-01-01 00:00:00', 0)"
 
 echo "== Swapping in this checkout and upgrading"
 git archive --prefix=moviedb/ HEAD | docker exec -i "$NC" sh -c 'rm -rf /var/www/html/custom_apps/moviedb && tar -x -C /var/www/html/custom_apps'
