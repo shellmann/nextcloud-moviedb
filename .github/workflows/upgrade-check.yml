@@ -1,0 +1,32 @@
+name: Upgrade check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  upgrade:
+    name: Upgrade from ${{ matrix.from }} (${{ matrix.db }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      matrix:
+        # v1.5.2 is the last release before PR #45 edited released migrations;
+        # "latest" is the newest v* tag (the normal upgrade path).
+        from: [v1.5.2, latest]
+        db: [sqlite, mysql]
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0 # the old release is read from its tag
+      - name: Upgrade and check the schema
+        env:
+          FROM_REF: ${{ matrix.from }}
+          DB_KIND: ${{ matrix.db }}
+        run: tests/upgrade/check-upgrade.sh "$FROM_REF" "$DB_KIND"
