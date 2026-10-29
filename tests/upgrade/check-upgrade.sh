@@ -70,6 +70,8 @@ for _ in $(seq 1 150); do
 	sleep 4
 done
 [ "$installed" = 1 ] || { docker logs "$NC" | tail -30; fail "Nextcloud did not install in time"; }
+# "installed" shows up while the entrypoint may still write to the database (SQLite then reports "database is locked").
+sleep 10
 
 echo "== Installing MovieDB $FROM_REF"
 git archive --prefix=moviedb/ "$FROM_REF" | docker exec -i "$NC" tar -x -C /var/www/html/custom_apps
@@ -108,7 +110,19 @@ git archive --prefix=moviedb/ HEAD | docker exec -i "$NC" sh -c 'rm -rf /var/www
 # The version has to change for `occ upgrade` to run the app's migrations (HEAD can equal the latest tag).
 docker exec "$NC" sed -i 's|<version>[^<]*</version>|<version>99.0.0</version>|' /var/www/html/custom_apps/moviedb/appinfo/info.xml
 docker exec "$NC" chown -R www-data:www-data /var/www/html/custom_apps/moviedb
-occ upgrade
+# A busy SQLite file can still make the first attempt fail with "database is locked"; the upgrade is safe to repeat.
+for attempt in 1 2 3; do
+	if UPGRADE_OUT=$(occ upgrade 2>&1); then
+		echo "$UPGRADE_OUT"
+		break
+	fi
+	echo "$UPGRADE_OUT"
+	if [ "$attempt" = 3 ] || ! echo "$UPGRADE_OUT" | grep -qi "database is locked"; then
+		fail "occ upgrade failed"
+	fi
+	echo "== database is locked, retrying the upgrade in 10 s"
+	sleep 10
+done
 
 echo "== occ db:schema:check"
 set +e
