@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\MovieDB\Service;
 
+use OCA\MovieDB\Util\DateValue;
 use OCA\MovieDB\Util\TmdbPath;
 
 /**
@@ -324,15 +325,7 @@ class ImportValidator {
 
     /** Strict Y-m-d calendar date, or null. */
     private function date(mixed $v): ?string {
-        if (!is_string($v)) {
-            return null;
-        }
-        $d = \DateTimeImmutable::createFromFormat('!Y-m-d', $v);
-        $errors = \DateTimeImmutable::getLastErrors();
-        if ($d === false || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
-            return null;
-        }
-        return $d->format('Y-m-d');
+        return DateValue::normalize($v);
     }
 
     /** "Y-m-d H:i:s" (or a plain date), falling back to now. */

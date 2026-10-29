@@ -9,6 +9,7 @@ use OCA\MovieDB\Db\Movie;
 use OCA\MovieDB\Db\MovieMapper;
 use OCA\MovieDB\Db\MovieWatch;
 use OCA\MovieDB\Db\MovieWatchMapper;
+use OCA\MovieDB\Util\DateValue;
 use OCP\AppFramework\Db\DoesNotExistException;
 
 class MovieService {
@@ -93,8 +94,9 @@ class MovieService {
         $movie->setBackdropPath($data['backdropPath'] ?? null);
         $movie->setOverview($data['overview'] ?? null);
         $movie->setGenreIds($data['genreIds'] ?? null);
-        $movie->setReleaseDate($data['releaseDate'] ?? null);
-        $movie->setReleaseYear($data['releaseYear'] ?? $this->extractYear($data['releaseDate'] ?? null));
+        $releaseDate = DateValue::normalize($data['releaseDate'] ?? null);
+        $movie->setReleaseDate($releaseDate);
+        $movie->setReleaseYear($data['releaseYear'] ?? $this->extractYear($releaseDate));
         $movie->setRuntime($data['runtime'] ?? null);
         $movie->setCastData($data['castData'] ?? null);
         $movie->setDirector($data['director'] ?? null);
@@ -154,8 +156,9 @@ class MovieService {
             $movie->setGenreIds($data['genreIds']);
         }
         if (array_key_exists('releaseDate', $data)) {
-            $movie->setReleaseDate($data['releaseDate']);
-            $movie->setReleaseYear($this->extractYear($data['releaseDate']));
+            $releaseDate = DateValue::normalize($data['releaseDate']);
+            $movie->setReleaseDate($releaseDate);
+            $movie->setReleaseYear($this->extractYear($releaseDate));
         }
         if (array_key_exists('runtime', $data)) {
             $movie->setRuntime($data['runtime']);
