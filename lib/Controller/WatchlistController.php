@@ -254,6 +254,32 @@ class WatchlistController extends AuthenticatedController {
     }
 
     /**
+     * Dismiss the "New date" badge of an item.
+     */
+    #[NoAdminRequired]
+    public function acknowledgeReleaseDate(int $id): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+
+        try {
+            $libraryId = $this->libraryService->resolveLibraryId($this->requestedLibraryId(), $this->userId);
+        } catch (\InvalidArgumentException $e) {
+            return new JSONResponse(['error' => 'Library not found or access denied.'], Http::STATUS_FORBIDDEN);
+        }
+
+        if (!$this->libraryService->canEdit($libraryId, $this->userId)) {
+            return new JSONResponse(['error' => 'You do not have edit permission for this library.'], Http::STATUS_FORBIDDEN);
+        }
+
+        try {
+            return new JSONResponse(['item' => $this->service->acknowledgeReleaseDate($id, $libraryId)]);
+        } catch (DoesNotExistException $e) {
+            return new JSONResponse(['error' => 'Item not found'], Http::STATUS_NOT_FOUND);
+        }
+    }
+
+    /**
      * Move a watchlist item to watched movies
      */
     #[NoAdminRequired]

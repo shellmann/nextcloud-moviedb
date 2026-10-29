@@ -157,6 +157,48 @@ class WatchlistControllerTest extends TestCase {
         $this->assertSame(99, $data['movie']->getId());
     }
 
+    public function testAcknowledgeReleaseDateReturnsTheItem(): void {
+        $item = $this->makeItem(5, 'movie', 1);
+        $this->service->expects($this->once())->method('acknowledgeReleaseDate')
+            ->with(5, self::LIBRARY_ID)
+            ->willReturn($item);
+
+        $response = $this->controller->acknowledgeReleaseDate(5);
+
+        $this->assertEquals(Http::STATUS_OK, $response->getStatus());
+        $this->assertSame($item, $response->getData()['item']);
+    }
+
+    public function testAcknowledgeReleaseDateIsForbiddenWithoutEditPermission(): void {
+        // A read-only member must not clear the badge for everyone who shares the library.
+        $libraryService = $this->createMock(LibraryService::class);
+        $libraryService->method('resolveLibraryId')->willReturn(self::LIBRARY_ID);
+        $libraryService->method('canEdit')->willReturn(false);
+
+        $controller = new WatchlistController(
+            $this->request,
+            $this->service,
+            $this->movieService,
+            $this->watchService,
+            $this->seriesService,
+            $this->tmdbService,
+            $libraryService,
+            $this->db,
+            $this->userSession,
+            $this->logger
+        );
+        $this->service->expects($this->never())->method('acknowledgeReleaseDate');
+
+        $this->assertEquals(Http::STATUS_FORBIDDEN, $controller->acknowledgeReleaseDate(5)->getStatus());
+    }
+
+    public function testAcknowledgeReleaseDateReturnsNotFoundForAnUnknownItem(): void {
+        $this->service->method('acknowledgeReleaseDate')
+            ->willThrowException(new \OCP\AppFramework\Db\DoesNotExistException('x'));
+
+        $this->assertEquals(Http::STATUS_NOT_FOUND, $this->controller->acknowledgeReleaseDate(5)->getStatus());
+    }
+
     public function testIndexDefaultsToPageOneAndLimitFifty(): void {
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $this->request->method('getParam')->willReturnCallback(

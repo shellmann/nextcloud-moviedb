@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest'
+import pkg from '../../../package.json'
 import { compareVersions, releaseNotes, unseenNotes } from '@/whatsNew/releaseNotes.js'
 
 const notes = [
@@ -55,5 +56,12 @@ describe('releaseNotes', () => {
 
 	it('has notes for 1.9.0, the first version with the dialog', () => {
 		expect(releaseNotes().some((r) => r.version === '1.9.0')).toBe(true)
+	})
+})
+
+describe('releaseNotes', () => {
+	it('has no note for a version newer than the app (it would never be shown)', () => {
+		// Patch releases without a visible fix have no note, so the newest note may lag behind; it must never lead.
+		expect(compareVersions(releaseNotes()[0].version, pkg.version)).toBeLessThanOrEqual(0)
 	})
 })

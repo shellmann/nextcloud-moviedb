@@ -201,6 +201,48 @@ class MovieServiceTest extends TestCase {
         $this->assertEquals(2010, $result->getReleaseYear());
     }
 
+    public function testCreateStoresNullDateAndYearForAnEmptyReleaseDate(): void {
+        $this->mapper->expects($this->once())
+            ->method('insert')
+            ->with($this->callback(fn (Movie $movie) => $movie->getReleaseDate() === null && $movie->getReleaseYear() === null))
+            ->willReturnCallback(function (Movie $movie) {
+                $movie->setId(1);
+                return $movie;
+            });
+
+        $result = $this->service->create('testuser', self::LIBRARY_ID, ['title' => 'Heat 2', 'releaseDate' => '']);
+
+        $this->assertNull($result->getReleaseDate());
+        $this->assertNull($result->getReleaseYear());
+    }
+
+    public function testUpdateStoresNullDateAndYearForAnEmptyReleaseDate(): void {
+        $movie = $this->createMovieEntity(1, 'Heat 2');
+        $movie->setReleaseDate('2026-01-01');
+        $movie->setReleaseYear(2026);
+
+        $this->mapper->method('find')->willReturn($movie);
+        $this->mapper->method('update')->willReturnArgument(0);
+
+        $result = $this->service->update(1, self::LIBRARY_ID, ['releaseDate' => '']);
+
+        $this->assertNull($result->getReleaseDate());
+        $this->assertNull($result->getReleaseYear());
+    }
+
+    public function testCreateStoresNullForAnEmptyDateWatched(): void {
+        $this->mapper->method('insert')->willReturnCallback(function (Movie $movie) {
+            $movie->setId(1);
+            return $movie;
+        });
+        $this->watchMapper->expects($this->once())
+            ->method('insert')
+            ->with($this->callback(fn (MovieWatch $w) => $w->getWatchedAt() === null))
+            ->willReturnArgument(0);
+
+        $this->service->create('testuser', self::LIBRARY_ID, ['title' => 'Heat 2', 'rating' => 4, 'dateWatched' => '']);
+    }
+
     public function testUpdate(): void {
         $movieId = 1;
         $existingMovie = $this->createMovieEntity($movieId, 'Old Title');

@@ -44,6 +44,10 @@ export default {
 		const data = libraryId !== undefined ? { libraryId } : {}
 		return axios.delete(`${baseUrl}/watchlist/${id}`, { data })
 	},
+	acknowledgeWatchlistReleaseDate(id, libraryId = undefined) {
+		const data = libraryId !== undefined ? { libraryId } : {}
+		return axios.post(`${baseUrl}/watchlist/${id}/release-seen`, data)
+	},
 	moveToWatched(id, watchData) {
 		return axios.post(`${baseUrl}/watchlist/${id}/watched`, watchData)
 	},

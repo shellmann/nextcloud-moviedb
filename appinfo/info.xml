@@ -15,6 +15,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **TV Show Tracking**: Track series at the episode level — see progress per season, an "up next" card, and bulk-mark whole seasons or series as watched
 - **Continue Watching**: The dashboard lists the shows you are in the middle of with the next episode; stop watching a show you gave up on, and filter the TV list by in progress, finished and stopped
 - **Always Up to Date**: A background job keeps the episodes of your TV shows in sync with TMDB, so new seasons and episodes show up by themselves, and the dashboard lists what airs soon under "Coming up"
+- **Release dates stay current**: Watchlist titles without a release date get it from TMDB by themselves, with a "New date" badge on the poster
 - **Rewatch Support**: Log multiple viewings of the same movie with separate ratings and dates
 - **TMDB Integration**: Automatically fetch posters, cast, plot, and episode data
 - **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews
@@ -36,7 +37,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 
 Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.themoviedb.org/). This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
     ]]></description>
-    <version>1.9.2</version>
+    <version>1.10.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author>shellmann</author>
     <namespace>MovieDB</namespace>
@@ -59,6 +60,7 @@ Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.th
     </dependencies>
     <background-jobs>
         <job>OCA\MovieDB\BackgroundJob\RefreshSeriesJob</job>
+        <job>OCA\MovieDB\BackgroundJob\RefreshWatchlistReleaseDatesJob</job>
     </background-jobs>
     <settings>
         <admin>OCA\MovieDB\Settings\Admin</admin>

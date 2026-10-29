@@ -11,6 +11,7 @@ vi.mock('@/services/api.js', () => ({
 		updateWatchlistItem: vi.fn(),
 		removeFromWatchlist: vi.fn(),
 		moveToWatched: vi.fn(),
+		acknowledgeWatchlistReleaseDate: vi.fn(),
 	},
 }))
 
@@ -291,6 +292,30 @@ describe('Watchlist Store', () => {
 			const result = await store.update(1, { priority: 2 })
 
 			expect(result).toBeNull()
+		})
+	})
+
+	describe('acknowledgeReleaseDate action', () => {
+		it('should replace the item so the badge disappears', async () => {
+			store.items = [{ id: 1, title: 'Heat 2', releaseDate: '2027-03-12', releaseDateNews: true }]
+			api.acknowledgeWatchlistReleaseDate.mockResolvedValue({
+				data: { item: { id: 1, title: 'Heat 2', releaseDate: '2027-03-12', releaseDateNews: false } },
+			})
+
+			const result = await store.acknowledgeReleaseDate(1)
+
+			expect(result).toBe(true)
+			expect(store.items[0].releaseDateNews).toBe(false)
+		})
+
+		it('should return false and keep the badge on error', async () => {
+			store.items = [{ id: 1, title: 'Heat 2', releaseDateNews: true }]
+			api.acknowledgeWatchlistReleaseDate.mockRejectedValue(new Error('nope'))
+
+			const result = await store.acknowledgeReleaseDate(1)
+
+			expect(result).toBe(false)
+			expect(store.items[0].releaseDateNews).toBe(true)
 		})
 	})
 

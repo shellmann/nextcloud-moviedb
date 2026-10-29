@@ -149,6 +149,53 @@ class WatchlistServiceTest extends TestCase {
         $this->assertEquals('movie', $result->getMediaType());
     }
 
+    public function testCreateStoresNullForAnEmptyReleaseDate(): void {
+        // TMDB sends "" for titles that are not released yet; a DATE column rejects it (issue #90).
+        $data = ['title' => 'Heat 2', 'tmdbId' => 1, 'releaseDate' => ''];
+
+        $this->mapper->expects($this->once())
+            ->method('insert')
+            ->with($this->callback(fn (WatchlistItem $item) => $item->getReleaseDate() === null))
+            ->willReturnArgument(0);
+
+        $this->assertNull($this->service->create('testuser', self::LIBRARY_ID, $data)->getReleaseDate());
+    }
+
+    public function testReleaseDateNewsLastsThirtyDays(): void {
+        $item = new WatchlistItem();
+        $this->assertFalse($item->hasReleaseDateNews());
+
+        $item->setReleaseDateChangedAt((new \DateTime('-29 days'))->format('Y-m-d H:i:s'));
+        $this->assertTrue($item->hasReleaseDateNews());
+        $this->assertTrue($item->jsonSerialize()['releaseDateNews']);
+
+        $item->setReleaseDateChangedAt((new \DateTime('-31 days'))->format('Y-m-d H:i:s'));
+        $this->assertFalse($item->hasReleaseDateNews());
+    }
+
+    public function testAcknowledgeReleaseDateClearsTheNews(): void {
+        $item = $this->createWatchlistItem(1, 'Heat 2');
+        $item->setReleaseDateChangedAt((new \DateTime())->format('Y-m-d H:i:s'));
+
+        $this->mapper->expects($this->once())->method('find')->with(1, self::LIBRARY_ID)->willReturn($item);
+        $this->mapper->expects($this->once())->method('update')->with($item)->willReturnArgument(0);
+
+        $result = $this->service->acknowledgeReleaseDate(1, self::LIBRARY_ID);
+
+        $this->assertNull($result->getReleaseDateChangedAt());
+        $this->assertFalse($result->hasReleaseDateNews());
+    }
+
+    public function testUpdateClearsTheNews(): void {
+        $item = $this->createWatchlistItem(1, 'Heat 2');
+        $item->setReleaseDateChangedAt((new \DateTime())->format('Y-m-d H:i:s'));
+
+        $this->mapper->method('find')->willReturn($item);
+        $this->mapper->method('update')->willReturnArgument(0);
+
+        $this->assertFalse($this->service->update(1, self::LIBRARY_ID, ['priority' => 3])->hasReleaseDateNews());
+    }
+
     public function testCreatePersistsSeriesMediaType(): void {
         $userId = 'testuser';
         $data = [

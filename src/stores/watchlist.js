@@ -246,6 +246,29 @@ export const useWatchlistStore = defineStore('watchlist', {
 		},
 
 		/**
+		 * Dismisses the "New date" badge of an item (for everyone who shares the library).
+		 *
+		 * @param {number} id - Watchlist item ID
+		 * @return {Promise<boolean>} True if the badge was dismissed
+		 */
+		async acknowledgeReleaseDate(id) {
+			try {
+				const libraryId = useLibrariesStore().activeLibraryId
+				const response = await api.acknowledgeWatchlistReleaseDate(id, libraryId !== null ? libraryId : undefined)
+				const updatedItem = response.data.item
+				const index = this.items.findIndex((i) => i.id === updatedItem.id)
+				if (index !== -1) {
+					this.items.splice(index, 1, updatedItem)
+				}
+				return true
+			} catch (error) {
+				console.error('Failed to dismiss the new date badge:', error)
+				showError(t('moviedb', 'Failed to update watchlist item. Please try again.'))
+				return false
+			}
+		},
+
+		/**
 		 * Moves a watchlist item off the watchlist: a movie is logged as watched,
 		 * a series is imported as a tracked show (at 0% progress).
 		 *

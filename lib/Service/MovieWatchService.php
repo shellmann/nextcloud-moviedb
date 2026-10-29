@@ -8,6 +8,7 @@ use DateTime;
 use OCA\MovieDB\Db\MovieWatch;
 use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Db\PlatformMapper;
+use OCA\MovieDB\Util\DateValue;
 use OCP\AppFramework\Db\DoesNotExistException;
 
 class MovieWatchService {
@@ -65,7 +66,7 @@ class MovieWatchService {
         $watch->setMovieId($movieId);
         $watch->setUserId($userId);
         $watch->setLibraryId($libraryId);
-        $watch->setWatchedAt($data['watchedAt'] ?? null);
+        $watch->setWatchedAt(DateValue::normalize($data['watchedAt'] ?? null));
         $watch->setRating($data['rating'] ?? null);
         $watch->setReview($data['review'] ?? null);
         $watch->setPlatformId($data['platformId'] ?? null);
@@ -90,7 +91,7 @@ class MovieWatchService {
         }
 
         if (array_key_exists('watchedAt', $data)) {
-            $watch->setWatchedAt($data['watchedAt']);
+            $watch->setWatchedAt(DateValue::normalize($data['watchedAt']));
         }
         if (array_key_exists('rating', $data)) {
             $watch->setRating($data['rating']);
