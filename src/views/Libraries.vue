@@ -557,8 +557,8 @@ export default {
 }
 
 .role-owner {
-    background: var(--color-primary-light, #e0f0ff);
-    color: var(--color-primary-dark, #003366);
+    background: var(--color-primary-element-light);
+    color: var(--color-primary-element-light-text);
 }
 
 .library-personal-badge {
@@ -568,7 +568,7 @@ export default {
 
 .library-active-badge {
     background: var(--color-success);
-    color: #000;
+    color: var(--color-success-text);
     font-weight: bold;
 }
 

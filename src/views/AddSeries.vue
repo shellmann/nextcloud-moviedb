@@ -340,6 +340,7 @@ export default {
 
 .preview-info {
 	flex: 1;
+	min-width: 0;
 
 	h4 {
 		margin: 0 0 8px;
@@ -378,6 +379,7 @@ export default {
 
 	.watch-meta-field {
 		flex: 1;
+		min-width: 0;
 
 		label {
 			display: block;
@@ -389,6 +391,8 @@ export default {
 		// select below a text field in the same row (#70).
 		:deep(.nc-select.v-select.select) {
 			margin-top: 0;
+			min-width: 0;
+			width: 100%;
 		}
 	}
 }

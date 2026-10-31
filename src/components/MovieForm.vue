@@ -82,6 +82,22 @@ import { getRatingOptions, LANGUAGE_OPTIONS } from '../constants.js'
 import api from '../services/api.js'
 
 /**
+ * Copies a movie into form state. NcTextField fails to render on null, and
+ * older movies can lack an original title or a watch date.
+ *
+ * @param {object} movie - Movie to edit or add
+ * @return {object} Form data with text fields defaulted to empty strings
+ */
+function toFormData(movie) {
+	return {
+		...movie,
+		title: movie.title ?? '',
+		originalTitle: movie.originalTitle ?? '',
+		dateWatched: movie.dateWatched ?? '',
+	}
+}
+
+/**
  * MovieForm component - Form for creating or editing movie entries.
  * Handles movie metadata input including platform, language, rating, and review.
  */
@@ -147,7 +163,7 @@ export default {
 
 	data() {
 		return {
-			formData: { ...this.movie },
+			formData: toFormData(this.movie),
 			selectedPlatform: null,
 			selectedLanguage: null,
 			selectedRating: null,
@@ -174,7 +190,7 @@ export default {
 			handler(movie) {
 				this.isInitializing = true
 				this.isSubmitting = false
-				this.formData = { ...movie }
+				this.formData = toFormData(movie)
 				if (movie.platformId) {
 					this.selectedPlatform = this.platformOptions.find((p) => p.id === movie.platformId)
 				}
@@ -228,6 +244,8 @@ export default {
 
 			this.$emit('submit', {
 				...this.formData,
+				originalTitle: this.formData.originalTitle || null,
+				dateWatched: this.formData.dateWatched || null,
 				platformId: this.selectedPlatform?.id || null,
 				languageWatched: this.selectedLanguage?.id || null,
 				rating: this.selectedRating?.id || null,
@@ -260,6 +278,7 @@ export default {
 
     .form-fields {
         flex: 1;
+        min-width: 0;
     }
 
     .form-row-inline {
@@ -268,6 +287,7 @@ export default {
 
         > .form-group {
             flex: 1;
+            min-width: 0;
         }
 
         @media (max-width: 500px) {
@@ -302,8 +322,11 @@ export default {
 
         // NcSelect has a top margin that NcTextField lacks, which pushes a
         // select below a text field in the same row (#70).
+        // Its 260px min-width also pushes the select past the card in narrow rows.
         :deep(.nc-select.v-select.select) {
             margin-top: 0;
+            min-width: 0;
+            width: 100%;
         }
     }
 
