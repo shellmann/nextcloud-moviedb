@@ -50,23 +50,17 @@
 				<text
 					v-if="i % labelStep === 0"
 					:x="bar.x + barWidth / 2"
-					:y="height - 18"
+					:y="height - 6"
 					text-anchor="middle"
 					class="bar-label">
 					{{ firstNumber + i }}
 				</text>
 			</g>
-			<!-- One date per day, centred under that day's rounds, so several rounds on one day stay readable. -->
-			<text
-				v-for="group in visibleDateGroups"
-				:key="group.day"
-				:x="group.x"
-				:y="height - 3"
-				text-anchor="middle"
-				class="bar-label bar-date">
-				{{ group.label }}
-			</text>
 		</svg>
+		<!-- First and last round only: dates under every bar never fit, the tooltip has the exact time. -->
+		<p v-if="dateRange" class="date-range">
+			{{ dateRange }}
+		</p>
 	</div>
 </template>
 
@@ -91,10 +85,10 @@ export default {
 
 	data() {
 		return {
-			height: 205,
+			height: 193,
 			barWidth: 24,
 			gap: 10,
-			chartBottom: 30,
+			chartBottom: 18,
 			chartTop: 24,
 			isMounted: false,
 		}
@@ -127,33 +121,16 @@ export default {
 			return t('moviedb', 'Score per quiz round in percent') + ': ' + scores
 		},
 
-		/** Rounds played on the same day, with the centre of their bars. */
-		dayGroups() {
-			const groups = []
-			for (const bar of this.bars) {
-				const last = groups[groups.length - 1]
-				if (last && last.day === bar.day) {
-					last.end = bar.x + this.barWidth
-				} else {
-					groups.push({ day: bar.day, label: bar.label, start: bar.x, end: bar.x + this.barWidth })
-				}
-			}
-			return groups.map((g) => ({ day: g.day, label: g.label, x: (g.start + g.end) / 2 }))
-		},
-
 		/**
-		 * Date labels that fit: with many days the dates would overlap, so skip one
-		 * that would touch the previous (the tooltip of every bar still has its date).
+		 * "12 Oct – 24 Oct" for the first and last shown round, or one date when all
+		 * rounds fall on the same local day.
 		 */
-		visibleDateGroups() {
-			const MIN_GAP = 52
-			const shown = []
-			for (const group of this.dayGroups) {
-				if (!shown.length || group.x - shown[shown.length - 1].x >= MIN_GAP) {
-					shown.push(group)
-				}
-			}
-			return shown
+		dateRange() {
+			if (!this.bars.length) { return '' }
+			const first = this.bars[0]
+			const last = this.bars[this.bars.length - 1]
+			if (!first.label || !last.label) { return '' }
+			return first.day === last.day ? first.label : `${first.label} – ${last.label}`
 		},
 
 		bars() {
@@ -228,7 +205,13 @@ export default {
 .quiz-history-svg {
 	width: 100%;
 	height: auto;
-	max-height: 205px;
+	max-height: 193px;
+}
+
+.date-range {
+	margin: 2px 0 0;
+	font-size: 12px;
+	color: var(--color-text-lighter);
 }
 
 .bar {

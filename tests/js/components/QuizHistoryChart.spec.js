@@ -52,22 +52,35 @@ describe('QuizHistoryChart', () => {
 		expect(wrapper.vm.bestY).toBeCloseTo(wrapper.vm.bars[0].y)
 	})
 
-	it('shows the date only where the day changes, so same-day rounds stay readable', () => {
-		// Server timestamps are UTC; build them from LOCAL times so the days are the same in every time zone.
-		const server = (y, m, d, h) => new Date(y, m, d, h).toISOString().slice(0, 19).replace('T', ' ')
-		const same = (id) => ({ id, percent: 50, playedAt: server(2026, 9, 11, 9 + id) })
-		const wrapper = mountChart({ rounds: [same(1), same(2), same(3), { id: 4, percent: 60, playedAt: server(2026, 9, 12, 9) }], best: 60 })
+	// Server timestamps are UTC; build them from LOCAL times so the days are the same in every time zone.
+	const server = (y, m, d, h) => new Date(y, m, d, h).toISOString().slice(0, 19).replace('T', ' ')
+	const local = (y, m, d, h) => new Date(y, m, d, h).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })
 
-		expect(wrapper.findAll('.bar-date')).toHaveLength(2)
+	it('shows only the first and the last date, below the chart', () => {
+		const rounds = [1, 2, 3, 4, 5].map((id) => ({ id, percent: 50, playedAt: server(2026, 9, 10 + id * 3, 12) }))
+		const wrapper = mountChart({ rounds, best: 50 })
 
-		// the first date is centred under bars 1-3, the second under bar 4
-		const { bars, barWidth } = wrapper.vm
-		const firstCentre = (bars[0].x + bars[2].x + barWidth) / 2
-		const [first, second] = wrapper.findAll('.bar-date')
-		expect(Number(first.attributes('x'))).toBeCloseTo(firstCentre)
-		expect(first.attributes('text-anchor')).toBe('middle')
-		expect(Number(second.attributes('x'))).toBeCloseTo(bars[3].x + barWidth / 2)
-		expect(wrapper.findAll('.bar-label:not(.bar-date)').map((l) => l.text())).toEqual(['1', '2', '3', '4'])
+		expect(wrapper.find('.date-range').text()).toBe(`${local(2026, 9, 13, 12)} – ${local(2026, 9, 25, 12)}`)
+		// no date text inside the SVG, so nothing can overlap or be skipped
+		expect(wrapper.find('svg').findAll('text').map((t) => t.text()).filter((t) => /[A-Za-z]/.test(t))).toEqual([])
+	})
+
+	it('shows a single date when all rounds were played on one day', () => {
+		const rounds = [1, 2, 3].map((id) => ({ id, percent: 50, playedAt: server(2026, 9, 11, 8 + id) }))
+		const wrapper = mountChart({ rounds, best: 50 })
+
+		expect(wrapper.find('.date-range').text()).toBe(local(2026, 9, 11, 9))
+	})
+
+	it('shows a single date for one round', () => {
+		const wrapper = mountChart({ rounds: [{ id: 1, percent: 50, playedAt: server(2026, 9, 11, 12) }], best: 50 })
+
+		expect(wrapper.find('.date-range').text()).toBe(local(2026, 9, 11, 12))
+	})
+
+	it('shows no date range without rounds or with unreadable timestamps', () => {
+		expect(mountChart({ rounds: [], best: null }).find('.date-range').exists()).toBe(false)
+		expect(mountChart({ rounds: [{ id: 1, percent: 50, playedAt: 'not a date' }], best: 50 }).find('.date-range').exists()).toBe(false)
 	})
 
 	it('treats stored timestamps as UTC and shows them in the viewer time zone', () => {
@@ -76,20 +89,6 @@ describe('QuizHistoryChart', () => {
 		// the server stores UTC; the same instant parsed explicitly as UTC must match
 		const expected = new Date('2026-10-11T12:00:00Z').toLocaleString(undefined, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })
 		expect(wrapper.find('rect.bar title').text()).toContain(expected)
-	})
-
-	it('groups rounds by the local day, not the UTC day', () => {
-		// 23:30 UTC and 00:30 UTC next day: the same local day in a zone like UTC-1 .. but never assume the zone,
-		// derive the expectation the same way the viewer's browser does
-		const rounds = [
-			{ id: 1, percent: 10, playedAt: '2026-10-11 23:30:00' },
-			{ id: 2, percent: 20, playedAt: '2026-10-12 00:30:00' },
-		]
-		const wrapper = mountChart({ rounds, best: 20 })
-		const day = (s) => new Date(s.replace(' ', 'T') + 'Z').toDateString()
-
-		// (assert the groups, not the drawn labels: neighbouring dates may be skipped to avoid overlap)
-		expect(wrapper.vm.dayGroups).toHaveLength(day(rounds[0].playedAt) === day(rounds[1].playedAt) ? 1 : 2)
 	})
 
 	it('gives every bar a tooltip with round number, time and score', () => {
@@ -110,27 +109,14 @@ describe('QuizHistoryChart', () => {
 		const rounds = Array.from({ length: 30 }, (_, i) => round((i % 28) + 1, 50))
 		const wrapper = mountChart({ rounds, best: 50 })
 
-		expect(wrapper.findAll('.bar-label:not(.bar-date)').length).toBeLessThanOrEqual(10)
+		expect(wrapper.findAll('.bar-label').length).toBeLessThanOrEqual(10)
 	})
 
 	it('numbers rounds from firstNumber when the history is cut to the latest rounds', () => {
 		const wrapper = mountChart({ rounds: [round(1, 40), round(2, 80)], best: 80, firstNumber: 29 })
 
-		expect(wrapper.findAll('.bar-label:not(.bar-date)').map((l) => l.text())).toEqual(['29', '30'])
+		expect(wrapper.findAll('.bar-label').map((l) => l.text())).toEqual(['29', '30'])
 		expect(wrapper.find('rect.bar title').text()).toMatch(/^Round 29,/)
 		expect(wrapper.find('svg').attributes('aria-label')).toContain('29: 40%, 30: 80%')
-	})
-
-	it('skips date labels that would overlap, but keeps the first', () => {
-		const rounds = Array.from({ length: 12 }, (_, i) => ({ id: i + 1, percent: 50, playedAt: `2026-09-${String(10 + i).padStart(2, '0')} 12:00:00` }))
-		const wrapper = mountChart({ rounds, best: 50 })
-		const xs = wrapper.findAll('.bar-date').map((d) => Number(d.attributes('x')))
-
-		expect(xs.length).toBeGreaterThan(0)
-		expect(xs.length).toBeLessThan(12)
-		expect(xs[0]).toBe(wrapper.vm.dayGroups[0].x)
-		for (let i = 1; i < xs.length; i++) {
-			expect(xs[i] - xs[i - 1]).toBeGreaterThanOrEqual(52)
-		}
 	})
 })
