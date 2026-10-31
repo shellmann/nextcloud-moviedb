@@ -496,7 +496,8 @@
 		"Dismiss": "Ausblenden",
 		"Titles without a release date can be added to your watchlist again.": "Titel ohne Erscheinungsdatum lassen sich wieder zur Merkliste hinzufügen.",
 		"Release dates on your watchlist stay up to date: once a day MovieDB asks TMDB and fills in or moves the date by itself.": "Erscheinungstermine auf deiner Merkliste bleiben aktuell: Einmal täglich fragt MovieDB bei TMDB nach und trägt das Datum selbst ein oder verschiebt es.",
-		"A \"New date\" badge on the poster shows when a date was set or changed. Dismiss it with the cross.": "Ein Badge „Neuer Termin“ auf dem Poster zeigt, wenn ein Datum gesetzt oder geändert wurde. Mit dem Kreuz blendest du es aus."
+		"A \"New date\" badge on the poster shows when a date was set or changed. Dismiss it with the cross.": "Ein Badge „Neuer Termin“ auf dem Poster zeigt, wenn ein Datum gesetzt oder geändert wurde. Mit dem Kreuz blendest du es aus.",
+		"{start} – {end}": "{start} – {end}"
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

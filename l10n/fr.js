@@ -497,6 +497,7 @@ OC.L10N.register(
         "Dismiss": "Ignorer",
         "Titles without a release date can be added to your watchlist again.": "Les titres sans date de sortie peuvent de nouveau être ajoutés à votre liste « À voir ».",
         "Release dates on your watchlist stay up to date: once a day MovieDB asks TMDB and fills in or moves the date by itself.": "Les dates de sortie de votre liste « À voir » restent à jour : une fois par jour, MovieDB interroge TMDB et renseigne ou déplace la date tout seul.",
-        "A \"New date\" badge on the poster shows when a date was set or changed. Dismiss it with the cross.": "Un badge « Nouvelle date » sur l’affiche indique qu’une date a été fixée ou modifiée. Ignorez-le avec la croix."
+        "A \"New date\" badge on the poster shows when a date was set or changed. Dismiss it with the cross.": "Un badge « Nouvelle date » sur l’affiche indique qu’une date a été fixée ou modifiée. Ignorez-le avec la croix.",
+        "{start} – {end}": "{start} – {end}"
     },
 "nplurals=2; plural=(n > 1);");
