@@ -7,10 +7,21 @@ import { translate as t } from '@nextcloud/l10n'
  * (one to four points); purely internal fixes need none.
  * Every text must be a literal t() call (the translation audit scans for them).
  *
- * @return {Array<{ version: string, items: string[] }>}
+ * A release can set `rateInAppStore` to add the "rate MovieDB in the Nextcloud
+ * App Store" line under its dialog (use it rarely, once is a nudge, always is nagging).
+ *
+ * @return {Array<{ version: string, items: string[], rateInAppStore?: boolean }>}
  */
 export function releaseNotes() {
 	return [
+		{
+			version: '1.10.1',
+			rateInAppStore: true,
+			items: [
+				t('moviedb', 'The quiz history shows the first and last date under the chart instead of dates that were left out.'),
+				t('moviedb', 'Movies without an original title or a date can be edited with all fields again, and the add forms fit narrow windows.'),
+			],
+		},
 		{
 			version: '1.10.0',
 			items: [

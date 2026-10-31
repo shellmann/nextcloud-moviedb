@@ -164,6 +164,10 @@
 				<a href="https://apps.nextcloud.com/apps/moviedb" target="_blank" rel="noopener noreferrer">{{ t('moviedb', 'App Store') }}</a>
 				<a :href="repoUrl + '/blob/main/LICENSE'" target="_blank" rel="noopener noreferrer">{{ t('moviedb', 'License') }} (AGPL-3.0-or-later)</a>
 			</p>
+			<p class="section-description rate-app">
+				{{ t('moviedb', 'Enjoying MovieDB?') }}
+				<a href="https://apps.nextcloud.com/apps/moviedb" target="_blank" rel="noopener noreferrer">{{ t('moviedb', 'Rate it in the Nextcloud App Store') }}</a>
+			</p>
 			<a
 				href="https://www.themoviedb.org/"
 				target="_blank"
