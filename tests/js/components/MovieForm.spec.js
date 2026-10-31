@@ -43,3 +43,35 @@ describe('MovieForm favorite switch', () => {
 		expect(wrapper.emitted('submit')[0][0].isFavorite).toBe(true)
 	})
 })
+
+describe('MovieForm text fields', () => {
+	// NcTextField throws on a null model value, so movies without an original
+	// title or a watch date must reach the fields as empty strings.
+	it('never hands null to the text fields', () => {
+		const wrapper = mountForm({ originalTitle: null, dateWatched: null })
+
+		expect(wrapper.vm.formData.title).toBe('Inception')
+		expect(wrapper.vm.formData.originalTitle).toBe('')
+		expect(wrapper.vm.formData.dateWatched).toBe('')
+	})
+
+	it('submits empty optional text fields as null again', () => {
+		const wrapper = mountForm({ originalTitle: null, dateWatched: null })
+
+		wrapper.vm.submit()
+
+		const submitted = wrapper.emitted('submit')[0][0]
+		expect(submitted.originalTitle).toBeNull()
+		expect(submitted.dateWatched).toBeNull()
+	})
+
+	it('keeps values that are set', () => {
+		const wrapper = mountForm({ originalTitle: 'Inception', dateWatched: '2026-10-31' })
+
+		wrapper.vm.submit()
+
+		const submitted = wrapper.emitted('submit')[0][0]
+		expect(submitted.originalTitle).toBe('Inception')
+		expect(submitted.dateWatched).toBe('2026-10-31')
+	})
+})
