@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
+import { h } from 'vue'
 import { mount } from '@vue/test-utils'
 import MovieForm from '@/components/MovieForm.vue'
 
@@ -6,7 +7,11 @@ import MovieForm from '@/components/MovieForm.vue'
 // The checkbox stub mirrors NcCheckboxRadioSwitch's v-model contract in nc/vue 9
 // (modelValue / update:modelValue).
 vi.mock('@nextcloud/vue', () => ({
-	NcTextField: { template: '<input />' },
+	// Like the real NcTextField, which calls modelValue.toString() while rendering.
+	NcTextField: {
+		props: ['modelValue'],
+		render() { return h('input', { value: this.modelValue.toString() }) },
+	},
 	NcSelect: { template: '<div />' },
 	NcButton: { template: '<button><slot /></button>' },
 	NcCheckboxRadioSwitch: {
