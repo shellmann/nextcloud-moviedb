@@ -99,4 +99,31 @@ describe('WhatsNewDialog', () => {
 
 		expect(wrapper.find('.dialog').exists()).toBe(false)
 	})
+
+	describe('App Store rating line', () => {
+		it('invites a rating in the release that asks for it', async () => {
+			const wrapper = await mountWith({ currentVersion: '1.10.1', lastSeenVersion: '1.10.0' })
+
+			const rate = wrapper.find('.rate-app')
+			expect(rate.text()).toContain('Enjoying MovieDB?')
+			const link = rate.find('a')
+			expect(link.text()).toBe('Rate it in the Nextcloud App Store')
+			expect(link.attributes('href')).toBe('https://apps.nextcloud.com/apps/moviedb')
+			expect(link.attributes('target')).toBe('_blank')
+			expect(link.attributes('rel')).toContain('noopener')
+		})
+
+		it('also shows it to someone who skipped to a later release', async () => {
+			const wrapper = await mountWith({ currentVersion: '1.10.1', lastSeenVersion: '1.9.2' })
+
+			expect(wrapper.find('.rate-app').exists()).toBe(true)
+		})
+
+		it('does not nag in releases that do not ask for it', async () => {
+			const wrapper = await mountWith({ currentVersion: '1.10.0', lastSeenVersion: '1.9.2' })
+
+			expect(wrapper.find('.dialog').exists()).toBe(true)
+			expect(wrapper.find('.rate-app').exists()).toBe(false)
+		})
+	})
 })

@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.1] - 2026-10-31
+
+### Added
+- The quiz history shows the first and last date under the chart ("12 Oct – 24 Oct",
+  or one date when all rounds are on the same day) instead of dates per day that
+  were left out when they did not fit. (#102)
+- A line in the "What's new" dialog of this release and in Settings → About that
+  invites you to rate MovieDB in the Nextcloud App Store.
+
+### Fixed
+- Movies without an original title or a watch date lost those fields in the edit
+  form and logged a console error (NcTextField cannot show `null`). The fields are
+  back and empty values are saved as before. (#101)
+- The add forms for movies and TV shows no longer run past the card in narrow
+  windows (the select fields had a fixed minimum width). (#101)
+- The "Owner" and "Active" badges on the Libraries page are readable in dark mode. (#101)
+
+### Security
+- Dependencies: @nextcloud/vue 9.14, webpack, eslint, vitest, jsdom and the
+  typescript-eslint packages updated; `npm audit` findings with a fix are cleared
+  (body-parser and follow-redirects, both high; `minimatch` and `glob` pinned to
+  patched versions). Six low findings remain (elliptic and the crypto polyfills
+  behind @nextcloud/webpack-vue-config); they have no patched release and are not
+  part of the built bundle. Almost all of this is build and test tooling, not
+  code that runs for users. (#101)
+
 ## [1.10.0] - 2026-10-29
 
 ### Added

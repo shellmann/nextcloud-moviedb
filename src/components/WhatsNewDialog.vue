@@ -15,6 +15,12 @@
 					</li>
 				</ul>
 			</section>
+			<p v-if="rateInAppStore" class="rate-app">
+				{{ t('moviedb', 'Enjoying MovieDB?') }}
+				<a :href="appStoreUrl" target="_blank" rel="noopener noreferrer">
+					{{ t('moviedb', 'Rate it in the Nextcloud App Store') }}
+				</a>
+			</p>
 			<p class="all-changes">
 				<a :href="changelogUrl" target="_blank" rel="noopener noreferrer">
 					{{ t('moviedb', 'All changes (opens GitHub)') }}
@@ -37,6 +43,7 @@ import api from '../services/api.js'
 import { compareVersions, unseenNotes } from '../whatsNew/releaseNotes.js'
 
 const CHANGELOG_URL = 'https://github.com/shellmann/nextcloud-moviedb/blob/main/CHANGELOG.md'
+const APP_STORE_URL = 'https://apps.nextcloud.com/apps/moviedb'
 
 /**
  * Shows the highlights of every MovieDB version the user has not seen yet,
@@ -57,12 +64,18 @@ export default {
 			lastSeenVersion: state.lastSeenVersion || '',
 			open: false,
 			changelogUrl: CHANGELOG_URL,
+			appStoreUrl: APP_STORE_URL,
 		}
 	},
 
 	computed: {
 		notes() {
 			return unseenNotes(this.lastSeenVersion, this.currentVersion)
+		},
+
+		/** True when one of the shown releases asks for an App Store rating. */
+		rateInAppStore() {
+			return this.notes.some((release) => release.rateInAppStore)
 		},
 	},
 
@@ -124,6 +137,7 @@ ul {
     }
 }
 
+.rate-app,
 .all-changes {
     margin: 0;
 

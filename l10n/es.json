@@ -497,7 +497,11 @@
 		"Titles without a release date can be added to your watchlist again.": "Los títulos sin fecha de estreno vuelven a poder añadirse a tu lista de seguimiento.",
 		"Release dates on your watchlist stay up to date: once a day MovieDB asks TMDB and fills in or moves the date by itself.": "Las fechas de estreno de tu lista de seguimiento se mantienen al día: una vez al día MovieDB consulta TMDB y completa o cambia la fecha por sí solo.",
 		"A \"New date\" badge on the poster shows when a date was set or changed. Dismiss it with the cross.": "Una insignia «Nueva fecha» en el póster indica cuándo se ha fijado o cambiado una fecha. Descártala con la cruz.",
-		"{start} – {end}": "{start} – {end}"
+		"{start} – {end}": "{start} – {end}",
+		"Enjoying MovieDB?": "¿Te gusta MovieDB?",
+		"Rate it in the Nextcloud App Store": "Valóralo en la Nextcloud App Store",
+		"The quiz history shows the first and last date under the chart instead of dates that were left out.": "El historial del quiz muestra la primera y la última fecha bajo el gráfico, en lugar de fechas que se omitían.",
+		"Movies without an original title or a date can be edited with all fields again, and the add forms fit narrow windows.": "Las películas sin título original o sin fecha se pueden editar de nuevo con todos los campos, y los formularios para añadir caben en ventanas estrechas."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -498,6 +498,10 @@ OC.L10N.register(
         "Titles without a release date can be added to your watchlist again.": "Les titres sans date de sortie peuvent de nouveau être ajoutés à votre liste « À voir ».",
         "Release dates on your watchlist stay up to date: once a day MovieDB asks TMDB and fills in or moves the date by itself.": "Les dates de sortie de votre liste « À voir » restent à jour : une fois par jour, MovieDB interroge TMDB et renseigne ou déplace la date tout seul.",
         "A \"New date\" badge on the poster shows when a date was set or changed. Dismiss it with the cross.": "Un badge « Nouvelle date » sur l’affiche indique qu’une date a été fixée ou modifiée. Ignorez-le avec la croix.",
-        "{start} – {end}": "{start} – {end}"
+        "{start} – {end}": "{start} – {end}",
+        "Enjoying MovieDB?": "MovieDB vous plaît ?",
+        "Rate it in the Nextcloud App Store": "Notez-le dans le Nextcloud App Store",
+        "The quiz history shows the first and last date under the chart instead of dates that were left out.": "L’historique du quiz affiche la première et la dernière date sous le graphique, au lieu de dates qui étaient omises.",
+        "Movies without an original title or a date can be edited with all fields again, and the add forms fit narrow windows.": "Les films sans titre original ou sans date peuvent de nouveau être modifiés avec tous les champs, et les formulaires d’ajout tiennent dans les fenêtres étroites."
     },
 "nplurals=2; plural=(n > 1);");
