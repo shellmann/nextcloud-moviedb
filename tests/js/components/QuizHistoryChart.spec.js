@@ -5,7 +5,7 @@ import QuizHistoryChart from '@/components/quiz/QuizHistoryChart.vue'
 function mountChart(props) {
 	return mount(QuizHistoryChart, {
 		props,
-		global: { mocks: { t: (app, text) => text } },
+		global: { mocks: { t: (app, text, vars) => text.replace(/\{(\w+)\}/g, (m, k) => vars?.[k] ?? m) } },
 	})
 }
 
@@ -76,6 +76,12 @@ describe('QuizHistoryChart', () => {
 		const wrapper = mountChart({ rounds: [{ id: 1, percent: 50, playedAt: server(2026, 9, 11, 12) }], best: 50 })
 
 		expect(wrapper.find('.date-range').text()).toBe(local(2026, 9, 11, 12))
+	})
+
+	it('shows no date range when only one end has an unreadable timestamp', () => {
+		const rounds = [{ id: 1, percent: 50, playedAt: server(2026, 9, 11, 12) }, { id: 2, percent: 50, playedAt: 'not a date' }]
+
+		expect(mountChart({ rounds, best: 50 }).find('.date-range').exists()).toBe(false)
 	})
 
 	it('shows no date range without rounds or with unreadable timestamps', () => {

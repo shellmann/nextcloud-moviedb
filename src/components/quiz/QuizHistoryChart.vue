@@ -111,7 +111,7 @@ export default {
 			return this.chartTop + this.plotHeight - (this.best / 100) * this.plotHeight
 		},
 
-		/** Show every n-th date label so 30 rounds stay readable. */
+		/** Label only every n-th round number so 30 rounds stay readable. */
 		labelStep() {
 			return Math.max(1, Math.ceil(this.rounds.length / 10))
 		},
@@ -130,7 +130,7 @@ export default {
 			const first = this.bars[0]
 			const last = this.bars[this.bars.length - 1]
 			if (!first.label || !last.label) { return '' }
-			return first.day === last.day ? first.label : `${first.label} – ${last.label}`
+			return first.day === last.day ? first.label : t('moviedb', '{start} – {end}', { start: first.label, end: last.label })
 		},
 
 		bars() {
