@@ -15,6 +15,14 @@ import { translate as t } from '@nextcloud/l10n'
 export function releaseNotes() {
 	return [
 		{
+			version: '1.10.2',
+			rateInAppStore: true,
+			items: [
+				t('moviedb', 'Numbers and highlighted text are easy to read with a dark theme again.'),
+				t('moviedb', 'The "Watches by Year" chart on the dashboard now works with PostgreSQL databases.'),
+			],
+		},
+		{
 			version: '1.10.1',
 			rateInAppStore: true,
 			items: [

@@ -502,6 +502,8 @@ OC.L10N.register(
         "Enjoying MovieDB?": "Ti piace MovieDB?",
         "Rate it in the Nextcloud App Store": "Valutalo nel Nextcloud App Store",
         "The quiz history shows the first and last date under the chart instead of dates that were left out.": "La cronologia del quiz mostra la prima e l’ultima data sotto il grafico, invece di date che venivano omesse.",
-        "Movies without an original title or a date can be edited with all fields again, and the add forms fit narrow windows.": "I film senza titolo originale o senza data si possono di nuovo modificare con tutti i campi, e i moduli di aggiunta stanno nelle finestre strette."
+        "Movies without an original title or a date can be edited with all fields again, and the add forms fit narrow windows.": "I film senza titolo originale o senza data si possono di nuovo modificare con tutti i campi, e i moduli di aggiunta stanno nelle finestre strette.",
+        "Numbers and highlighted text are easy to read with a dark theme again.": "I numeri e il testo evidenziato tornano a essere ben leggibili con un tema scuro.",
+        "The \"Watches by Year\" chart on the dashboard now works with PostgreSQL databases.": "Il grafico «Visioni per anno» del pannello ora funziona con i database PostgreSQL."
     },
 "nplurals=2; plural=(n != 1);");

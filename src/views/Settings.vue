@@ -633,7 +633,7 @@ export default {
         margin-bottom: 16px;
 
         a {
-            color: var(--color-primary);
+            color: var(--color-primary-element);
         }
     }
 

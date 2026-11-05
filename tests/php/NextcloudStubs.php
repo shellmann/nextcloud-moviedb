@@ -201,7 +201,13 @@ namespace OCP\AppFramework\Http\Attribute {
 
 namespace OCP {
     interface IDBConnection {
+        public const PLATFORM_MYSQL = 'mysql';
+        public const PLATFORM_ORACLE = 'oracle';
+        public const PLATFORM_POSTGRES = 'postgres';
+        public const PLATFORM_SQLITE = 'sqlite';
+
         public function getQueryBuilder(): mixed;
+        public function getDatabaseProvider(): string;
         public function escapeLikeParameter(string $param): string;
         public function beginTransaction(): void;
         public function commit(): void;
