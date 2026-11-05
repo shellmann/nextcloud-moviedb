@@ -23,14 +23,27 @@ jobs:
       - run: npm run lint
 
   lint-php:
-    name: PHP Syntax Check
+    name: PHP Syntax Check (${{ matrix.php }})
     runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.2', '8.3', '8.4']
     steps:
       - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.2'
+          php-version: ${{ matrix.php }}
+          coverage: none
       - run: find lib/ -name "*.php" -print0 | xargs -0 -n1 php -l
+
+  lint-info-xml:
+    name: info.xml lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - run: sudo apt-get update && sudo apt-get install -y libxml2-utils
+      - run: wget -q https://apps.nextcloud.com/schema/apps/info.xsd
+      - run: xmllint --schema info.xsd appinfo/info.xml --noout
 
   check-translations:
     name: Translation Audit
