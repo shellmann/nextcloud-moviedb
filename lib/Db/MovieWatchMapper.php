@@ -164,10 +164,11 @@ class MovieWatchMapper extends QBMapper {
      * Watch count per year *watched* (not release/air year) — matches the
      * "year in review" convention used by Trakt/Letterboxd. watched_at is a
      * Types::DATE column: SQLite stores it as ISO YYYY-MM-DD text, so
-     * SUBSTR(watched_at, 1, 4) works there; every other backend has a real
-     * DATE type that SUBSTR rejects (PostgreSQL: "function substr(date,
-     * integer, integer) does not exist"), so they use EXTRACT(YEAR FROM ...),
-     * which MySQL/MariaDB, PostgreSQL and Oracle all support.
+     * SUBSTR(watched_at, 1, 4) works there. PostgreSQL rejects SUBSTR on a
+     * DATE ("function substr(date, integer, integer) does not exist"), Oracle
+     * would first format it with the session date format, and MySQL happens
+     * to accept it; EXTRACT(YEAR FROM ...) is the standard form all three
+     * support.
      *
      * @param ?string $mediaType Restrict to 'movie' or 'series' watches; null for both.
      * @return array<string, int>

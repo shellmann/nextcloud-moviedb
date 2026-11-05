@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import pkg from '../../../package.json'
+import { releaseNotes } from '@/whatsNew/releaseNotes.js'
 
 const read = (file) => readFileSync(resolve(__dirname, '../../..', file), 'utf8')
 const [major, minor] = pkg.version.split('.')
@@ -14,6 +15,13 @@ describe('release consistency', () => {
 
 	it('has a CHANGELOG section for the current version', () => {
 		expect(read('CHANGELOG.md')).toMatch(new RegExp(`^## \\[${pkg.version.replaceAll('.', '\\.')}\\] - \\d{4}-\\d{2}-\\d{2}$`, 'm'))
+	})
+
+	// Purely internal patch releases may skip the dialog; drop this check for such a release.
+	it('has a What\'s new entry for the current version that invites App Store ratings', () => {
+		const entry = releaseNotes().find((release) => release.version === pkg.version)
+		expect(entry?.items.length).toBeGreaterThan(0)
+		expect(entry.rateInAppStore).toBe(true)
 	})
 
 	it('lists the current minor line as supported in SECURITY.md', () => {

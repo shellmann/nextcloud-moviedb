@@ -20,7 +20,7 @@ function sourceFiles(dir) {
 describe('theme colours', () => {
 	it('never uses the raw --color-primary variable', () => {
 		const offenders = sourceFiles(resolve(root, 'src'))
-			.filter((file) => /var\(--color-primary\)/.test(readFileSync(file, 'utf8')))
+			.filter((file) => /var\(\s*--color-primary\s*[,)]/.test(readFileSync(file, 'utf8')))
 			.map((file) => relative(root, file))
 
 		expect(offenders).toEqual([])

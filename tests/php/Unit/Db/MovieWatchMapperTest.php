@@ -16,12 +16,12 @@ use OCP\IDBConnection;
  * movie_id filter, which structurally excluded every series watch).
  *
  * getCountByYear: groups by the year *watched* (SUBSTR(watched_at, 1, 4) on
- * SQLite, EXTRACT(YEAR FROM watched_at) elsewhere), not release/air year — matches the "year in review" convention used by
- * Trakt/Letterboxd (v1.5.2 correction; it previously grouped by release/air
- * year via a COALESCE over joins to moviedb_movies/moviedb_series, which
- * didn't match what "Watches by Year" implies). watched_at lives directly on
- * moviedb_movie_watches for both movies and series-level watch rows, so no
- * join is needed.
+ * SQLite, EXTRACT(YEAR FROM watched_at) elsewhere), not release/air year —
+ * matches the "year in review" convention used by Trakt/Letterboxd (v1.5.2
+ * correction; it previously grouped by release/air year via a COALESCE over
+ * joins to moviedb_movies/moviedb_series, which didn't match what "Watches by
+ * Year" implies). watched_at lives directly on moviedb_movie_watches for both
+ * movies and series-level watch rows, so no join is needed.
  */
 class MovieWatchMapperTest extends TestCase {
     private MovieWatchMapper $mapper;
