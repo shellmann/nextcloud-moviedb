@@ -27,9 +27,9 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Shared Libraries**: Create named libraries and share your collection with other Nextcloud users — assign viewer or editor roles, manage members, and switch between libraries
 - **Watchlist**: Mixed movie + TV watchlist with priorities and a random picker that chooses from the whole list (filter by type, genre, high priority)
 - **Quiz**: Play a quiz about your own library — when you watched a title, when it was released, who directed it — with a question count of your choice, a score history chart and a personal best
-- **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime
+- **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime, plus year and platform charts with a movies/TV filter
 - **Import / Export**: Back up a library or move it to another Nextcloud instance as a single JSON file — ratings, reviews, rewatches, episode progress and watchlist included
-- **Multilingual**: Full internationalization support (German, Spanish, French, Italian, Dutch)
+- **Multilingual**: English, German, Spanish, French, Italian and Dutch
 
 ## Requirements
 
@@ -46,25 +46,20 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 4. Click Install
 
 ### Manual Installation
-1. Clone this repository into your Nextcloud apps directory:
+1. Clone this repository into your Nextcloud apps directory (`custom_apps` on most installations):
    ```bash
-   cd /path/to/nextcloud/apps
+   cd /path/to/nextcloud/custom_apps
    git clone https://github.com/shellmann/nextcloud-moviedb.git moviedb
    ```
 
-2. Install PHP dependencies:
+2. Install the JavaScript dependencies and build:
    ```bash
    cd moviedb
-   composer install --no-dev
-   ```
-
-3. Install JavaScript dependencies and build:
-   ```bash
-   npm install
+   npm ci
    npm run build
    ```
 
-4. Enable the app in Nextcloud:
+3. Enable the app in Nextcloud:
    ```bash
    occ app:enable moviedb
    ```
@@ -78,6 +73,7 @@ If you've built the app locally and want to deploy to a Docker-based Nextcloud:
    cd /path/to/parent-of-repo
    tar -czvf moviedb.tar.gz \
      --exclude='node_modules' \
+     --exclude='vendor' \
      --exclude='.git' \
      --exclude='package-lock.json' \
      --exclude='*.map' \
@@ -116,116 +112,18 @@ If you've built the app locally and want to deploy to a Docker-based Nextcloud:
    docker exec -u www-data CONTAINER_ID php /var/www/html/occ app:enable moviedb
    ```
 
-### Quick Deploy to Pi Server
-
-For development workflow when deploying from Mac to a Raspberry Pi:
-
-```bash
-# 1. Build on Mac
-cd /path/to/nextcloud-moviedb
-npm run build
-
-# 2. Create tarball
-cd /path/to/parent-of-repo
-tar -czvf moviedb.tar.gz \
-  --exclude='node_modules' \
-  --exclude='.git' \
-  --exclude='package-lock.json' \
-  --exclude='*.map' \
-  nextcloud-moviedb
-
-# 3. Transfer to Pi
-scp moviedb.tar.gz pi@pi-server:/tmp/
-
-# 4. SSH to Pi and install
-ssh pi@pi-server
-sudo rm -rf /opt/containers/nextcloud/app/custom_apps/moviedb
-cd /opt/containers/nextcloud/app/custom_apps
-sudo tar -xzvf /tmp/moviedb.tar.gz
-sudo mv nextcloud-moviedb moviedb
-sudo chown -R www-data:www-data moviedb
-```
-
 ## Development
 
-### Setup
 ```bash
-# Install dependencies
-composer install
-npm install
-
-# Watch for changes during development
-npm run watch
+npm ci && composer install
+npm run watch          # rebuild on changes
+npm test               # JavaScript/Vue tests
+composer test          # PHP unit tests, no Nextcloud needed
+npm run lint           # ESLint (npm run lint:fix to fix)
+npm run build          # production build
 ```
 
-### Build for Production
-```bash
-npm run build
-```
-
-### Running CI Locally
-
-Run the same checks that GitHub Actions runs:
-
-```bash
-# ESLint
-npm run lint
-
-# PHP syntax check
-find lib/ -name "*.php" -print0 | xargs -0 -n1 php -l
-
-# Build
-npm run build
-```
-
-To auto-fix ESLint issues:
-
-```bash
-npm run lint:fix
-```
-
-### Testing
-
-#### JavaScript Tests (Quick - Run Anywhere)
-```bash
-npm test              # Run all tests once
-npm run test:watch    # Watch mode for development
-npm run test:coverage # Generate coverage report
-```
-
-**Status:** ✅ 37 tests passing (formatters, stores, components)
-
-#### PHP Unit Tests (Requires Nextcloud Environment)
-```bash
-# Inside Nextcloud installation at custom_apps/moviedb/
-composer test         # Run all PHP tests
-./vendor/bin/phpunit --testdox  # Detailed output
-```
-
-**Status:** ✅ 39 tests written (services, controllers)
-
-**Note:** PHP tests must run inside a Nextcloud installation. See [TESTING.md](TESTING.md) for complete setup instructions including:
-- Local Nextcloud setup with symlinks
-- Docker container configuration
-- CI/CD integration examples
-- How other Nextcloud apps handle testing
-
-**Quick Setup:**
-```bash
-# Option 1: Symlink for easy development
-ln -s /path/to/your/dev/moviedb /path/to/nextcloud/custom_apps/moviedb
-
-# Option 2: Copy to Nextcloud
-cp -r . /path/to/nextcloud/custom_apps/moviedb
-```
-
-Then enable the app and run tests:
-```bash
-cd /path/to/nextcloud
-php occ app:enable moviedb
-cd custom_apps/moviedb
-composer test
-```
+[TESTING.md](TESTING.md) covers all tests, including the upgrade check that CI runs on SQLite, MariaDB and PostgreSQL, and how to try the app in a Nextcloud container. [CONTRIBUTING.md](CONTRIBUTING.md) has the PR workflow.
 
 ## Configuration
 
@@ -262,26 +160,22 @@ Only import files you exported yourself. An export of a shared library contains 
 
 ## API
 
-The app exposes the following REST API endpoints:
+The web interface talks to a JSON API under `/apps/moviedb/api/`. Every request runs as the logged-in Nextcloud user, on their active library. The main endpoints:
 
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/api/movies` | GET | List all movies |
-| `/api/movies` | POST | Add a new movie |
-| `/api/movies/{id}` | GET | Get movie details |
-| `/api/movies/{id}` | PUT | Update a movie |
-| `/api/movies/{id}` | DELETE | Delete a movie |
-| `/api/watchlist` | GET | Get watchlist |
-| `/api/watchlist` | POST | Add to watchlist |
-| `/api/watchlist/{id}/watched` | POST | Move to watched |
-| `/api/watchlist/{id}/release-seen` | POST | Dismiss the "New date" badge |
-| `/api/tmdb/search` | GET | Search TMDB |
-| `/api/series/continue` | GET | TV shows to continue watching |
-| `/api/series/upcoming` | GET | TV shows whose next episode airs soon ("Coming up") |
-| `/api/series/{id}/refresh` | POST | Update a TV show's seasons and episodes from TMDB |
-| `/api/stats` | GET | Get statistics |
-| `/api/export` | GET | Download the active library as JSON |
-| `/api/import` | POST | Import an exported JSON file (multipart field `file`) |
+| Area | Endpoints |
+|------|-----------|
+| Movies | `GET/POST /api/movies`, `GET/PUT/DELETE /api/movies/{id}`, `PUT/DELETE /api/movies/{movieId}/watches/{watchId}` |
+| TV shows | `GET/POST /api/series`, `GET/PUT/DELETE /api/series/{id}`, `GET /api/series/{id}/episodes`, `GET /api/series/continue`, `GET /api/series/upcoming`, `POST /api/series/{id}/refresh` |
+| Watchlist | `GET/POST /api/watchlist`, `GET /api/watchlist/random`, `POST /api/watchlist/{id}/watched` |
+| Platforms | `GET/POST /api/platforms`, `PUT/DELETE /api/platforms/{id}` |
+| Statistics | `GET /api/stats`, `GET /api/stats/years`, `/platforms`, `/genres`, `/recent`, `/top-rated` |
+| Libraries | `GET/POST /api/libraries`, `GET/POST /api/libraries/{id}/members` |
+| Quiz | `GET /api/quiz`, `GET /api/quiz/meta`, `GET/POST/DELETE /api/quiz/results` |
+| TMDB proxy | `GET /api/tmdb/search`, `GET /api/tmdb/series/search`, `GET /api/tmdb/movie/{tmdbId}` |
+| Settings | `GET/PUT /api/settings` (per user), `PUT /api/admin/settings` (admin) |
+| Import / export | `GET /api/export`, `POST /api/import` (multipart field `file`) |
+
+[appinfo/routes.php](appinfo/routes.php) lists every route.
 
 ## Contributing
 

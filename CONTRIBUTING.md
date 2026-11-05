@@ -16,11 +16,11 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 ## Getting Started
 
 ### Prerequisites
-- Nextcloud 33+ development environment
 - PHP 8.2 or higher
 - Node.js 26+ and npm (see `.nvmrc`; CI runs on Node 26)
 - Composer
 - Git
+- Docker and jq, only for the upgrade check and for trying the app in Nextcloud
 
 ### Development Setup
 
@@ -53,33 +53,25 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 ### Running Tests
 
 ```bash
-# Run all tests
-npm test
-
-# Run tests in watch mode
-npm run test:watch
-
-# Generate coverage report
-npm run test:coverage
+npm test                 # JavaScript/Vue tests
+composer test            # PHP unit tests, no Nextcloud installation needed
+tests/upgrade/check-upgrade.sh latest pgsql   # upgrade + API check in Docker, for migration or query changes
 ```
+
+[TESTING.md](TESTING.md) explains each of them and how to try the app in a Nextcloud container.
 
 ### Code Quality
 
 Before submitting a pull request, ensure your code passes all checks:
 
 ```bash
-# JavaScript/Vue linting
-npm run lint
-
-# Auto-fix linting issues
-npm run lint:fix
-
-# PHP syntax check
-find lib/ -name "*.php" -print0 | xargs -0 -n1 php -l
-
-# Build verification
+npm run lint                 # ESLint (npm run lint:fix to fix)
+npm run check:translations   # every string translated
+find lib/ -name "*.php" -print0 | xargs -0 -n1 php -l   # PHP syntax
 npm run build
 ```
+
+CI runs all of these, plus the upgrade check on SQLite, MariaDB and PostgreSQL, on every pull request.
 
 ### Code Style
 
@@ -134,7 +126,7 @@ git checkout -b fix/your-bug-fix
 - ✅ Ensure all tests pass
 - ✅ Follow the existing code style
 - ✅ Keep changes focused and minimal
-- ✅ Add entries to CHANGELOG.md for significant changes
+- ✅ Add an entry under `[Unreleased]` in CHANGELOG.md for user-facing changes
 
 ## Reporting Issues
 
@@ -163,28 +155,7 @@ For feature requests, please describe:
 
 ## Translation
 
-**IMPORTANT:** Whenever you add or change a user-facing string wrapped in
-`t('moviedb', '...')`, you MUST add its translation to **every** locale JSON in
-`l10n/` (not just your own). Missing keys fall back to raw English and look
-broken. See `TRANSLATIONS.md` for the full workflow and an audit script that
-reports any missing translations per locale.
-
-To contribute translations:
-
-1. Edit the JSON file for your language in `l10n/`
-2. Run `npm run l10n` to regenerate the compiled files
-3. Run the audit in `TRANSLATIONS.md` to confirm no keys are missing
-4. Test your translations in the app
-5. Submit a pull request
-
-Available languages:
-- German (de.json)
-- Spanish (es.json)
-- French (fr.json)
-- Italian (it.json)
-- Dutch (nl.json)
-
-To add a new language, create a new JSON file following the existing structure.
+The app is translated into German, Spanish, French, Italian and Dutch. **Every new or changed `t('moviedb', '...')` string needs a translation in every `l10n/*.json` file**, otherwise it shows up in English. [TRANSLATIONS.md](TRANSLATIONS.md) has the workflow, how to add a language, and the `npm run check:translations` audit that CI runs.
 
 ## Development Tips
 
@@ -192,7 +163,7 @@ To add a new language, create a new JSON file following the existing structure.
 - Check the browser console for frontend errors
 - Check `nextcloud.log` for backend errors
 - Use Vue DevTools for debugging state management
-- Test with different Nextcloud versions if possible
+- Try changes in a throwaway Nextcloud container, for any supported Nextcloud version (see [TESTING.md](TESTING.md#manual-testing-in-a-nextcloud-container))
 
 ## Questions?
 
