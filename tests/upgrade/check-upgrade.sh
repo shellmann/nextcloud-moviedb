@@ -52,23 +52,26 @@ fail() { echo "::error::$*" >&2; exit 1; }
 echo "== MovieDB upgrade check: $FROM_REF -> HEAD on $NC_IMAGE ($DB)"
 docker network create "$NET" >/dev/null
 
+wait_for_db() { # usage: wait_for_db <readiness command run in the database container>
+	for _ in $(seq 1 60); do
+		docker exec "$DBC" "$@" >/dev/null 2>&1 && return 0
+		sleep 2
+	done
+	docker logs "$DBC" 2>&1 | tail -30
+	fail "The $DB container ($DBC) was not ready after 120 s"
+}
+
 NC_ENV=(-e NEXTCLOUD_ADMIN_USER=admin -e "NEXTCLOUD_ADMIN_PASSWORD=$ADMIN_PASSWORD")
 if [ "$DB" = "mysql" ]; then
 	docker run -d --name "$DBC" --network "$NET" \
 		-e "MARIADB_ROOT_PASSWORD=$DB_PASSWORD" -e MARIADB_DATABASE=nextcloud "$MARIADB_IMAGE" >/dev/null
-	for _ in $(seq 1 60); do
-		docker exec "$DBC" healthcheck.sh --connect --innodb_initialized >/dev/null 2>&1 && break
-		sleep 2
-	done
+	wait_for_db healthcheck.sh --connect --innodb_initialized
 	NC_ENV+=(-e "MYSQL_HOST=$DBC" -e MYSQL_DATABASE=nextcloud -e MYSQL_USER=root -e "MYSQL_PASSWORD=$DB_PASSWORD")
 elif [ "$DB" = "pgsql" ]; then
 	docker run -d --name "$DBC" --network "$NET" \
 		-e POSTGRES_USER=postgres -e "POSTGRES_PASSWORD=$DB_PASSWORD" -e POSTGRES_DB=nextcloud "$POSTGRES_IMAGE" >/dev/null
 	# The image restarts the server once after its init scripts; wait until it answers over TCP.
-	for _ in $(seq 1 60); do
-		docker exec "$DBC" pg_isready -h 127.0.0.1 -U postgres -d nextcloud >/dev/null 2>&1 && break
-		sleep 2
-	done
+	wait_for_db pg_isready -h 127.0.0.1 -U postgres -d nextcloud
 	NC_ENV+=(-e "POSTGRES_HOST=$DBC" -e POSTGRES_DB=nextcloud -e POSTGRES_USER=postgres -e "POSTGRES_PASSWORD=$DB_PASSWORD")
 elif [ "$DB" = "sqlite" ]; then
 	NC_ENV+=(-e SQLITE_DATABASE=nextcloud)
@@ -207,13 +210,24 @@ api GET /api/stats/genres
 api GET /api/stats/recent
 api GET /api/stats/top-rated
 
+# The list endpoints run the other hand-written SQL: correlated subqueries for the latest
+# rating and language (MovieMapper), derived-table joins and CASE ordering (SeriesMapper).
+# PostgreSQL checks types when it plans a query, so this catches errors even on empty tables.
+api GET /api/movies
+api GET /api/series
+api GET /api/series/continue
+api GET /api/series/upcoming
+api GET /api/watchlist
+api GET /api/quiz/meta
+api GET /api/libraries
+
 echo "/api/stats/years: $YEARS"
 echo "$YEARS" | jq -e '.years["2024"] == 2 and .years["2025"] == 1' >/dev/null \
 	|| fail "/api/stats/years does not count the seeded watches (2024: 2, 2025: 1)"
 
 NEW_LOG=$(docker exec "$NC" sh -c "[ -f $LOG ] && tail -n +$((LOG_START + 1)) $LOG || true")
-# Error (3) and fatal (4) entries that mention the app or the database layer.
-LOG_ERRORS=$(echo "$NEW_LOG" | grep -E '"level":[34]' | grep -iE 'moviedb|SQLSTATE|Doctrine|DBAL|Database' || true)
+# Error (3) and fatal (4) entries that mention the app or the database layer (DBAL exceptions name Doctrine).
+LOG_ERRORS=$(echo "$NEW_LOG" | grep -E '"level":[34]' | grep -iE 'moviedb|SQLSTATE|Doctrine|DBAL' || true)
 if [ -n "$LOG_ERRORS" ]; then
 	echo "$LOG_ERRORS" | jq -r '"\(.level) \(.app): \(.message)\n  \(.exception.Message // "" )"' 2>/dev/null || echo "$LOG_ERRORS"
 	fail "nextcloud.log has moviedb or SQL errors from the API smoke test (see above)"
