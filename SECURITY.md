@@ -57,7 +57,7 @@ When using MovieDB:
 
 - ✅ Strict typing in PHP code (`declare(strict_types=1)`)
 - ✅ Input validation on all API endpoints
-- ✅ Database abstraction layer (no raw SQL)
+- ✅ All queries go through Nextcloud's QueryBuilder, with user input passed as bound parameters
 - ✅ Content Security Policy (CSP) headers
 - ✅ User data isolation per Nextcloud user
 - ✅ No external data transmission except to TMDB API

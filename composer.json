@@ -5,8 +5,8 @@
     "license": "AGPL-3.0-or-later",
     "authors": [
         {
-            "name": "Your Name",
-            "email": "your-email@example.com"
+            "name": "shellmann",
+            "homepage": "https://github.com/shellmann"
         }
     ],
     "require": {
@@ -27,8 +27,6 @@
     },
     "scripts": {
         "lint": "find . -name \\*.php -not -path './vendor/*' -print0 | xargs -0 -n1 php -l",
-        "cs:check": "php-cs-fixer fix --dry-run --diff",
-        "cs:fix": "php-cs-fixer fix",
         "test": "phpunit --configuration phpunit.xml"
     },
     "config": {
