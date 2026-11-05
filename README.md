@@ -29,7 +29,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Quiz**: Play a quiz about your own library — when you watched a title, when it was released, who directed it — with a question count of your choice, a score history chart and a personal best
 - **Statistics**: Dashboard with viewing stats by genre, platform, episodes watched, and total runtime, plus year and platform charts with a movies/TV filter
 - **Import / Export**: Back up a library or move it to another Nextcloud instance as a single JSON file — ratings, reviews, rewatches, episode progress and watchlist included
-- **Multilingual**: Full internationalization support (German, Spanish, French, Italian, Dutch)
+- **Multilingual**: English, German, Spanish, French, Italian and Dutch
 
 ## Requirements
 
@@ -73,6 +73,7 @@ If you've built the app locally and want to deploy to a Docker-based Nextcloud:
    cd /path/to/parent-of-repo
    tar -czvf moviedb.tar.gz \
      --exclude='node_modules' \
+     --exclude='vendor' \
      --exclude='.git' \
      --exclude='package-lock.json' \
      --exclude='*.map' \
@@ -166,10 +167,12 @@ The web interface talks to a JSON API under `/apps/moviedb/api/`. Every request 
 | Movies | `GET/POST /api/movies`, `GET/PUT/DELETE /api/movies/{id}`, `PUT/DELETE /api/movies/{movieId}/watches/{watchId}` |
 | TV shows | `GET/POST /api/series`, `GET/PUT/DELETE /api/series/{id}`, `GET /api/series/{id}/episodes`, `GET /api/series/continue`, `GET /api/series/upcoming`, `POST /api/series/{id}/refresh` |
 | Watchlist | `GET/POST /api/watchlist`, `GET /api/watchlist/random`, `POST /api/watchlist/{id}/watched` |
+| Platforms | `GET/POST /api/platforms`, `PUT/DELETE /api/platforms/{id}` |
 | Statistics | `GET /api/stats`, `GET /api/stats/years`, `/platforms`, `/genres`, `/recent`, `/top-rated` |
 | Libraries | `GET/POST /api/libraries`, `GET/POST /api/libraries/{id}/members` |
 | Quiz | `GET /api/quiz`, `GET /api/quiz/meta`, `GET/POST/DELETE /api/quiz/results` |
 | TMDB proxy | `GET /api/tmdb/search`, `GET /api/tmdb/series/search`, `GET /api/tmdb/movie/{tmdbId}` |
+| Settings | `GET/PUT /api/settings` (per user), `PUT /api/admin/settings` (admin) |
 | Import / export | `GET /api/export`, `POST /api/import` (multipart field `file`) |
 
 [appinfo/routes.php](appinfo/routes.php) lists every route.

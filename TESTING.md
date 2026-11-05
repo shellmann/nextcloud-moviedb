@@ -2,10 +2,10 @@
 
 | What | Command | Needs | Runs in CI |
 |------|---------|-------|------------|
-| JavaScript/Vue tests | `npm test` | Node.js | every push and PR (`ci.yml`) |
-| PHP unit tests | `composer test` | PHP 8.2+ | every push and PR (`ci.yml`) |
-| Upgrade check + API smoke test | `tests/upgrade/check-upgrade.sh latest pgsql` | Docker, jq | every push and PR (`upgrade-check.yml`) |
-| Lint, translations, build | `npm run lint`, `npm run check:translations`, `npm run build` | Node.js | every push and PR (`ci.yml`) |
+| JavaScript/Vue tests | `npm test` | Node.js | every PR and push to `main` (`ci.yml`) |
+| PHP unit tests | `composer test` | PHP 8.2+, Composer | every PR and push to `main` (`ci.yml`) |
+| Upgrade check + API smoke test | `tests/upgrade/check-upgrade.sh latest pgsql` | Docker, jq | every PR and push to `main` (`upgrade-check.yml`) |
+| Lint, translations, build | `npm run lint`, `npm run check:translations`, `npm run build` | Node.js | every PR and push to `main` (`ci.yml`) |
 
 None of them needs a Nextcloud installation on your machine.
 
@@ -49,8 +49,9 @@ composer test                                     # all tests
 If a test needs a Nextcloud class or interface that is not stubbed yet, add a
 minimal stub to `NextcloudStubs.php`.
 
-Migrations (`lib/Migration/`) are excluded from the unit suite; they are pure
-database I/O and are covered by the upgrade check below.
+Migrations (`lib/Migration/`) have no unit tests and are excluded from coverage
+in `phpunit.xml`; they are pure database I/O and are covered by the upgrade check
+below.
 
 ---
 
@@ -132,7 +133,7 @@ docker exec -u www-data nc-test php occ config:system:set \
 # 2. Build and package the app (contents at the tarball root)
 npm run build
 tar -czf /tmp/moviedb.tar.gz \
-  --exclude='node_modules' --exclude='.git' --exclude='package-lock.json' \
+  --exclude='node_modules' --exclude='vendor' --exclude='.git' --exclude='package-lock.json' \
   --exclude='tests' --exclude='*.map' --exclude='.env' --exclude='.env.*' .
 
 # 3. Deploy it into the container and enable it
