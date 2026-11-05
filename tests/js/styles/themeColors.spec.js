@@ -10,7 +10,7 @@ function sourceFiles(dir) {
 		if (entry.isDirectory()) {
 			return sourceFiles(path)
 		}
-		return /\.(vue|s?css|js)$/.test(entry.name) ? [path] : []
+		return /\.(vue|s?css|js|php)$/.test(entry.name) ? [path] : []
 	})
 }
 
@@ -19,7 +19,8 @@ function sourceFiles(dir) {
 // adjusts for contrast with the current light or dark theme.
 describe('theme colours', () => {
 	it('never uses the raw --color-primary variable', () => {
-		const offenders = sourceFiles(resolve(root, 'src'))
+		const offenders = ['src', 'css', 'templates']
+			.flatMap((dir) => sourceFiles(resolve(root, dir)))
 			.filter((file) => /var\(\s*--color-primary\s*[,)]/.test(readFileSync(file, 'utf8')))
 			.map((file) => relative(root, file))
 

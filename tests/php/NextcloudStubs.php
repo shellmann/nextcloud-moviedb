@@ -207,7 +207,7 @@ namespace OCP {
         public const PLATFORM_SQLITE = 'sqlite';
 
         public function getQueryBuilder(): mixed;
-        public function getDatabaseProvider(): string;
+        public function getDatabaseProvider(bool $strict = false): string;
         public function escapeLikeParameter(string $param): string;
         public function beginTransaction(): void;
         public function commit(): void;

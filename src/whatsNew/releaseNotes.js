@@ -8,7 +8,10 @@ import { translate as t } from '@nextcloud/l10n'
  * Every text must be a literal t() call (the translation audit scans for them).
  *
  * Every release entry sets `rateInAppStore`, which adds the "rate MovieDB in the
- * Nextcloud App Store" line under its dialog (checked by releaseConsistency.spec.js).
+ * Nextcloud App Store" line under its dialog. This is a deliberate product
+ * decision (2026-10-31): the line goes with every release's dialog, which a user
+ * sees once per update, and Settings → About has it permanently.
+ * releaseConsistency.spec.js checks it.
  *
  * @return {Array<{ version: string, items: string[], rateInAppStore?: boolean }>}
  */
