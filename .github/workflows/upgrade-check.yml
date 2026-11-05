@@ -3,8 +3,8 @@ name: Upgrade check
 on:
   push:
     branches: [main]
+  # Every PR, whatever its base branch, so stacked PRs get CI too.
   pull_request:
-    branches: [main]
 
 permissions:
   contents: read
