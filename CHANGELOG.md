@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.10.2] - 2026-11-05
+
+### Fixed
+- The "Watches by Year" chart on the dashboard failed on PostgreSQL ("function
+  substr(date, integer, integer) does not exist" in the Nextcloud log) since 1.5.2.
+  The year is now read with `EXTRACT(YEAR FROM …)`; SQLite keeps `SUBSTR`. (#104)
+- With a dark theme and a dark theme colour, the dashboard numbers and other
+  highlighted text were nearly invisible. MovieDB now uses Nextcloud's
+  contrast-adjusted primary colour (`--color-primary-element`) everywhere,
+  including the rating badges on movie and TV show cards. (#105)
+
 ## [1.10.1] - 2026-10-31
 
 ### Added

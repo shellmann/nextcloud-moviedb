@@ -521,7 +521,7 @@ export default {
     flex-wrap: wrap;
 
     &--active {
-        border-left: 3px solid var(--color-primary);
+        border-left: 3px solid var(--color-primary-element);
     }
 
     &__info {

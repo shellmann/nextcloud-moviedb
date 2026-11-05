@@ -359,7 +359,7 @@ export default {
 		resize: vertical;
 
 		&:focus {
-			border-color: var(--color-primary);
+			border-color: var(--color-primary-element);
 			outline: none;
 		}
 	}

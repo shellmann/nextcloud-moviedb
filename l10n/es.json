@@ -501,7 +501,9 @@
 		"Enjoying MovieDB?": "¿Te gusta MovieDB?",
 		"Rate it in the Nextcloud App Store": "Valóralo en la Nextcloud App Store",
 		"The quiz history shows the first and last date under the chart instead of dates that were left out.": "El historial del quiz muestra la primera y la última fecha bajo el gráfico, en lugar de fechas que se omitían.",
-		"Movies without an original title or a date can be edited with all fields again, and the add forms fit narrow windows.": "Las películas sin título original o sin fecha se pueden editar de nuevo con todos los campos, y los formularios para añadir caben en ventanas estrechas."
+		"Movies without an original title or a date can be edited with all fields again, and the add forms fit narrow windows.": "Las películas sin título original o sin fecha se pueden editar de nuevo con todos los campos, y los formularios para añadir caben en ventanas estrechas.",
+		"Numbers and highlighted text are easy to read with a dark theme again.": "Los números y el texto resaltado vuelven a leerse bien con un tema oscuro.",
+		"The \"Watches by Year\" chart on the dashboard now works with PostgreSQL databases.": "El gráfico «Visionados por año» del panel ahora funciona con bases de datos PostgreSQL."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

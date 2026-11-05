@@ -7,13 +7,24 @@ import { translate as t } from '@nextcloud/l10n'
  * (one to four points); purely internal fixes need none.
  * Every text must be a literal t() call (the translation audit scans for them).
  *
- * A release can set `rateInAppStore` to add the "rate MovieDB in the Nextcloud
- * App Store" line under its dialog (use it rarely, once is a nudge, always is nagging).
+ * Every release entry sets `rateInAppStore`, which adds the "rate MovieDB in the
+ * Nextcloud App Store" line under its dialog. This is a deliberate product
+ * decision (2026-10-31): the line goes with every release's dialog, which a user
+ * sees once per update, and Settings → About has it permanently.
+ * releaseConsistency.spec.js checks it.
  *
  * @return {Array<{ version: string, items: string[], rateInAppStore?: boolean }>}
  */
 export function releaseNotes() {
 	return [
+		{
+			version: '1.10.2',
+			rateInAppStore: true,
+			items: [
+				t('moviedb', 'Numbers and highlighted text are easy to read with a dark theme again.'),
+				t('moviedb', 'The "Watches by Year" chart on the dashboard now works with PostgreSQL databases.'),
+			],
+		},
 		{
 			version: '1.10.1',
 			rateInAppStore: true,

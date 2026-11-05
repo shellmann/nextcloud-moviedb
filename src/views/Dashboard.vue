@@ -479,7 +479,7 @@ export default {
     position: relative;
     background: var(--color-background-dark);
     border-radius: tokens.$radius-md;
-    border-top: 3px solid var(--color-primary);
+    border-top: 3px solid var(--color-primary-element);
     box-shadow: tokens.$shadow-sm;
     padding: 20px;
     text-align: center;
@@ -501,7 +501,7 @@ export default {
         }
 
         &:focus-visible {
-            outline: 2px solid var(--color-primary);
+            outline: 2px solid var(--color-primary-element);
             outline-offset: 2px;
         }
     }
@@ -509,7 +509,7 @@ export default {
     .stat-value {
         font-size: 32px;
         font-weight: bold;
-        color: var(--color-primary);
+        color: var(--color-primary-element);
     }
 
     .stat-label {

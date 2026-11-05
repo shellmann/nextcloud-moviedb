@@ -15,13 +15,13 @@ use OCP\IDBConnection;
  * getCountByPlatform: TV show watches are included (previously excluded via a
  * movie_id filter, which structurally excluded every series watch).
  *
- * getCountByYear: groups by the year *watched* (SUBSTR(watched_at, 1, 4)),
- * not release/air year — matches the "year in review" convention used by
- * Trakt/Letterboxd (v1.5.2 correction; it previously grouped by release/air
- * year via a COALESCE over joins to moviedb_movies/moviedb_series, which
- * didn't match what "Watches by Year" implies). watched_at lives directly on
- * moviedb_movie_watches for both movies and series-level watch rows, so no
- * join is needed.
+ * getCountByYear: groups by the year *watched* (SUBSTR(watched_at, 1, 4) on
+ * SQLite, EXTRACT(YEAR FROM watched_at) elsewhere), not release/air year —
+ * matches the "year in review" convention used by Trakt/Letterboxd (v1.5.2
+ * correction; it previously grouped by release/air year via a COALESCE over
+ * joins to moviedb_movies/moviedb_series, which didn't match what "Watches by
+ * Year" implies). watched_at lives directly on moviedb_movie_watches for both
+ * movies and series-level watch rows, so no join is needed.
  */
 class MovieWatchMapperTest extends TestCase {
     private MovieWatchMapper $mapper;
@@ -32,10 +32,47 @@ class MovieWatchMapperTest extends TestCase {
 
         $this->qbStub = new RecordingQBStub();
 
+        $this->mapper = $this->mapperFor(IDBConnection::PLATFORM_MYSQL);
+    }
+
+    private function mapperFor(string $provider): MovieWatchMapper {
         $db = $this->createMock(IDBConnection::class);
         $db->method('getQueryBuilder')->willReturn($this->qbStub);
+        $db->method('getDatabaseProvider')->willReturn($provider);
 
-        $this->mapper = new MovieWatchMapper($db);
+        return new MovieWatchMapper($db);
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function yearExpressionByProvider(): array {
+        return [
+            'sqlite'   => [IDBConnection::PLATFORM_SQLITE, 'SUBSTR(watched_at, 1, 4)'],
+            'mysql'    => [IDBConnection::PLATFORM_MYSQL, 'EXTRACT(YEAR FROM watched_at)'],
+            'postgres' => [IDBConnection::PLATFORM_POSTGRES, 'EXTRACT(YEAR FROM watched_at)'],
+            'oracle'   => [IDBConnection::PLATFORM_ORACLE, 'EXTRACT(YEAR FROM watched_at)'],
+        ];
+    }
+
+    /**
+     * Regression guard for #104: PostgreSQL has no substr(date, int, int), so
+     * SUBSTR on the DATE column broke the dashboard stats there. Only SQLite,
+     * which stores DATE as text, may use it.
+     *
+     * @dataProvider yearExpressionByProvider
+     */
+    public function testGetCountByYearUsesYearExpressionTheDatabaseSupports(string $provider, string $expected): void {
+        $this->mapperFor($provider)->getCountByYear(1);
+
+        $this->assertSame($expected, $this->qbStub->createFunctionCalls[0]);
+    }
+
+    public function testGetCountByYearNormalisesNumericYears(): void {
+        // EXTRACT returns a number; PostgreSQL may hand it back as "2024.0" on some drivers.
+        $this->qbStub->fetchRows = [['year' => '2024.0', 'count' => '2']];
+
+        $this->assertSame(['2024' => 2], $this->mapperFor(IDBConnection::PLATFORM_POSTGRES)->getCountByYear(1));
     }
 
     public function testGetCountByPlatformDoesNotFilterOnMovieId(): void {

@@ -257,8 +257,8 @@ export default {
     position: absolute;
     bottom: 8px;
     right: 8px;
-    background: var(--color-primary);
-    color: white;
+    background: var(--color-primary-element);
+    color: var(--color-primary-element-text);
     border-radius: tokens.$radius-sm;
     padding: 2px 8px;
     font-size: 14px;
