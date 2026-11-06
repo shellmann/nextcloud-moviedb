@@ -237,6 +237,9 @@ class EpisodeMapper extends QBMapper {
      *
      * @return array<int, array<string, mixed>>
      */
+    /** Hard cap for the calendar query: the nearest dates win (ordered by air date). */
+    public const CALENDAR_MAX_ROWS = 2000;
+
     public function airingBetween(int $libraryId, string $from, string $until): array {
         $qb = $this->db->getQueryBuilder();
 
@@ -259,7 +262,8 @@ class EpisodeMapper extends QBMapper {
             ->orderBy('e.air_date', 'ASC')
             ->addOrderBy('e.series_id', 'ASC')
             ->addOrderBy('e.season_number', 'ASC')
-            ->addOrderBy('e.episode_number', 'ASC');
+            ->addOrderBy('e.episode_number', 'ASC')
+            ->setMaxResults(self::CALENDAR_MAX_ROWS);
 
         $result = $qb->executeQuery();
         $rows = [];

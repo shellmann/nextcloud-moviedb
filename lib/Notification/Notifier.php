@@ -46,22 +46,26 @@ class Notifier implements INotifier {
         $l = $this->l10nFactory->get(Application::APP_ID, $languageCode);
         $p = $notification->getSubjectParameters();
         $base = $this->urlGenerator->linkToRouteAbsolute('moviedb.page.index');
-        $query = '?library=' . (int)($p['libraryId'] ?? 0);
+        $libraryId = (int)($p['libraryId'] ?? 0);
+        $title = (string)($p['title'] ?? '');
+        // Items without a library (should not happen) get a link without ?library=.
+        $params = $libraryId > 0 ? ['library=' . $libraryId] : [];
+        $query = $params === [] ? '' : '?' . implode('&', $params);
 
         switch ($notification->getSubject()) {
             case self::SUBJECT_EPISODES:
                 $count = (int)($p['count'] ?? 1);
                 $code = sprintf('S%02dE%02d', (int)($p['season'] ?? 0), (int)($p['episode'] ?? 0));
                 $notification->setParsedSubject($count > 1
-                    ? $l->t('%1$d new episodes of %2$s', [$count, (string)$p['title']])
-                    : $l->t('New episode of %1$s: %2$s', [(string)$p['title'], $code]));
+                    ? $l->t('%1$d new episodes of %2$s', [$count, $title])
+                    : $l->t('New episode of %1$s: %2$s', [$title, $code]));
                 $notification->setLink($base . '#/tv/' . (int)($p['seriesId'] ?? 0) . $query);
                 break;
 
             case self::SUBJECT_WATCHLIST:
-                $notification->setParsedSubject($l->t('%s is out now', [(string)$p['title']]));
+                $notification->setParsedSubject($l->t('%s is out now', [$title]));
                 // ?item= scrolls to the entry and highlights it; the list has no detail page
-                $notification->setLink($base . '#/watchlist' . $query . '&item=' . (int)($p['itemId'] ?? 0));
+                $notification->setLink($base . '#/watchlist' . $query . ($query === '' ? '?' : '&') . 'item=' . (int)($p['itemId'] ?? 0));
                 break;
 
             default:

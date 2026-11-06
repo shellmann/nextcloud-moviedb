@@ -354,6 +354,7 @@ export default {
 
 	data() {
 		return {
+			switchRequests: {},
 			tmdbApiKey: '',
 			showApiKey: false,
 			repoUrl: 'https://github.com/shellmann/nextcloud-moviedb',
@@ -476,12 +477,17 @@ export default {
 		async saveDashboardSwitch(field, value) {
 			const previous = this[field]
 			this[field] = value
+			// Rapid toggling sends overlapping requests: only the newest one may flip the
+			// switch back, an older failure must not undo a later toggle.
+			const requestNo = (this.switchRequests[field] = (this.switchRequests[field] ?? 0) + 1)
 			try {
 				await this.settingsStore.update({ [field]: value })
 				showSuccess(t('moviedb', 'Settings saved successfully.'))
 			} catch (error) {
 				console.error('Failed to save dashboard setting:', error)
-				this[field] = previous
+				if (requestNo === this.switchRequests[field]) {
+					this[field] = previous
+				}
 				showError(t('moviedb', 'Failed to save settings. Please try again.'))
 			}
 		},

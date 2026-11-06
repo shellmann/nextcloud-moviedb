@@ -177,6 +177,7 @@ class ReleaseNotificationServiceTest extends TestCase {
 
         $this->assertSame(1, $this->service->notifyReleasedWatchlist('2026-11-06'));
         $this->assertSame(['carol'], array_column($this->sent, 'user'));
+        $this->assertArrayNotHasKey('libraryId', $this->sent[0]['params'], 'no ?library=0 link for a library-less item');
     }
 
     public function testDismissingARemovedShowMarksItsNotificationsProcessed(): void {

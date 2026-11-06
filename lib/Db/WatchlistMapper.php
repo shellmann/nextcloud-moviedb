@@ -169,7 +169,8 @@ class WatchlistMapper extends QBMapper {
     }
 
     /**
-     * Items of a library releasing in [$from, $until] (both inclusive, "Y-m-d").
+     * Items of a library releasing in [$from, $until] (both inclusive, "Y-m-d"), at most
+     * EpisodeMapper::CALENDAR_MAX_ROWS (the nearest dates win).
      *
      * @return WatchlistItem[]
      */
@@ -183,7 +184,8 @@ class WatchlistMapper extends QBMapper {
             ->andWhere($qb->expr()->gte('release_date', $qb->createNamedParameter($from)))
             ->andWhere($qb->expr()->lte('release_date', $qb->createNamedParameter($until)))
             ->orderBy('release_date', 'ASC')
-            ->addOrderBy('id', 'ASC');
+            ->addOrderBy('id', 'ASC')
+            ->setMaxResults(EpisodeMapper::CALENDAR_MAX_ROWS);
 
         return $this->findEntities($qb);
     }

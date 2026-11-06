@@ -292,6 +292,7 @@ export default {
 	data() {
 		return {
 			highlightedId: null,
+			highlightTimer: null,
 			showWatchedModal: false,
 			showEditModal: false,
 			showRemoveDialog: false,
@@ -382,6 +383,7 @@ export default {
 		 */
 		async revealLinkedItem() {
 			const id = Number.parseInt(String(this.$route.query.item ?? ''), 10)
+			// An entry that is not in the loaded list (another filter, a deleted item) is skipped silently.
 			if (!Number.isInteger(id) || !this.items.some((i) => i.id === id)) {
 				return
 			}

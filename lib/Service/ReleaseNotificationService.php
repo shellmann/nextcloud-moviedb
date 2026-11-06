@@ -29,7 +29,6 @@ use Psr\Log\LoggerInterface;
  */
 class ReleaseNotificationService {
     public const LOOKBACK_DAYS = 2;
-    private const STAMP_CHUNK = 500;
 
     /** @var array<int, string[]> library id => user ids */
     private array $recipients = [];
@@ -99,10 +98,12 @@ class ReleaseNotificationService {
             $users = $libraryId !== null ? $this->recipientsOf($libraryId) : [$item->getUserId()];
             $params = [
                 'itemId' => (int)$item->getId(),
-                'libraryId' => (int)$libraryId,
                 'title' => $item->getTitle(),
                 'mediaType' => $item->getMediaType(),
             ];
+            if ($libraryId !== null) {
+                $params['libraryId'] = $libraryId;
+            }
             foreach ($users as $userId) {
                 $sent += $this->send($userId, Notifier::SUBJECT_WATCHLIST, Notifier::OBJECT_WATCHLIST, (string)$item->getId(), $params);
             }

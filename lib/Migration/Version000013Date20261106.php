@@ -20,7 +20,10 @@ use OCP\Migration\SimpleMigrationStep;
  *   tmdb_vote_count. NULL means "not fetched yet": the daily refresh job
  *   backfills them.
  * - moviedb_episodes.notified_at, moviedb_watchlist.release_notified_at:
- *   when the release notification went out (NULL = not yet).
+ *   when the release notification went out (NULL = not yet). STRING(32) like
+ *   moviedb_series.tmdb_refreshed_at, not DATETIME, as the stamp is only ever
+ *   written and compared as the "Y-m-d H:i:s" text the app produces, so it needs no
+ *   database date handling (the added-before-release rule runs in PHP for the same reason).
  */
 class Version000013Date20261106 extends SimpleMigrationStep {
 

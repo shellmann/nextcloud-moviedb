@@ -39,8 +39,9 @@ class UpcomingCalendarProviderTest extends TestCase {
         $this->assertSame([], $this->provider->getCalendars('principals/users/alice', ['personal']));
     }
 
-    public function testReturnsOneCalendarForTheUserAndBuildsItOncePerRequest(): void {
+    public function testReturnsOneCalendarForTheUserAndBuildsEventsOnlyOnFirstSearch(): void {
         $this->config->method('getValueString')->willReturn('1');
+        // A plain listing must not run the event queries; the first search() runs them once.
         $this->source->expects($this->once())->method('eventsFor')->with('alice')->willReturn([]);
 
         $first = $this->provider->getCalendars('principals/users/alice');
@@ -49,6 +50,16 @@ class UpcomingCalendarProviderTest extends TestCase {
         $this->assertCount(1, $first);
         $this->assertSame('moviedb-upcoming', $first[0]->getUri());
         $this->assertSame($first[0], $second[0]);
+
+        $first[0]->search('');
+        $first[0]->search('anything');
+    }
+
+    public function testListingTheCalendarDoesNotBuildAnyEvents(): void {
+        $this->config->method('getValueString')->willReturn('1');
+        $this->source->expects($this->never())->method('eventsFor');
+
+        $this->provider->getCalendars('principals/users/alice');
     }
 
     public function testTheUserSettingHidesTheCalendar(): void {

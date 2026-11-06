@@ -561,6 +561,21 @@ describe('Settings notifications and calendar', () => {
 		await flushPromises()
 	})
 
+	it('an older failed save does not undo a later toggle of the same switch', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		let failFirst
+		settings.update = vi.fn()
+			.mockImplementationOnce(() => new Promise((resolve, reject) => { failFirst = reject }))
+			.mockResolvedValueOnce()
+
+		await switchFor(NOTIFY).find('input').setValue(false) // first toggle, still saving
+		await switchFor(NOTIFY).find('input').setValue(true) // second toggle succeeds
+		failFirst(new Error('late failure'))
+		await flushPromises()
+
+		expect(switchFor(NOTIFY).find('input').element.checked).toBe(true)
+	})
+
 	it('has a visible hint under each switch', () => {
 		const hints = wrapper.findAll('.hint').map((h) => h.text())
 		expect(hints.some((h) => h.includes('Nextcloud notification'))).toBe(true)

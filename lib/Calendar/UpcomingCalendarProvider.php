@@ -41,7 +41,9 @@ class UpcomingCalendarProvider implements ICalendarProvider {
 
         if (!isset($this->cache[$userId])) {
             $l = $this->l10nFactory->get(Application::APP_ID);
-            $this->cache[$userId] = new UpcomingCalendar($this->source->eventsFor($userId, $l), $l);
+            // Lazy: a plain calendar listing (PROPFIND on the home, Calendar app start) must not
+            // run the event queries; they run on the first search().
+            $this->cache[$userId] = new UpcomingCalendar(fn (): array => $this->source->eventsFor($userId, $l), $l);
         }
 
         return [$this->cache[$userId]];

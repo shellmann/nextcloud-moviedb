@@ -32,13 +32,24 @@ class UpcomingCalendar implements ICalendar {
     public const URI = 'moviedb-upcoming';
     private const DAV_CALLER = 'OCA\\DAV\\CalDAV\\AppCalendar\\AppCalendar';
 
+    /** @var list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}>|null */
+    private ?array $built = null;
+
     /**
-     * @param list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}> $events
+     * @param list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}>|\Closure(): list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}> $events
+     *        the events, or a closure that builds them on first use
      */
     public function __construct(
-        private array $events,
+        private array|\Closure $events,
         private IL10N $l,
     ) {
+    }
+
+    private function events(): array {
+        if ($this->built === null) {
+            $this->built = $this->events instanceof \Closure ? ($this->events)() : $this->events;
+        }
+        return $this->built;
     }
 
     #[\Override]
@@ -79,7 +90,7 @@ class UpcomingCalendar implements ICalendar {
         }
 
         $matches = array_values(array_filter(
-            $this->events,
+            $this->events(),
             fn (array $e): bool => $this->matches($e, $pattern, $searchProperties, $options)
         ));
         $matches = array_slice($matches, $offset ?? 0, $limit);
@@ -131,7 +142,7 @@ class UpcomingCalendar implements ICalendar {
     }
 
     private function calledByDav(): bool {
-        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS, 4) as $frame) {
+        foreach (debug_backtrace(DEBUG_BACKTRACE_IGNORE_ARGS) as $frame) {
             if (($frame['class'] ?? null) === self::DAV_CALLER) {
                 return true;
             }
