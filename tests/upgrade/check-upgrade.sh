@@ -157,9 +157,14 @@ CHECK_RC=$?
 set -e
 echo "$CHECK"
 if echo "$CHECK" | grep -qi "not defined"; then
-	fail "occ db:schema:check is not available on $NC_IMAGE"
-fi
-if echo "$CHECK" | grep -i "moviedb"; then
+	# db:schema:check only exists since Nextcloud 35; older majors (the CI
+	# compatibility jobs) still get the upgrade, data and API checks below.
+	NC_MAJOR=$(echo "${NC_IMAGE##*:}" | grep -oE '^[0-9]+' || echo 35)
+	if [ "$NC_MAJOR" -ge 35 ]; then
+		fail "occ db:schema:check is not available on $NC_IMAGE"
+	fi
+	echo "== Skipping db:schema:check (not available before Nextcloud 35)"
+elif echo "$CHECK" | grep -i "moviedb"; then
 	fail "occ db:schema:check reports differences for moviedb tables (see above), exit code $CHECK_RC"
 fi
 
