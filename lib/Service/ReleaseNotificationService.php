@@ -152,11 +152,10 @@ class ReleaseNotificationService {
      * cleanup" from "nothing to do" without scanning the library for every caller.
      */
     public function markCleanupPending(int $libraryId, string $userId): void {
-        // The value is the time the cleanup became pending; an existing marker keeps its (older) time,
-        // so repeated removals do not postpone the give-up deadline of the retrying job.
-        if (!$this->isCleanupPending($libraryId, $userId)) {
-            $this->userConfig->setValueString($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId, (string)time());
-        }
+        // The value is the time of the leave; every actual leave overwrites it, so a stale marker of
+        // an earlier leave (the user rejoined meanwhile) can never shorten the deadline of this one.
+        // Only a removal that really deletes a membership calls this.
+        $this->userConfig->setValueString($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId, (string)time());
     }
 
     /** @return ?int when the cleanup became pending, null when none is */
@@ -169,7 +168,7 @@ class ReleaseNotificationService {
         return $this->cleanupPendingSince($libraryId, $userId) !== null;
     }
 
-    public function clearCleanupPending(int $libraryId, ?string $userId): void {
+    private function clearCleanupPending(int $libraryId, ?string $userId): void {
         if ($userId !== null) {
             $this->userConfig->deleteUserConfig($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId);
         }
