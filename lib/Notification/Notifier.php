@@ -60,7 +60,8 @@ class Notifier implements INotifier {
 
             case self::SUBJECT_WATCHLIST:
                 $notification->setParsedSubject($l->t('%s is out now', [(string)$p['title']]));
-                $notification->setLink($base . '#/watchlist' . $query);
+                // ?item= scrolls to the entry and highlights it; the list has no detail page
+                $notification->setLink($base . '#/watchlist' . $query . '&item=' . (int)($p['itemId'] ?? 0));
                 break;
 
             default:

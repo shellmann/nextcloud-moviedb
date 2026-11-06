@@ -77,7 +77,7 @@ class UpcomingEventSource {
                     'summary' => $l->t('%s (release)', [$item->getTitle()]),
                     'date' => (string)$item->getReleaseDate(),
                     'description' => $library->getName(),
-                    'url' => $base . '#/watchlist' . $query,
+                    'url' => $base . '#/watchlist' . $query . '&item=' . (int)$item->getId(),
                     'lastModified' => (string)($item->getReleaseDateChangedAt() ?? $item->getAddedAt()),
                 ];
             }

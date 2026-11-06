@@ -46,8 +46,11 @@
 		<div v-else-if="items.length" class="watchlist-grid">
 			<div
 				v-for="item in items"
+				:id="'watchlist-item-' + item.id"
 				:key="item.id"
-				class="watchlist-item">
+				tabindex="-1"
+				class="watchlist-item"
+				:class="{ 'watchlist-item--highlight': highlightedId === item.id }">
 				<div class="item-poster">
 					<img
 						v-if="item.posterPath"
@@ -288,6 +291,7 @@ export default {
 
 	data() {
 		return {
+			highlightedId: null,
 			showWatchedModal: false,
 			showEditModal: false,
 			showRemoveDialog: false,
@@ -363,10 +367,28 @@ export default {
 		this.watchlistStore.resetFilters()
 		// Wait for libraries so the active library id is known before fetching.
 		await this.librariesStore.whenReady()
-		this.watchlistStore.fetchAll()
+		await this.watchlistStore.fetchAll()
+		this.revealLinkedItem()
 	},
 
 	methods: {
+		/**
+		 * Opened from a notification or calendar event (`?item=<id>`): scrolls to the entry,
+		 * moves keyboard focus to it (so screen readers read it) and highlights it for a moment.
+		 */
+		async revealLinkedItem() {
+			const id = Number.parseInt(String(this.$route.query.item ?? ''), 10)
+			if (!Number.isInteger(id) || !this.items.some((i) => i.id === id)) {
+				return
+			}
+			this.highlightedId = id
+			await this.$nextTick()
+			const el = this.$el.querySelector('#watchlist-item-' + id)
+			el?.scrollIntoView({ block: 'center' })
+			el?.focus({ preventScroll: true })
+			setTimeout(() => { this.highlightedId = null }, 4000)
+		},
+
 		formatDate,
 		getPosterUrl,
 		getPriorityLabel,
@@ -524,6 +546,10 @@ export default {
     border-radius: 8px;
     padding: 16px;
     transition: box-shadow 0.3s, background-color 0.3s;
+
+    &.watchlist-item--highlight {
+        box-shadow: 0 0 0 3px var(--color-primary-element);
+    }
 
     @media (max-width: 600px) {
         flex-direction: column;

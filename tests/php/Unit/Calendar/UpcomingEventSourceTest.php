@@ -70,7 +70,7 @@ class UpcomingEventSourceTest extends TestCase {
         $this->assertCount(2, $events);
         $this->assertSame('moviedb-wl-movie-438631', $events[0]['uid']);
         $this->assertSame('Dune 3 (release)', $events[0]['summary']);
-        $this->assertSame('https://nc.example/apps/moviedb/#/watchlist?library=1', $events[0]['url']);
+        $this->assertSame('https://nc.example/apps/moviedb/#/watchlist?library=1&item=5', $events[0]['url']);
         $this->assertSame('moviedb-ep-95396-s3e2', $events[1]['uid']);
         $this->assertSame('Severance S03E02 · Hello', $events[1]['summary']);
         $this->assertSame('2026-11-16', $events[1]['date']);

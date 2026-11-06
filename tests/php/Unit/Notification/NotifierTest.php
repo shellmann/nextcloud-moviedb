@@ -55,7 +55,7 @@ class NotifierTest extends TestCase {
     public function testRendersAReleasedWatchlistTitle(): void {
         $n = $this->notification('moviedb', 'watchlist_released', ['itemId' => 9, 'libraryId' => 1, 'title' => 'Dune Part Three', 'mediaType' => 'movie']);
         $n->expects($this->once())->method('setParsedSubject')->with('Dune Part Three is out now');
-        $n->expects($this->once())->method('setLink')->with('https://nc.example/apps/moviedb/#/watchlist?library=1');
+        $n->expects($this->once())->method('setLink')->with('https://nc.example/apps/moviedb/#/watchlist?library=1&item=9');
 
         $this->notifier->prepare($n, 'en');
     }

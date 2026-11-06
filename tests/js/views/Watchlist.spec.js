@@ -19,7 +19,7 @@ vi.mock('@nextcloud/vue', () => ({
 
 const IconStub = { template: '<span />' }
 
-function mountView() {
+function mountView(query = {}) {
 	return mount(Watchlist, {
 		global: {
 			stubs: {
@@ -31,7 +31,7 @@ function mountView() {
 				PlaylistPlay: IconStub,
 				Plus: IconStub,
 			},
-			mocks: { t: (app, text) => text, $router: { push: vi.fn() } },
+			mocks: { t: (app, text) => text, $router: { push: vi.fn() }, $route: { query } },
 		},
 	})
 }
@@ -80,5 +80,40 @@ describe('Watchlist "New date" badge', () => {
 
 		expect(wrapper.find('.date-news-badge').exists()).toBe(true)
 		expect(wrapper.find('.date-news-dismiss').exists()).toBe(false)
+	})
+})
+
+describe('Watchlist link from a notification (?item=)', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		const store = useWatchlistStore()
+		store.fetchAll = vi.fn().mockResolvedValue()
+		store.items = [
+			{ id: 1, title: 'Heat 2', mediaType: 'movie', priority: 0, releaseDate: '2027-03-12' },
+			{ id: 2, title: 'Dune', mediaType: 'movie', priority: 0, releaseDate: '2021-09-15' },
+		]
+		Element.prototype.scrollIntoView = vi.fn()
+	})
+
+	it('scrolls to, focuses and highlights the linked entry', async () => {
+		const wrapper = mountView({ item: '2' })
+		await flushPromises()
+
+		const entry = wrapper.find('#watchlist-item-2')
+		expect(entry.classes()).toContain('watchlist-item--highlight')
+		expect(wrapper.find('#watchlist-item-1').classes()).not.toContain('watchlist-item--highlight')
+		expect(entry.attributes('tabindex')).toBe('-1')
+		expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+	})
+
+	it('ignores an item that is not in the list', async () => {
+		const wrapper = mountView({ item: '99' })
+		await flushPromises()
+
+		expect(wrapper.findAll('.watchlist-item--highlight')).toHaveLength(0)
 	})
 })
