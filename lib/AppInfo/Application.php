@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace OCA\MovieDB\AppInfo;
 
+use OCA\MovieDB\Calendar\UpcomingCalendarProvider;
 use OCA\MovieDB\Listener\CspListener;
 use OCA\MovieDB\Listener\UserDeletedListener;
 use OCP\AppFramework\App;
@@ -32,6 +33,9 @@ class Application extends App implements IBootstrap {
             UserDeletedEvent::class,
             UserDeletedListener::class
         );
+
+        // Read-only "MovieDB – Upcoming" calendar (Calendar app + CalDAV)
+        $context->registerCalendarProvider(UpcomingCalendarProvider::class);
     }
 
     public function boot(IBootContext $context): void {

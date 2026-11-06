@@ -36,6 +36,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setReleaseDateChangedAt(?string $releaseDateChangedAt)
  * @method int|null getLibraryId()
  * @method void setLibraryId(?int $libraryId)
+ * @method ?string getReleaseNotifiedAt()
+ * @method void setReleaseNotifiedAt(?string $releaseNotifiedAt)
  */
 class WatchlistItem extends Entity implements JsonSerializable {
     /** How long the "New date" badge stays after a release date was set or moved. */
@@ -54,6 +56,7 @@ class WatchlistItem extends Entity implements JsonSerializable {
     protected int $priority = 0;
     protected ?string $notes = null;
     protected string $mediaType = 'movie';
+    protected ?string $releaseNotifiedAt = null;
 
     public function __construct() {
         $this->addType('id', 'integer');

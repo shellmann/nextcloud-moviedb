@@ -20,7 +20,7 @@ for (const f of files) {
 	}
 }
 // PHP strings (lib/) share the same l10n files: literal ->t('...') and ->n('...', '...') calls.
-const phpFiles = execSync("grep -rlE \"->(t|n)\\(\" lib/ || true", { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+const phpFiles = execSync("grep -rlE -e \"->(t|n)\\(\" lib/ || true", { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
 const phpT = /->t\(\s*'((?:[^'\\]|\\.)*)'/g;
 const phpN = /->n\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*'((?:[^'\\]|\\.)*)'/g;
 for (const f of phpFiles) {

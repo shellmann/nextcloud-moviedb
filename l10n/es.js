@@ -522,6 +522,8 @@ OC.L10N.register(
         "TMDB user score": "Puntuación de usuarios de TMDB",
         "Talk Show": "Programa de entrevistas",
         "Video": "Vídeo",
-        "{score} % ({count} votes)": "{score} % ({count} votos)"
+        "{score} % ({count} votes)": "{score} % ({count} votos)",
+        "%s (release)": "%s (estreno)",
+        "MovieDB – Upcoming": "MovieDB – Próximamente"
     },
 "nplurals=2; plural=(n != 1);");

@@ -169,6 +169,26 @@ class WatchlistMapper extends QBMapper {
     }
 
     /**
+     * Items of a library releasing in [$from, $until] (both inclusive, "Y-m-d").
+     *
+     * @return WatchlistItem[]
+     */
+    public function releasingBetween(int $libraryId, string $from, string $until): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->isNotNull('release_date'))
+            ->andWhere($qb->expr()->gte('release_date', $qb->createNamedParameter($from)))
+            ->andWhere($qb->expr()->lte('release_date', $qb->createNamedParameter($until)))
+            ->orderBy('release_date', 'ASC')
+            ->addOrderBy('id', 'ASC');
+
+        return $this->findEntities($qb);
+    }
+
+    /**
      * Items whose release date can still change at TMDB: no date yet, or one
      * that is today or later. Released titles are never asked again.
      *

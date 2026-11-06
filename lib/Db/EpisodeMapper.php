@@ -231,6 +231,47 @@ class EpisodeMapper extends QBMapper {
     }
 
     /**
+     * Episodes airing in [$from, $until] (both inclusive, "Y-m-d") of a library's
+     * shows, season 0 excluded, with the show's data the calendar needs. Plain
+     * rows, not entities: they join two tables.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function airingBetween(int $libraryId, string $from, string $until): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('e.id', 'e.series_id', 'e.season_number', 'e.episode_number', 'e.name', 'e.air_date', 'e.created_at')
+            ->selectAlias('s.title', 'series_title')
+            ->selectAlias('s.tmdb_id', 'series_tmdb_id')
+            ->selectAlias('s.tmdb_refreshed_at', 'series_refreshed_at')
+            ->selectAlias('s.created_at', 'series_created_at')
+            ->from($this->getTableName(), 'e')
+            ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
+            ->where($qb->expr()->eq('s.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->orX(
+                $qb->expr()->isNull('s.stopped_watching'),
+                $qb->expr()->eq('s.stopped_watching', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL))
+            ))
+            ->andWhere($qb->expr()->isNotNull('e.air_date'))
+            ->andWhere($qb->expr()->gte('e.air_date', $qb->createNamedParameter($from)))
+            ->andWhere($qb->expr()->lte('e.air_date', $qb->createNamedParameter($until)))
+            ->andWhere($qb->expr()->gt('e.season_number', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)))
+            ->orderBy('e.air_date', 'ASC')
+            ->addOrderBy('e.series_id', 'ASC')
+            ->addOrderBy('e.season_number', 'ASC')
+            ->addOrderBy('e.episode_number', 'ASC');
+
+        $result = $qb->executeQuery();
+        $rows = [];
+        while ($row = $result->fetch()) {
+            $rows[] = $row;
+        }
+        $result->closeCursor();
+
+        return $rows;
+    }
+
+    /**
      * Total watched episodes across all of a library's series. Episodes have no
      * library_id, so join through moviedb_series.
      */
