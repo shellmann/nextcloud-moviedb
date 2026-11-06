@@ -568,6 +568,12 @@ export default {
 .series-info {
     flex: 1;
     min-width: 0;
+
+    // In the stacked layout the column is centred, so the width would follow the widest
+    // unbreakable content and run off a 320px screen (WCAG reflow).
+    @media (max-width: 768px) {
+        width: 100%;
+    }
 }
 
 .series-header {
