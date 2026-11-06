@@ -272,6 +272,58 @@ class EpisodeMapper extends QBMapper {
     }
 
     /**
+     * Episodes that aired in [$from, $today] and were not notified about yet,
+     * across all libraries. Only shows that were added before the episode
+     * aired count (no backlog for a show added late) and stopped shows are left
+     * out. Plain rows with the show's title and library.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function findToNotify(string $from, string $today): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('e.id', 'e.series_id', 'e.season_number', 'e.episode_number', 'e.air_date')
+            ->selectAlias('s.title', 'series_title')
+            ->selectAlias('s.library_id', 'library_id')
+            ->from($this->getTableName(), 'e')
+            ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
+            ->where($qb->expr()->isNull('e.notified_at'))
+            ->andWhere($qb->expr()->isNotNull('s.library_id'))
+            ->andWhere($qb->expr()->orX(
+                $qb->expr()->isNull('s.stopped_watching'),
+                $qb->expr()->eq('s.stopped_watching', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL))
+            ))
+            ->andWhere($qb->expr()->gte('e.air_date', $qb->createNamedParameter($from)))
+            ->andWhere($qb->expr()->lte('e.air_date', $qb->createNamedParameter($today)))
+            ->andWhere($qb->expr()->gt('e.season_number', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->lt('s.created_at', 'e.air_date'))
+            ->orderBy('e.series_id', 'ASC')
+            ->addOrderBy('e.air_date', 'ASC')
+            ->addOrderBy('e.season_number', 'ASC')
+            ->addOrderBy('e.episode_number', 'ASC');
+
+        $result = $qb->executeQuery();
+        $rows = [];
+        while ($row = $result->fetch()) {
+            $rows[] = $row;
+        }
+        $result->closeCursor();
+
+        return $rows;
+    }
+
+    /** @param int[] $ids */
+    public function markNotified(array $ids, string $now): void {
+        foreach (array_chunk($ids, 500) as $chunk) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->update($this->getTableName())
+                ->set('notified_at', $qb->createNamedParameter($now))
+                ->where($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+            $qb->executeStatement();
+        }
+    }
+
+    /**
      * Total watched episodes across all of a library's series. Episodes have no
      * library_id, so join through moviedb_series.
      */

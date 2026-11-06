@@ -38,6 +38,8 @@ class SettingsService {
             // Stored as '1'/'0'; on unless the user switched it off.
             'showContinueWatching' => $this->userConfig->getValueString($userId, Application::APP_ID, 'show_continue_watching', '1') !== '0',
             'showComingUp' => $this->userConfig->getValueString($userId, Application::APP_ID, 'show_coming_up', '1') !== '0',
+            'notifyReleases' => $this->userConfig->getValueString($userId, Application::APP_ID, 'notify_releases', '1') !== '0',
+            'showCalendar' => $this->userConfig->getValueString($userId, Application::APP_ID, 'show_calendar', '1') !== '0',
         ];
     }
 }

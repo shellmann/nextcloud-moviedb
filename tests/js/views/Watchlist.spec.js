@@ -1,9 +1,9 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Watchlist from '@/views/Watchlist.vue'
 import { useLibrariesStore } from '@/stores/libraries.js'
 import { useWatchlistStore } from '@/stores/watchlist.js'
-import Watchlist from '@/views/Watchlist.vue'
 
 vi.mock('@/components/WatchlistPicker.vue', () => ({ default: { template: '<div />' } }))
 
@@ -23,7 +23,13 @@ function mountView() {
 	return mount(Watchlist, {
 		global: {
 			stubs: {
-				Check: IconStub, Close: IconStub, Delete: IconStub, FerrisWheel: IconStub, Pencil: IconStub, PlaylistPlay: IconStub, Plus: IconStub,
+				Check: IconStub,
+				Close: IconStub,
+				Delete: IconStub,
+				FerrisWheel: IconStub,
+				Pencil: IconStub,
+				PlaylistPlay: IconStub,
+				Plus: IconStub,
 			},
 			mocks: { t: (app, text) => text, $router: { push: vi.fn() } },
 		},

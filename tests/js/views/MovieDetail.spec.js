@@ -1,10 +1,10 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import MovieDetail from '@/views/MovieDetail.vue'
 import { useLibrariesStore } from '@/stores/libraries.js'
 import { useMoviesStore } from '@/stores/movies.js'
 import { useWatchesStore } from '@/stores/watches.js'
-import MovieDetail from '@/views/MovieDetail.vue'
 
 vi.mock('@nextcloud/vue', () => ({
 	NcButton: { template: '<button><slot /></button>' },

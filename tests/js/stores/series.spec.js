@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { refreshMessage, useSeriesStore } from '@/stores/series.js'
 
 vi.mock('@/services/api.js', () => ({
@@ -80,9 +80,7 @@ describe('Series Store', () => {
 
 			store.filters.favorite = true
 			await store.fetchAll()
-			expect(api.getSeries).toHaveBeenCalledWith(
-				expect.objectContaining({ favorite: 1 }),
-			)
+			expect(api.getSeries).toHaveBeenCalledWith(expect.objectContaining({ favorite: 1 }))
 		})
 
 		it('should handle errors gracefully', async () => {

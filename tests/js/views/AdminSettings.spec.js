@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { loadState } from '@nextcloud/initial-state'
+import { flushPromises, mount } from '@vue/test-utils'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 // AdminSettings.vue imports each component from its own path to keep the
 // admin bundle small, so each one is mocked separately.
@@ -33,8 +33,8 @@ vi.mock('@/services/api.js', () => ({
 	},
 }))
 
-import api from '@/services/api.js'
 import AdminSettings from '@/views/AdminSettings.vue'
+import api from '@/services/api.js'
 
 describe('AdminSettings', () => {
 	const mountAdmin = (state) => {

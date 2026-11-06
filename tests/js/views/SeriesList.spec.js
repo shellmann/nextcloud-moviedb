@@ -1,9 +1,9 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import SeriesList from '@/views/SeriesList.vue'
 import { useLibrariesStore } from '@/stores/libraries.js'
 import { useSeriesStore } from '@/stores/series.js'
-import SeriesList from '@/views/SeriesList.vue'
 
 vi.mock('@nextcloud/vue', () => ({
 	NcButton: { emits: ['click'], template: '<button class="nc-button" @click="$emit(\'click\')"><slot /></button>' },
@@ -25,7 +25,11 @@ function mountList() {
 		global: {
 			stubs: {
 				SeriesCard: { props: ['series'], template: '<div class="series-card-stub" />' },
-				Heart: IconStub, Plus: IconStub, SortAscending: IconStub, SortDescending: IconStub, Television: IconStub,
+				Heart: IconStub,
+				Plus: IconStub,
+				SortAscending: IconStub,
+				SortDescending: IconStub,
+				Television: IconStub,
 			},
 			mocks: { t: (app, text) => text, $router: { push: vi.fn() } },
 		},

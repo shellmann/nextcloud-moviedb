@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMoviesStore } from '@/stores/movies.js'
 
 // Mock API module
@@ -98,12 +98,10 @@ describe('Movies Store', () => {
 			store.filters.year = 2024
 			await store.fetchAll()
 
-			expect(api.getMovies).toHaveBeenCalledWith(
-				expect.objectContaining({
-					genre: 28,
-					year: 2024,
-				}),
-			)
+			expect(api.getMovies).toHaveBeenCalledWith(expect.objectContaining({
+				genre: 28,
+				year: 2024,
+			}))
 		})
 
 		it('should include favorite filter when set to true', async () => {
@@ -114,11 +112,9 @@ describe('Movies Store', () => {
 			store.filters.favorite = true
 			await store.fetchAll()
 
-			expect(api.getMovies).toHaveBeenCalledWith(
-				expect.objectContaining({
-					favorite: 1,
-				}),
-			)
+			expect(api.getMovies).toHaveBeenCalledWith(expect.objectContaining({
+				favorite: 1,
+			}))
 		})
 
 		it('should not include favorite param when set to false', async () => {

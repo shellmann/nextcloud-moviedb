@@ -29,6 +29,10 @@ function fromServer(data) {
 		showContinueWatching: data.showContinueWatching !== false,
 		/** @type {boolean} Whether the dashboard shows the "coming up" row (on unless switched off) */
 		showComingUp: data.showComingUp !== false,
+		/** @type {boolean} Whether new episodes and releases are announced as Nextcloud notifications (on unless switched off) */
+		notifyReleases: data.notifyReleases !== false,
+		/** @type {boolean} Whether the "MovieDB – Upcoming" calendar is shown in the Calendar app (on unless switched off) */
+		showCalendar: data.showCalendar !== false,
 	}
 }
 

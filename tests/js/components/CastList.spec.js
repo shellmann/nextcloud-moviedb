@@ -1,7 +1,7 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
-import { expectNoAxeViolations } from '../a11y.js'
 import CastList from '@/components/CastList.vue'
+import { expectNoAxeViolations } from '../a11y.js'
 
 const actors = (n) => Array.from({ length: n }, (_, i) => ({ name: `Actor ${i + 1}`, character: `Role ${i + 1}` }))
 

@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { mount } from '@vue/test-utils'
-import { setActivePinia, createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import TmdbSearchSection from '@/components/TmdbSearchSection.vue'
 
 // The component imports Nc* components from @nextcloud/vue, whose real modules
@@ -24,7 +24,7 @@ import api from '@/services/api.js'
 const IconStub = { template: '<span class="icon-stub"></span>' }
 const InputStub = { template: '<input />' }
 
-const mountComponent = (props = {}) => {
+function mountComponent(props = {}) {
 	return mount(TmdbSearchSection, {
 		props,
 		global: {

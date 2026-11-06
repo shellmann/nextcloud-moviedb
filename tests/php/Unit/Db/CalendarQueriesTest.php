@@ -64,4 +64,46 @@ class CalendarQueriesTest extends TestCase {
         $this->assertSame('2027-05-01', $this->paramFor($sql, 'release_date', '<='));
         $this->assertStringContainsString('release_date IS NOT NULL', $sql);
     }
+
+    public function testEpisodesToNotifyAreRecentUnnotifiedRegularEpisodesOfActiveShowsAddedBeforeAiring(): void {
+        $this->rec->resultSets = [[]];
+        (new EpisodeMapper($this->db))->findToNotify('2026-11-04', '2026-11-06');
+
+        $sql = $this->rec->executed[0];
+        $this->assertStringContainsString('e.notified_at IS NULL', $sql);
+        $this->assertSame('2026-11-04', $this->paramFor($sql, 'e.air_date', '>='));
+        $this->assertSame('2026-11-06', $this->paramFor($sql, 'e.air_date', '<='));
+        $this->assertSame(0, $this->paramFor($sql, 'e.season_number', '>'));
+        $this->assertStringContainsString('s.created_at < e.air_date', $sql);
+        $this->assertStringContainsString('s.stopped_watching IS NULL', $sql);
+    }
+
+    public function testWatchlistToNotifyAreRecentUnnotifiedItemsAddedBeforeTheirRelease(): void {
+        $rec = $this->rec;
+        $mapper = new class ($this->db, $rec) extends WatchlistMapper {
+            public function __construct(IDBConnection $db, private SqlRecording $rec) {
+                parent::__construct($db);
+            }
+
+            protected function findEntities($qb): array {
+                $this->rec->executed[] = $qb->getSQL();
+                return [];
+            }
+        };
+        $mapper->findToNotify('2026-11-04', '2026-11-06');
+
+        $sql = $this->rec->executed[0];
+        $this->assertStringContainsString('release_notified_at IS NULL', $sql);
+        $this->assertSame('2026-11-04', $this->paramFor($sql, 'release_date', '>='));
+        $this->assertSame('2026-11-06', $this->paramFor($sql, 'release_date', '<='));
+        $this->assertStringContainsString('added_at < release_date', $sql);
+    }
+
+    public function testMarkingNotifiedUpdatesOnlyTheGivenIdsInChunks(): void {
+        (new EpisodeMapper($this->db))->markNotified(range(1, 1200), '2026-11-06 10:00:00');
+
+        $this->assertCount(3, $this->rec->executed);
+        $this->assertStringContainsString('UPDATE moviedb_episodes SET notified_at =', $this->rec->executed[0]);
+        $this->assertStringContainsString('id IN', $this->rec->executed[0]);
+    }
 }

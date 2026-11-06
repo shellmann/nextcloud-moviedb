@@ -1,10 +1,10 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-import { useLibrariesStore } from '@/stores/libraries.js'
-import { useSeriesStore } from '@/stores/series.js'
 import SeriesDetail from '@/views/SeriesDetail.vue'
 import { expectNoAxeViolations } from '../a11y.js'
+import { useLibrariesStore } from '@/stores/libraries.js'
+import { useSeriesStore } from '@/stores/series.js'
 
 vi.mock('@nextcloud/vue', () => ({
 	NcButton: { emits: ['click'], template: '<button class="nc-button" @click="$emit(\'click\')"><slot /></button>' },
@@ -17,18 +17,20 @@ vi.mock('@nextcloud/vue', () => ({
 
 const IconStub = { template: '<span />' }
 
-const show = (extra = {}) => ({
-	id: 3,
-	title: 'Fleabag',
-	seasons: [],
-	watchedEpisodeCount: 0,
-	airedEpisodeCount: 0,
-	progress: 0,
-	caughtUp: false,
-	nextEpisode: null,
-	watchStatus: 'in_progress',
-	...extra,
-})
+function show(extra = {}) {
+	return {
+		id: 3,
+		title: 'Fleabag',
+		seasons: [],
+		watchedEpisodeCount: 0,
+		airedEpisodeCount: 0,
+		progress: 0,
+		caughtUp: false,
+		nextEpisode: null,
+		watchStatus: 'in_progress',
+		...extra,
+	}
+}
 
 async function mountDetail(series) {
 	const store = useSeriesStore()
@@ -39,8 +41,17 @@ async function mountDetail(series) {
 		props: { id: '3' },
 		global: {
 			stubs: {
-				ArrowLeft: IconStub, Check: IconStub, CheckAll: IconStub, ChevronDown: IconStub, ChevronRight: IconStub,
-				Delete: IconStub, EyeOff: IconStub, Pencil: IconStub, PlayCircleOutline: IconStub, Refresh: IconStub, Television: IconStub,
+				ArrowLeft: IconStub,
+				Check: IconStub,
+				CheckAll: IconStub,
+				ChevronDown: IconStub,
+				ChevronRight: IconStub,
+				Delete: IconStub,
+				EyeOff: IconStub,
+				Pencil: IconStub,
+				PlayCircleOutline: IconStub,
+				Refresh: IconStub,
+				Television: IconStub,
 			},
 			mocks: { t: (app, text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (_, k) => vars[k]) : text), $router: { push: vi.fn() } },
 		},
@@ -108,23 +119,25 @@ describe('SeriesDetail watch summary', () => {
 	})
 })
 
-const withSeasons = (extra = {}) => show({
-	tmdbId: 1399,
-	createdAt: '2026-10-01 10:00:00',
-	watchedEpisodeCount: 1,
-	airedEpisodeCount: 2,
-	progress: 50,
-	seasons: [
-		{ seasonNumber: 1, watchedCount: 1, airedCount: 2, progress: 50, episodes: [
-			{ id: 11, seasonNumber: 1, episodeNumber: 1, name: 'Pilot', watched: true, aired: true },
-			{ id: 12, seasonNumber: 1, episodeNumber: 2, name: '', watched: false, aired: true },
-		] },
-		{ seasonNumber: 2, watchedCount: 0, airedCount: 0, progress: 0, episodes: [
-			{ id: 21, seasonNumber: 2, episodeNumber: 1, name: 'Return', watched: false, aired: false },
-		] },
-	],
-	...extra,
-})
+function withSeasons(extra = {}) {
+	return show({
+		tmdbId: 1399,
+		createdAt: '2026-10-01 10:00:00',
+		watchedEpisodeCount: 1,
+		airedEpisodeCount: 2,
+		progress: 50,
+		seasons: [
+			{ seasonNumber: 1, watchedCount: 1, airedCount: 2, progress: 50, episodes: [
+				{ id: 11, seasonNumber: 1, episodeNumber: 1, name: 'Pilot', watched: true, aired: true },
+				{ id: 12, seasonNumber: 1, episodeNumber: 2, name: '', watched: false, aired: true },
+			] },
+			{ seasonNumber: 2, watchedCount: 0, airedCount: 0, progress: 0, episodes: [
+				{ id: 21, seasonNumber: 2, episodeNumber: 1, name: 'Return', watched: false, aired: false },
+			] },
+		],
+		...extra,
+	})
+}
 
 describe('SeriesDetail update from TMDB', () => {
 	beforeEach(() => {
@@ -261,9 +274,13 @@ describe('SeriesDetail TMDB details', () => {
 
 	it('shows type, network and score with readable labels, vote count included as text', async () => {
 		const { wrapper } = await mountDetail(show({
-			firstAirYear: 2019, status: 'Ended', seriesType: 'Miniseries',
+			firstAirYear: 2019,
+			status: 'Ended',
+			seriesType: 'Miniseries',
 			networks: [{ name: 'HBO', logoPath: null }, { name: 'Sky', logoPath: null }],
-			tmdbRating: 84, tmdbVoteCount: 1234, director: 'Jane Doe',
+			tmdbRating: 84,
+			tmdbVoteCount: 1234,
+			director: 'Jane Doe',
 		}))
 
 		const meta = wrapper.find('dl.series-meta')
@@ -293,8 +310,13 @@ describe('SeriesDetail TMDB details', () => {
 
 	it('has no axe violations', async () => {
 		const { wrapper } = await mountDetail(show({
-			firstAirYear: 2019, status: 'Ended', seriesType: 'Scripted', networks: [{ name: 'BBC', logoPath: null }],
-			tmdbRating: 90, tmdbVoteCount: 10, castData: [{ name: 'A', character: 'B' }],
+			firstAirYear: 2019,
+			status: 'Ended',
+			seriesType: 'Scripted',
+			networks: [{ name: 'BBC', logoPath: null }],
+			tmdbRating: 90,
+			tmdbVoteCount: 10,
+			castData: [{ name: 'A', character: 'B' }],
 		}))
 		await expectNoAxeViolations(wrapper)
 	})

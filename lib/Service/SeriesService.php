@@ -31,7 +31,8 @@ class SeriesService {
         MovieWatchMapper $watchMapper,
         PlatformMapper $platformMapper,
         TmdbService $tmdbService,
-        IDBConnection $db
+        IDBConnection $db,
+        private ?ReleaseNotificationService $notifications = null
     ) {
         $this->mapper = $mapper;
         $this->episodeMapper = $episodeMapper;
@@ -453,6 +454,7 @@ class SeriesService {
             $this->watchMapper->deleteBySeries($id, $libraryId);
             $this->episodeMapper->deleteBySeries($id);
             $this->mapper->delete($series);
+            $this->notifications?->dismissSeries($id);
             $this->db->commit();
         } catch (\Throwable $e) {
             $this->db->rollBack();

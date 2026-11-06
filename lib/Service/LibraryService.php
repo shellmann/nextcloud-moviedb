@@ -43,7 +43,8 @@ class LibraryService {
         EpisodeMapper $episodeMapper,
         QuizResultMapper $quizResultMapper,
         IUserManager $userManager,
-        IDBConnection $db
+        IDBConnection $db,
+        private ?ReleaseNotificationService $notifications = null
     ) {
         $this->libraryMapper   = $libraryMapper;
         $this->memberMapper    = $memberMapper;
@@ -276,6 +277,8 @@ class LibraryService {
     public function purgeLibrary(int $id): void {
         $library = $this->libraryMapper->find($id);
 
+        // Before the rows go: the notifications are found through them.
+        $this->notifications?->dismissLibrary($id);
         $this->episodeMapper->deleteByLibrary($id);
         $this->watchMapper->deleteByLibrary($id);
         $this->watchlistMapper->deleteByLibrary($id);
@@ -407,6 +410,7 @@ class LibraryService {
         }
 
         $this->memberMapper->delete($membership);
+        $this->notifications?->dismissLibrary($libraryId, $memberUserId);
     }
 
     /**

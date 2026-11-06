@@ -523,7 +523,17 @@
 		"Video": "Video",
 		"{score} % ({count} votes)": "{score} % ({count} stemmen)",
 		"%s (release)": "%s (release)",
-		"MovieDB – Upcoming": "MovieDB – Binnenkort"
+		"MovieDB – Upcoming": "MovieDB – Binnenkort",
+		"MovieDB": "MovieDB",
+		"%1$d new episodes of %2$s": "%1$d nieuwe afleveringen van %2$s",
+		"New episode of %1$s: %2$s": "Nieuwe aflevering van %1$s: %2$s",
+		"%s is out now": "%s is nu uit",
+		"A read-only calendar with upcoming episodes and releases, in the Calendar app and on devices that sync your calendars.": "Een alleen-lezen agenda met aankomende afleveringen en releases, in de Agenda-app en op apparaten die je agenda's synchroniseren.",
+		"Notifications and calendar": "Meldingen en agenda",
+		"Notify me when a new episode or a watchlist title is released": "Waarschuw me als een nieuwe aflevering of een titel van de kijklijst uitkomt",
+		"Show the \"MovieDB – Upcoming\" calendar": "Agenda 'MovieDB – Binnenkort' tonen",
+		"Switched to library \"{name}\"": "Overgeschakeld naar bibliotheek '{name}'",
+		"You get a Nextcloud notification for shows you follow and for watchlist titles, in every library you belong to.": "Je krijgt een Nextcloud-melding voor series die je volgt en titels van de kijklijst, in elke bibliotheek waartoe je behoort."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

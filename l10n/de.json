@@ -523,7 +523,17 @@
 		"Video": "Video",
 		"{score} % ({count} votes)": "{score} % ({count} Stimmen)",
 		"%s (release)": "%s (Veröffentlichung)",
-		"MovieDB – Upcoming": "MovieDB – Demnächst"
+		"MovieDB – Upcoming": "MovieDB – Demnächst",
+		"MovieDB": "MovieDB",
+		"%1$d new episodes of %2$s": "%1$d neue Folgen von %2$s",
+		"New episode of %1$s: %2$s": "Neue Folge von %1$s: %2$s",
+		"%s is out now": "%s ist jetzt erschienen",
+		"A read-only calendar with upcoming episodes and releases, in the Calendar app and on devices that sync your calendars.": "Ein schreibgeschützter Kalender mit anstehenden Folgen und Veröffentlichungen, in der Kalender-App und auf Geräten, die deine Kalender synchronisieren.",
+		"Notifications and calendar": "Benachrichtigungen und Kalender",
+		"Notify me when a new episode or a watchlist title is released": "Benachrichtige mich, wenn eine neue Folge oder ein Titel der Merkliste erscheint",
+		"Show the \"MovieDB – Upcoming\" calendar": "Kalender „MovieDB – Demnächst“ anzeigen",
+		"Switched to library \"{name}\"": "Zur Bibliothek „{name}“ gewechselt",
+		"You get a Nextcloud notification for shows you follow and for watchlist titles, in every library you belong to.": "Du erhältst eine Nextcloud-Benachrichtigung für Serien, die du verfolgst, und für Titel der Merkliste, in jeder Bibliothek, der du angehörst."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

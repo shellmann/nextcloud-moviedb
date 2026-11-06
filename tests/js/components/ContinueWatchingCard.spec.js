@@ -20,15 +20,17 @@ vi.mock('@/services/api.js', () => ({
 
 const IconStub = { template: '<span />' }
 
-const show = (extra = {}) => ({
-	id: 7,
-	title: 'Silo',
-	progress: 40,
-	watchedEpisodeCount: 4,
-	airedEpisodeCount: 10,
-	nextEpisode: { id: 55, seasonNumber: 1, episodeNumber: 5, name: 'Machines' },
-	...extra,
-})
+function show(extra = {}) {
+	return {
+		id: 7,
+		title: 'Silo',
+		progress: 40,
+		watchedEpisodeCount: 4,
+		airedEpisodeCount: 10,
+		nextEpisode: { id: 55, seasonNumber: 1, episodeNumber: 5, name: 'Machines' },
+		...extra,
+	}
+}
 
 function mountCard(props = {}) {
 	return mount(ContinueWatchingCard, {

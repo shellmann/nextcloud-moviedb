@@ -189,6 +189,39 @@ class WatchlistMapper extends QBMapper {
     }
 
     /**
+     * Items released in [$from, $today] that were not notified about yet. Only
+     * items added before their release date count, so adding an already
+     * released title does not notify.
+     *
+     * @return WatchlistItem[]
+     */
+    public function findToNotify(string $from, string $today): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->isNull('release_notified_at'))
+            ->andWhere($qb->expr()->isNotNull('release_date'))
+            ->andWhere($qb->expr()->gte('release_date', $qb->createNamedParameter($from)))
+            ->andWhere($qb->expr()->lte('release_date', $qb->createNamedParameter($today)))
+            ->andWhere($qb->expr()->lt('added_at', 'release_date'))
+            ->orderBy('id', 'ASC');
+
+        return $this->findEntities($qb);
+    }
+
+    /** @param int[] $ids */
+    public function markReleaseNotified(array $ids, string $now): void {
+        foreach (array_chunk($ids, 500) as $chunk) {
+            $qb = $this->db->getQueryBuilder();
+            $qb->update($this->getTableName())
+                ->set('release_notified_at', $qb->createNamedParameter($now))
+                ->where($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
+            $qb->executeStatement();
+        }
+    }
+
+    /**
      * Items whose release date can still change at TMDB: no date yet, or one
      * that is today or later. Released titles are never asked again.
      *

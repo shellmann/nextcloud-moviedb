@@ -89,6 +89,30 @@
 		</div>
 
 		<div class="settings-section">
+			<h3>{{ t('moviedb', 'Notifications and calendar') }}</h3>
+			<NcCheckboxRadioSwitch
+				:modelValue="notifyReleases"
+				type="switch"
+				:disabled="savingDashboard"
+				@update:modelValue="saveDashboardSwitch('notifyReleases', $event)">
+				{{ t('moviedb', 'Notify me when a new episode or a watchlist title is released') }}
+			</NcCheckboxRadioSwitch>
+			<p class="hint">
+				{{ t('moviedb', 'You get a Nextcloud notification for shows you follow and for watchlist titles, in every library you belong to.') }}
+			</p>
+			<NcCheckboxRadioSwitch
+				:modelValue="showCalendar"
+				type="switch"
+				:disabled="savingDashboard"
+				@update:modelValue="saveDashboardSwitch('showCalendar', $event)">
+				{{ t('moviedb', 'Show the "MovieDB – Upcoming" calendar') }}
+			</NcCheckboxRadioSwitch>
+			<p class="hint">
+				{{ t('moviedb', 'A read-only calendar with upcoming episodes and releases, in the Calendar app and on devices that sync your calendars.') }}
+			</p>
+		</div>
+
+		<div class="settings-section">
 			<h3>{{ t('moviedb', 'Custom Platforms') }}</h3>
 			<p class="section-description">
 				{{ t('moviedb', 'Add your own streaming platforms or sources.') }}
@@ -338,6 +362,8 @@ export default {
 			savingDashboard: false,
 			showContinueWatching: this.settingsStore.showContinueWatching,
 			showComingUp: this.settingsStore.showComingUp,
+			notifyReleases: this.settingsStore.notifyReleases,
+			showCalendar: this.settingsStore.showCalendar,
 			showDeletePlatformDialog: false,
 			showRemoveApiKeyDialog: false,
 			pendingDeletePlatformId: null,
@@ -442,7 +468,7 @@ export default {
 		/**
 		 * Saves a dashboard switch right away; on failure it flips back.
 		 *
-		 * @param {'showContinueWatching'|'showComingUp'} field - Setting to change
+		 * @param {'showContinueWatching'|'showComingUp'|'notifyReleases'|'showCalendar'} field - Setting to change
 		 * @param {boolean} value - New switch state
 		 */
 		async saveDashboardSwitch(field, value) {

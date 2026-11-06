@@ -7,6 +7,7 @@ namespace OCA\MovieDB\AppInfo;
 use OCA\MovieDB\Calendar\UpcomingCalendarProvider;
 use OCA\MovieDB\Listener\CspListener;
 use OCA\MovieDB\Listener\UserDeletedListener;
+use OCA\MovieDB\Notification\Notifier;
 use OCP\AppFramework\App;
 use OCP\AppFramework\Bootstrap\IBootContext;
 use OCP\AppFramework\Bootstrap\IBootstrap;
@@ -36,6 +37,9 @@ class Application extends App implements IBootstrap {
 
         // Read-only "MovieDB – Upcoming" calendar (Calendar app + CalDAV)
         $context->registerCalendarProvider(UpcomingCalendarProvider::class);
+
+        // Nextcloud notifications about released episodes and watchlist titles
+        $context->registerNotifierService(Notifier::class);
     }
 
     public function boot(IBootContext $context): void {

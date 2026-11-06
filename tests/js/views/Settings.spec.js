@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
-import { setActivePinia, createPinia } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
+import { flushPromises, mount } from '@vue/test-utils'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@nextcloud/vue', () => ({
 	NcTextField: { template: '<input />' },
@@ -31,8 +31,8 @@ vi.mock('@/services/api.js', () => ({
 	},
 }))
 
-import api from '@/services/api.js'
 import Settings from '@/views/Settings.vue'
+import api from '@/services/api.js'
 import { useLibrariesStore } from '@/stores/libraries.js'
 import { useMoviesStore } from '@/stores/movies.js'
 import { usePlatformsStore } from '@/stores/platforms.js'
@@ -42,14 +42,16 @@ import { useWatchlistStore } from '@/stores/watchlist.js'
 
 const IconStub = { template: '<span />' }
 
-const exportFile = (extra = {}) => ({
-	app: 'moviedb',
-	formatVersion: 1,
-	movies: [{}, {}],
-	series: [{ episodes: [{}, {}, {}] }],
-	watchlist: [{}],
-	...extra,
-})
+function exportFile(extra = {}) {
+	return {
+		app: 'moviedb',
+		formatVersion: 1,
+		movies: [{}, {}],
+		series: [{ episodes: [{}, {}, {}] }],
+		watchlist: [{}],
+		...extra,
+	}
+}
 
 const fileOf = (data) => ({ text: async () => (typeof data === 'string' ? data : JSON.stringify(data)) })
 
@@ -60,8 +62,13 @@ describe('Settings import / export', () => {
 	const mountSettings = () => mount(Settings, {
 		global: {
 			stubs: {
-				Eye: IconStub, EyeOff: IconStub, ContentSave: IconStub, Delete: IconStub,
-				Download: IconStub, Upload: IconStub, Plus: IconStub,
+				Eye: IconStub,
+				EyeOff: IconStub,
+				ContentSave: IconStub,
+				Delete: IconStub,
+				Download: IconStub,
+				Upload: IconStub,
+				Plus: IconStub,
 			},
 			mocks: { t: (app, text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (_, k) => vars[k]) : text) },
 		},
@@ -251,8 +258,13 @@ describe('Settings TMDB API key', () => {
 	const mountSettings = () => mount(Settings, {
 		global: {
 			stubs: {
-				Eye: IconStub, EyeOff: IconStub, ContentSave: IconStub, Delete: IconStub,
-				Download: IconStub, Upload: IconStub, Plus: IconStub,
+				Eye: IconStub,
+				EyeOff: IconStub,
+				ContentSave: IconStub,
+				Delete: IconStub,
+				Download: IconStub,
+				Upload: IconStub,
+				Plus: IconStub,
 			},
 			mocks: { t: (app, text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (_, k) => vars[k]) : text) },
 		},
@@ -380,8 +392,13 @@ describe('Settings dashboard switch', () => {
 		wrapper = mount(Settings, {
 			global: {
 				stubs: {
-					Eye: IconStub, EyeOff: IconStub, ContentSave: IconStub, Delete: IconStub,
-					Download: IconStub, Upload: IconStub, Plus: IconStub,
+					Eye: IconStub,
+					EyeOff: IconStub,
+					ContentSave: IconStub,
+					Delete: IconStub,
+					Download: IconStub,
+					Upload: IconStub,
+					Plus: IconStub,
 				},
 				mocks: { t: (app, text) => text },
 			},
@@ -468,5 +485,74 @@ describe('Settings dashboard switches', () => {
 
 		expect(switchFor('Show "Coming up" on the dashboard').find('input').element.checked).toBe(true)
 		expect(showError).toHaveBeenCalled()
+	})
+})
+
+describe('Settings notifications and calendar', () => {
+	let wrapper
+	let settings
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		vi.clearAllMocks()
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		settings = useSettingsStore()
+		settings.update = vi.fn().mockResolvedValue()
+		wrapper = mount(Settings, {
+			global: {
+				stubs: { Eye: IconStub, EyeOff: IconStub, ContentSave: IconStub, Delete: IconStub, Download: IconStub, Upload: IconStub, Plus: IconStub },
+				mocks: { t: (app, text) => text },
+			},
+			attachTo: document.body,
+		})
+	})
+
+	afterEach(() => wrapper.unmount())
+
+	const switchFor = (label) => wrapper.findAll('.switch').find((s) => s.text().includes(label))
+	const NOTIFY = 'Notify me when a new episode or a watchlist title is released'
+	const CALENDAR = 'Show the "MovieDB – Upcoming" calendar'
+
+	it('has both switches, on by default, under their own heading', () => {
+		expect(wrapper.findAll('h3').some((h) => h.text() === 'Notifications and calendar')).toBe(true)
+		expect(switchFor(NOTIFY).find('input').element.checked).toBe(true)
+		expect(switchFor(CALENDAR).find('input').element.checked).toBe(true)
+	})
+
+	it('saves only the switch that was changed', async () => {
+		await switchFor(NOTIFY).find('input').setValue(false)
+		await flushPromises()
+
+		expect(settings.update).toHaveBeenCalledTimes(1)
+		expect(settings.update).toHaveBeenCalledWith({ notifyReleases: false })
+
+		await switchFor(CALENDAR).find('input').setValue(false)
+		await flushPromises()
+		expect(settings.update).toHaveBeenLastCalledWith({ showCalendar: false })
+	})
+
+	it('flips the switch back and announces the error when saving fails', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		settings.update = vi.fn().mockRejectedValue(new Error('nope'))
+
+		await switchFor(NOTIFY).find('input').setValue(false)
+		await flushPromises()
+
+		expect(switchFor(NOTIFY).find('input').element.checked).toBe(true)
+		expect(showError).toHaveBeenCalled()
+	})
+
+	it('toggles with the keyboard (Space on the focused checkbox)', async () => {
+		const input = switchFor(CALENDAR).find('input')
+		expect(input.element.type).toBe('checkbox')
+		expect(input.element.disabled).toBe(false)
+	})
+
+	it('has a visible hint under each switch', () => {
+		const hints = wrapper.findAll('.hint').map((h) => h.text())
+		expect(hints.some((h) => h.includes('Nextcloud notification'))).toBe(true)
+		expect(hints.some((h) => h.includes('read-only calendar'))).toBe(true)
 	})
 })

@@ -524,6 +524,16 @@ OC.L10N.register(
         "Video": "Vídeo",
         "{score} % ({count} votes)": "{score} % ({count} votos)",
         "%s (release)": "%s (estreno)",
-        "MovieDB – Upcoming": "MovieDB – Próximamente"
+        "MovieDB – Upcoming": "MovieDB – Próximamente",
+        "MovieDB": "MovieDB",
+        "%1$d new episodes of %2$s": "%1$d episodios nuevos de %2$s",
+        "New episode of %1$s: %2$s": "Episodio nuevo de %1$s: %2$s",
+        "%s is out now": "%s ya está disponible",
+        "A read-only calendar with upcoming episodes and releases, in the Calendar app and on devices that sync your calendars.": "Un calendario de solo lectura con próximos episodios y estrenos, en la app Calendario y en los dispositivos que sincronizan tus calendarios.",
+        "Notifications and calendar": "Notificaciones y calendario",
+        "Notify me when a new episode or a watchlist title is released": "Avisarme cuando salga un episodio nuevo o un título de la lista de pendientes",
+        "Show the \"MovieDB – Upcoming\" calendar": "Mostrar el calendario «MovieDB – Próximamente»",
+        "Switched to library \"{name}\"": "Cambiado a la biblioteca «{name}»",
+        "You get a Nextcloud notification for shows you follow and for watchlist titles, in every library you belong to.": "Recibes una notificación de Nextcloud para las series que sigues y los títulos de la lista de pendientes, en cada biblioteca a la que perteneces."
     },
 "nplurals=2; plural=(n != 1);");

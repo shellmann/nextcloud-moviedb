@@ -13,6 +13,7 @@ import SeriesDetail from './views/SeriesDetail.vue'
 import SeriesList from './views/SeriesList.vue'
 import Settings from './views/Settings.vue'
 import Watchlist from './views/Watchlist.vue'
+import { resolveLibraryQuery } from './utils/libraryLink.js'
 
 const routes = [
 	{
@@ -95,5 +96,7 @@ const router = createRouter({
 	history: createWebHashHistory('/apps/moviedb/'),
 	routes,
 })
+
+router.beforeEach(resolveLibraryQuery)
 
 export default router
