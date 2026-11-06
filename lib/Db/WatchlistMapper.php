@@ -273,9 +273,38 @@ class WatchlistMapper extends QBMapper {
                 $qb->expr()->isNull('release_date'),
                 $qb->expr()->gte('release_date', $qb->createNamedParameter($since))
             ))
-            ->orderBy('id', 'ASC')
+            // Not looked at today yet: every entry gets its turn, however many there are.
+            ->andWhere($qb->expr()->orX(
+                $qb->expr()->isNull('release_checked_at'),
+                $qb->expr()->lt('release_checked_at', $qb->createNamedParameter($today . ' 00:00:00'))
+            ))
+            // Never checked first, then the longest waiting (NULL first on every database).
+            ->orderBy($qb->createFunction('CASE WHEN release_checked_at IS NULL THEN 0 ELSE 1 END'), 'ASC')
+            ->addOrderBy('release_checked_at', 'ASC')
+            ->addOrderBy('id', 'ASC')
             ->setMaxResults($limit);
 
         return $this->findEntities($qb);
+    }
+
+    /** Records that the release date check looked at an entry (changed or not, key or not). */
+    public function markReleaseChecked(int $id, string $now): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->update($this->getTableName())
+            ->set('release_checked_at', $qb->createNamedParameter($now))
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+        $qb->executeStatement();
+    }
+
+    /**
+     * Forgets that a release was announced (its date moved): own statement, so it does not
+     * depend on what an in-memory entity happened to hold when a notification run stamped it.
+     */
+    public function clearReleaseNotified(int $id): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->update($this->getTableName())
+            ->set('release_notified_at', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+        $qb->executeStatement();
     }
 }

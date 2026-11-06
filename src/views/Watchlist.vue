@@ -369,12 +369,20 @@ export default {
 		'$route.query.item': function(item) {
 			if (item) {
 				this.loadAndReveal()
+			} else {
+				// The link is gone (back to the plain watchlist): a running search ends.
+				this.revealToken++
 			}
 		},
 
-		// A library switch invalidates a running search for a linked entry.
+		// A library switch ends a running search for a linked entry. With a link still in the URL
+		// (a cold link: the libraries are still loading when the page opens) the search starts over
+		// in the library that is active now.
 		'librariesStore.activeLibraryId': function() {
 			this.revealToken++
+			if (this.$route.query.item) {
+				this.loadAndReveal()
+			}
 		},
 	},
 

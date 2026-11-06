@@ -33,7 +33,7 @@ class DismissLibraryNotificationsJobTest extends TestCase {
 
     public function testDismissesTheLibraryNotificationsOfTheFormerMember(): void {
         $this->members->method('findMembership')->willReturn(null);
-        $this->service->expects($this->once())->method('dismissLibrary')->with(5, 'bob', true);
+        $this->service->expects($this->once())->method('dismissLibrary')->with(5, 'bob', true, $this->isInstanceOf(\Closure::class));
 
         $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob']);
     }

@@ -280,6 +280,7 @@ namespace OCP\DB\QueryBuilder {
         public const PARAM_STR = 2;
         public const PARAM_INT = 1;
         public const PARAM_BOOL = 5;
+        public const PARAM_NULL = 0;
         public const PARAM_STR_ARRAY = 102;
         public const PARAM_INT_ARRAY = 101;
         public function select(...$selects): static;

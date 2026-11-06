@@ -397,9 +397,10 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1]));
         $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => [$this->tmdbEp(1, 1, '2030-02-01')]]);
 
-        $this->service->refresh($this->series(), 'alice', 'en-US');
+        // its own statement, whatever stamp the in-memory entity holds
+        $this->episodeMapper->expects($this->once())->method('clearNotified')->with((int)$announced->getId());
 
-        $this->assertNull($announced->getNotifiedAt());
+        $this->service->refresh($this->series(), 'alice', 'en-US');
     }
 
     public function testAnUnchangedAirDateKeepsTheAnnouncedStamp(): void {
@@ -408,6 +409,8 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->episodeMapper->method('findBySeries')->willReturn([$announced]);
         $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1]));
         $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => [$this->tmdbEp(1, 1, '2030-01-01', 'Renamed')]]);
+
+        $this->episodeMapper->expects($this->never())->method('clearNotified');
 
         $this->service->refresh($this->series(), 'alice', 'en-US');
 

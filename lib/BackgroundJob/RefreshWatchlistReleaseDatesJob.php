@@ -7,6 +7,7 @@ namespace OCA\MovieDB\BackgroundJob;
 use DateTime;
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Db\LibraryMapper;
+use OCA\MovieDB\Db\WatchlistItem;
 use OCA\MovieDB\Db\WatchlistMapper;
 use OCA\MovieDB\Service\SeriesRefreshService;
 use OCA\MovieDB\Service\TmdbService;
@@ -58,6 +59,7 @@ class RefreshWatchlistReleaseDatesJob extends TimedJob {
             $owner = $this->ownerOf($item->getLibraryId(), $item->getUserId());
             if (!$this->tmdbService->hasApiKey($owner)) {
                 $skipped++;
+                $this->markChecked($item);
                 continue;
             }
 
@@ -75,10 +77,20 @@ class RefreshWatchlistReleaseDatesJob extends TimedJob {
                 // A removed or broken title is simply tried again tomorrow.
                 $this->logger->warning('Could not check the release date of a watchlist item at TMDB.', ['exception' => $e, 'itemId' => $item->getId()]);
             }
+            $this->markChecked($item);
             $this->pause();
         }
 
         $this->logger->debug('Watchlist release date check finished.', ['checked' => $checked, 'changed' => $changed, 'skippedWithoutKey' => $skipped]);
+    }
+
+    /** Every entry that was looked at (or cannot be) goes to the back of the queue until tomorrow. */
+    private function markChecked(WatchlistItem $item): void {
+        try {
+            $this->watchlistMapper->markReleaseChecked((int)$item->getId(), (new DateTime())->format('Y-m-d H:i:s'));
+        } catch (\Throwable $e) {
+            $this->logger->warning('Could not record the release date check.', ['exception' => $e, 'itemId' => $item->getId()]);
+        }
     }
 
     /** Overridden in tests. */

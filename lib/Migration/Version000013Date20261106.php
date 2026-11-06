@@ -52,6 +52,8 @@ class Version000013Date20261106 extends SimpleMigrationStep {
         $add('moviedb_series', 'tmdb_vote_count', Types::INTEGER, []);
         $add('moviedb_episodes', 'notified_at', Types::STRING, ['length' => 32]);
         $add('moviedb_watchlist', 'release_notified_at', Types::STRING, ['length' => 32]);
+        // When the daily TMDB release date check last looked at the entry (rotates through all entries).
+        $add('moviedb_watchlist', 'release_checked_at', Types::STRING, ['length' => 32]);
 
         // The calendar and the hourly notification job look episodes up by air date and watchlist
         // entries by release date across all libraries.

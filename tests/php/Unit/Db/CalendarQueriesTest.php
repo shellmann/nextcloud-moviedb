@@ -153,4 +153,16 @@ class CalendarQueriesTest extends TestCase {
 
         $this->assertSame([1], array_map(fn ($i) => $i->getId(), $mapper->findToNotify('2026-11-04', '2026-11-06')));
     }
+
+    public function testClearingTheAnnouncedStampsIsAStatementOfItsOwn(): void {
+        (new EpisodeMapper($this->db))->clearNotified(7);
+        $mapper = new class ($this->db) extends WatchlistMapper {
+        };
+        $mapper->clearReleaseNotified(9);
+        $mapper->markReleaseChecked(9, '2026-11-06 03:00:00');
+
+        $this->assertStringContainsString('UPDATE moviedb_episodes SET notified_at =', $this->rec->executed[0]);
+        $this->assertStringContainsString('UPDATE moviedb_watchlist SET release_notified_at =', $this->rec->executed[1]);
+        $this->assertStringContainsString('UPDATE moviedb_watchlist SET release_checked_at =', $this->rec->executed[2]);
+    }
 }

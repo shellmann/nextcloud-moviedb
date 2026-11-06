@@ -109,13 +109,15 @@ class SeriesRefreshService {
 
                     $airDateBefore = $episode->getAirDate();
                     TmdbEpisode::apply($episode, $ep, $seasonNumber);
-                    // TMDB moved an episode that was already announced: announce it again on the new date.
-                    if ($episode->getAirDate() !== $airDateBefore && $episode->getNotifiedAt() !== null) {
-                        $episode->setNotifiedAt(null);
-                    }
                     if ($episode->getUpdatedFields() !== []) {
                         $this->episodeMapper->update($episode);
                         $result['updatedEpisodes']++;
+                        // TMDB moved an episode that may already be announced: announce it again on the
+                        // new date. A statement of its own, because update() writes only the changed
+                        // fields and the in-memory stamp can be stale (a notification run may have set it).
+                        if ($episode->getAirDate() !== $airDateBefore) {
+                            $this->episodeMapper->clearNotified((int)$episode->getId());
+                        }
                     }
                 }
                 if ($added > 0 && !isset($knownSeasons[$seasonNumber])) {

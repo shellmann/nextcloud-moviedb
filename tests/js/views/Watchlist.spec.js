@@ -211,3 +211,58 @@ describe('Watchlist already open when a link arrives', () => {
 		expect(store.page).toBe(1)
 	})
 })
+
+describe('Watchlist cold links and removed links', () => {
+	let store
+	let libraries
+	const pages = {
+		1: [{ id: 1, title: 'Heat 2', mediaType: 'movie', priority: 0 }],
+		2: [{ id: 60, title: 'Dune', mediaType: 'movie', priority: 0 }],
+	}
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = null
+		store = useWatchlistStore()
+		store.totalPages = 2
+		store.fetchAll = vi.fn(async () => { store.items = pages[store.page] })
+		Element.prototype.scrollIntoView = vi.fn()
+	})
+
+	it('a cold link survives the libraries finishing to load (the active library appears meanwhile)', async () => {
+		let ready
+		libraries.whenReady = vi.fn(() => new Promise((resolve) => { ready = resolve }))
+		const wrapper = mountView({ item: '60' })
+		await flushPromises()
+
+		libraries.activeLibraryId = 1 // the initial library load switches the library
+		await flushPromises()
+		ready()
+		await flushPromises()
+
+		expect(wrapper.find('#watchlist-item-60').classes()).toContain('watchlist-item--highlight')
+	})
+
+	it('removing ?item= from the URL ends a running search', async () => {
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		let releasePage2
+		store.fetchAll = vi.fn(async () => {
+			if (store.page === 2) {
+				await new Promise((resolve) => { releasePage2 = resolve })
+			}
+			store.items = pages[store.page]
+		})
+		const route = reactive({ path: '/watchlist', query: { item: '60' } })
+		const wrapper = mountView({}, route)
+		await flushPromises()
+
+		route.query = {} // back to the plain watchlist while page 2 is still loading
+		await flushPromises()
+		releasePage2()
+		await flushPromises()
+
+		expect(wrapper.findAll('.watchlist-item--highlight')).toHaveLength(0)
+	})
+})

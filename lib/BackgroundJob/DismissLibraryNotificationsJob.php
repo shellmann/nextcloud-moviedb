@@ -42,10 +42,11 @@ class DismissLibraryNotificationsJob extends QueuedJob {
             return;
         }
         try {
-            if ($this->members->findMembership($libraryId, $userId) !== null) {
+            $isGone = fn (): bool => $this->members->findMembership($libraryId, $userId) === null;
+            if (!$isGone()) {
                 return;
             }
-            $this->service->dismissLibrary($libraryId, $userId, true);
+            $this->service->dismissLibrary($libraryId, $userId, true, $isGone);
         } catch (\Throwable $e) {
             if ($attempt + 1 < self::MAX_ATTEMPTS) {
                 $this->jobList->add(self::class, ['libraryId' => $libraryId, 'userId' => $userId, 'attempt' => $attempt + 1]);

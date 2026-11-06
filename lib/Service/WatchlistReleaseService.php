@@ -53,6 +53,9 @@ class WatchlistReleaseService {
         // A postponed title that was already announced is announced again on the new date.
         $item->setReleaseNotifiedAt(null);
         $this->mapper->update($item);
+        // Own statement: update() only writes fields that changed in memory, and a notification run
+        // may have stamped the entry after this entity was loaded.
+        $this->mapper->clearReleaseNotified((int)$item->getId());
 
         return true;
     }

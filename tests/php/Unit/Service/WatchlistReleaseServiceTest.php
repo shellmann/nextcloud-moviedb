@@ -102,6 +102,8 @@ class WatchlistReleaseServiceTest extends TestCase {
         $item->setReleaseNotifiedAt('2027-03-12 08:00:00');
         $this->tmdb->method('getMovieDetails')->willReturn(['release_date' => '2027-06-01']);
         $this->mapper->method('update')->willReturnArgument(0);
+        // a statement of its own: update() writes only fields that changed in memory
+        $this->mapper->expects($this->once())->method('clearReleaseNotified')->with((int)$item->getId());
 
         $this->service->refresh($item, 'owner', 'de-DE');
 

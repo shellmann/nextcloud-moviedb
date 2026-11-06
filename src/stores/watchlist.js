@@ -4,6 +4,8 @@ import { defineStore } from 'pinia'
 import api from '../services/api.js'
 import { useLibrariesStore } from './libraries.js'
 
+let latestFetchAll = 0
+
 /**
  * Watchlist store - Manages the user's movie watchlist.
  * Handles adding, updating, removing items and moving them to watched.
@@ -43,6 +45,9 @@ export const useWatchlistStore = defineStore('watchlist', {
 		 * @return {Promise<void>}
 		 */
 		async fetchAll() {
+			// Only the newest request may write the list: an older answer (a filter, page or
+			// library that was left meanwhile) must not overwrite it.
+			const requestNo = ++latestFetchAll
 			this.loading = true
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
@@ -55,6 +60,7 @@ export const useWatchlistStore = defineStore('watchlist', {
 				if (this.typeFilter !== 'all') { params.mediaType = this.typeFilter }
 				if (libraryId !== null) { params.libraryId = libraryId }
 				const response = await api.getWatchlist(params)
+				if (requestNo !== latestFetchAll) { return }
 				this.items = response.data.items
 				this.total = response.data.total
 				this.totalUnfiltered = response.data.totalUnfiltered
@@ -64,7 +70,9 @@ export const useWatchlistStore = defineStore('watchlist', {
 				console.error('Failed to fetch watchlist:', error)
 				showError(t('moviedb', 'Failed to load watchlist. Please try again.'))
 			} finally {
-				this.loading = false
+				if (requestNo === latestFetchAll) {
+					this.loading = false
+				}
 			}
 		},
 

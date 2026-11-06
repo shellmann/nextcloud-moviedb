@@ -34,6 +34,7 @@ use OCP\AppFramework\Db\Entity;
  * @method void setMediaType(string $mediaType)
  * @method string|null getReleaseDateChangedAt()
  * @method void setReleaseDateChangedAt(?string $releaseDateChangedAt)
+ * @method void setReleaseCheckedAt(?string $releaseCheckedAt)
  * @method int|null getLibraryId()
  * @method void setLibraryId(?int $libraryId)
  * @method ?string getReleaseNotifiedAt()
@@ -57,6 +58,7 @@ class WatchlistItem extends Entity implements JsonSerializable {
     protected ?string $notes = null;
     protected string $mediaType = 'movie';
     protected ?string $releaseNotifiedAt = null;
+    protected ?string $releaseCheckedAt = null;
 
     public function __construct() {
         $this->addType('id', 'integer');

@@ -54,10 +54,15 @@ class WatchlistReleaseCheckQueryTest extends TestCase {
         $this->assertStringNotContainsString('release_date <', $this->sql());
     }
 
-    public function testIsLimitedAndOrderedById(): void {
+    public function testRotatesThroughAllEntriesInsteadOfAlwaysTakingTheLowestIds(): void {
         $sql = $this->sql();
 
-        $this->assertStringContainsString('ORDER BY id ASC', $sql);
+        // not looked at today yet ...
+        $this->assertStringContainsString('release_checked_at IS NULL', $sql);
+        $this->assertStringContainsString('release_checked_at <', $sql);
+        $this->assertContains('2026-10-29 00:00:00', $this->rec->params);
+        // ... never checked first, then the longest waiting, then by id
+        $this->assertStringContainsString('CASE WHEN release_checked_at IS NULL THEN 0 ELSE 1 END ASC, release_checked_at ASC, id ASC', $sql);
         $this->assertStringContainsString('LIMIT 500', $sql);
     }
 }

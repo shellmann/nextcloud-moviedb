@@ -242,4 +242,18 @@ class ReleaseNotificationServiceTest extends TestCase {
 
         $this->service->notifyReleasedWatchlist('2026-11-06');
     }
+
+    public function testALongLibraryCleanupStopsWhenItIsNoLongerWanted(): void {
+        $items = [];
+        for ($id = 1; $id <= 60; $id++) {
+            $i = new WatchlistItem();
+            $i->setId($id);
+            $items[] = $i;
+        }
+        $this->series->method('findAllByLibrary')->willReturn([]);
+        $this->watchlist->method('findAllByLibrary')->willReturn($items);
+        $this->manager->expects($this->exactly(24))->method('markProcessed'); // stops at the 25th entry
+
+        $this->service->dismissLibrary(1, 'bob', false, fn (): bool => false);
+    }
 }

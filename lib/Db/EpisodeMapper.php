@@ -331,6 +331,15 @@ class EpisodeMapper extends QBMapper {
         return $rows;
     }
 
+    /** Forgets that an episode was announced (its air date moved); a statement of its own, see WatchlistMapper::clearReleaseNotified(). */
+    public function clearNotified(int $id): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->update($this->getTableName())
+            ->set('notified_at', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+        $qb->executeStatement();
+    }
+
     /**
      * Stamps episodes as announced, but only while they still have the air date they were
      * selected with: a refresh that moved the date in the meantime must keep its new

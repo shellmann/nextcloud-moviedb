@@ -267,19 +267,50 @@ class LibraryServiceTest extends TestCase {
         $service->removeMember(5, 'alice', 'bob');
     }
 
-    public function testTheMembershipIsKeptWhenQueueingTheCleanupFails(): void {
+    public function testTheCleanupRunsInlineWhenQueueingItFails(): void {
         $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
         $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
-        $this->memberMapper->expects($this->never())->method('delete');
+        $order = [];
+        $this->memberMapper->method('delete')->willReturnCallback(function ($entity) use (&$order) {
+            $order[] = 'delete';
+            return $entity;
+        });
         $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
         $jobs->method('add')->willThrowException(new \RuntimeException('job list down'));
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->expects($this->once())->method('dismissLibrary')->with(5, 'bob')->willReturnCallback(function () use (&$order) {
+            $order[] = 'inline cleanup';
+        });
+        $service = new LibraryService(
+            $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
+            $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, $notifications, $jobs
+        );
+
+        $service->removeMember(5, 'alice', 'bob');
+
+        $this->assertSame(['delete', 'inline cleanup'], $order);
+    }
+
+    public function testTheCleanupIsQueuedOnlyAfterTheMembershipIsDeleted(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
+        $order = [];
+        $this->memberMapper->method('delete')->willReturnCallback(function ($entity) use (&$order) {
+            $order[] = 'delete';
+            return $entity;
+        });
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->method('add')->willReturnCallback(function () use (&$order) {
+            $order[] = 'queue';
+        });
         $service = new LibraryService(
             $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
             $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, null, $jobs
         );
 
-        $this->expectException(\RuntimeException::class);
         $service->removeMember(5, 'alice', 'bob');
+
+        $this->assertSame(['delete', 'queue'], $order);
     }
 
     public function testMemberCanRemoveThemselves(): void {
