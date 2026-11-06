@@ -433,7 +433,7 @@ class LibraryService {
     private function cleanUpNotifications(int $libraryId, string $userId): void {
         if ($this->jobList !== null) {
             try {
-                $this->jobList->add(DismissLibraryNotificationsJob::class, ['libraryId' => $libraryId, 'userId' => $userId]);
+                $this->jobList->add(DismissLibraryNotificationsJob::class, ['libraryId' => $libraryId, 'userId' => $userId, 'queuedAt' => time()]);
                 return;
             } catch (\Throwable $e) {
                 // fall through to the inline cleanup

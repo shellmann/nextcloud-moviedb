@@ -294,7 +294,7 @@ export default {
 			highlightedId: null,
 			highlightTimer: null,
 			revealToken: 0,
-			scanning: false,
+			scanToken: 0,
 			scanStartPage: 1,
 			showWatchedModal: false,
 			showEditModal: false,
@@ -375,9 +375,12 @@ export default {
 				// The link is gone (back to the plain watchlist): a running search ends. Its page
 				// request may still be the newest one and would show the scanned page, so the normal
 				// list is requested again (newest request wins in the store).
+				// Only a scan that is still the newest action owns the page it moved to. Any user action
+				// (filter, page, library) bumped the token and took over, so nothing is restored then.
+				const ownsPage = this.scanToken !== 0 && this.scanToken === this.revealToken
 				this.revealToken++
-				if (this.scanning) {
-					this.scanning = false
+				if (ownsPage) {
+					this.scanToken = 0
 					// Back to the page the user was on, not the one the scan had moved to.
 					this.watchlistStore.page = this.scanStartPage
 					this.watchlistStore.fetchAll()
@@ -437,7 +440,7 @@ export default {
 			const startPage = this.watchlistStore.page
 			this.scanStartPage = startPage
 			let found = this.items.some((i) => i.id === id)
-			this.scanning = !found
+			this.scanToken = found ? 0 : token
 			for (let page = 1; !found && page <= this.watchlistStore.totalPages; page++) {
 				if (page === startPage) { continue }
 				this.watchlistStore.page = page
@@ -445,7 +448,7 @@ export default {
 				if (stale()) { return }
 				found = this.items.some((i) => i.id === id)
 			}
-			this.scanning = false
+			this.scanToken = 0
 			if (!found) {
 				if (this.watchlistStore.page !== startPage) {
 					this.watchlistStore.page = startPage

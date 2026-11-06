@@ -270,4 +270,28 @@ describe('Watchlist cold links and removed links', () => {
 		// ... for the page the user was on, not the one the scan had moved to
 		expect(store.page).toBe(1)
 	})
+
+	it('a stale scan does not restore its start page after the user chose another page or filter', async () => {
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		let releasePage2
+		store.fetchAll = vi.fn(async () => {
+			if (store.page === 2) {
+				await new Promise((resolve) => { releasePage2 = resolve })
+			}
+			store.items = pages[store.page]
+		})
+		const route = reactive({ path: '/watchlist', query: { item: '60' } })
+		const wrapper = mountView({}, route)
+		await flushPromises()
+
+		wrapper.vm.onTypeChange(null) // the user's own choice takes over while the scan waits
+		releasePage2()
+		await flushPromises()
+		const callsBefore = store.fetchAll.mock.calls.length
+		route.query = {} // the link is removed later
+		await flushPromises()
+
+		expect(store.fetchAll.mock.calls.length).toBe(callsBefore) // nothing is requested behind the user's back
+		expect(wrapper.exists()).toBe(true)
+	})
 })

@@ -10,6 +10,7 @@ use OCA\MovieDB\Db\LibraryMemberMapper;
 use OCA\MovieDB\Service\ReleaseNotificationService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Utility\ITimeFactory;
+use OCP\BackgroundJob\IJob;
 use OCP\BackgroundJob\IJobList;
 use Psr\Log\LoggerInterface;
 
@@ -18,6 +19,7 @@ class DismissLibraryNotificationsJobTest extends TestCase {
     private LibraryMemberMapper $members;
     private IJobList $jobList;
     private LoggerInterface $logger;
+    private ITimeFactory $clock;
 
     protected function setUp(): void {
         parent::setUp();
@@ -25,46 +27,59 @@ class DismissLibraryNotificationsJobTest extends TestCase {
         $this->members = $this->createMock(LibraryMemberMapper::class);
         $this->jobList = $this->createMock(IJobList::class);
         $this->logger = $this->createMock(LoggerInterface::class);
+        $this->clock = $this->createMock(ITimeFactory::class);
+        $this->clock->method('getTime')->willReturn(1_000_000);
     }
 
     private function job(): DismissLibraryNotificationsJob {
-        return new DismissLibraryNotificationsJob($this->createMock(ITimeFactory::class), $this->service, $this->members, $this->jobList, $this->logger);
+        return new DismissLibraryNotificationsJob($this->clock, $this->service, $this->members, $this->jobList, $this->logger);
     }
 
-    public function testDismissesTheLibraryNotificationsOfTheFormerMember(): void {
+    public function testRunsHourlyUntilItSucceeds(): void {
+        $job = $this->job();
+
+        $this->assertSame(3600, $job->getInterval());
+        $this->assertSame(IJob::TIME_INSENSITIVE, $job->getTimeSensitivity());
+    }
+
+    public function testDismissesTheLibraryNotificationsOfTheFormerMemberAndRemovesItself(): void {
         $this->members->method('findMembership')->willReturn(null);
         $this->service->expects($this->once())->method('dismissLibrary')->with(5, 'bob', true, $this->isInstanceOf(\Closure::class));
+        $this->jobList->expects($this->once())->method('remove');
 
-        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob']);
+        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob', 'queuedAt' => 999_000]);
     }
 
-    public function testDoesNothingWhenTheUserIsAMemberAgain(): void {
+    public function testDoesNothingWhenTheUserIsAMemberAgainButStillRemovesItself(): void {
         $this->members->method('findMembership')->willReturn(new LibraryMember());
         $this->service->expects($this->never())->method('dismissLibrary');
+        $this->jobList->expects($this->once())->method('remove');
 
-        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob']);
+        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob', 'queuedAt' => 999_000]);
     }
 
-    public function testIgnoresIncompleteArguments(): void {
+    public function testIncompleteArgumentsAreDropped(): void {
         $this->service->expects($this->never())->method('dismissLibrary');
+        $this->jobList->expects($this->exactly(2))->method('remove');
 
         $this->job()->runNow(['libraryId' => 5]);
         $this->job()->runNow([]);
     }
 
-    public function testAFailureRequeuesTheJobAndGivesUpAfterThreeTries(): void {
+    public function testAFailureKeepsTheJobSoTheNextHourlyRunRetries(): void {
         $this->members->method('findMembership')->willReturn(null);
-        $this->service->method('dismissLibrary')->willThrowException(new \RuntimeException('boom'));
-        $queued = [];
-        $this->jobList->method('add')->willReturnCallback(function (string $class, array $arg) use (&$queued): void {
-            $queued[] = $arg['attempt'];
-        });
+        $this->service->method('dismissLibrary')->willThrowException(new \RuntimeException('db timeout'));
+        $this->jobList->expects($this->never())->method('remove');
+
+        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob', 'queuedAt' => 999_000]);
+    }
+
+    public function testItGivesUpAfterThreeDays(): void {
+        $this->members->method('findMembership')->willReturn(null);
+        $this->service->method('dismissLibrary')->willThrowException(new \RuntimeException('db timeout'));
         $this->logger->expects($this->once())->method('warning');
+        $this->jobList->expects($this->once())->method('remove');
 
-        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob']);
-        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob', 'attempt' => 1]);
-        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob', 'attempt' => 2]);
-
-        $this->assertSame([1, 2], $queued);
+        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob', 'queuedAt' => 1_000_000 - 4 * 24 * 3600]);
     }
 }

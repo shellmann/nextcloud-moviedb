@@ -478,6 +478,7 @@ namespace OCP\BackgroundJob {
 
     interface IJobList {
         public function add($job, $argument = null): void;
+        public function remove($job, $argument = null): void;
     }
 
     abstract class QueuedJob implements IJob {
