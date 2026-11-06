@@ -152,11 +152,21 @@ class ReleaseNotificationService {
      * cleanup" from "nothing to do" without scanning the library for every caller.
      */
     public function markCleanupPending(int $libraryId, string $userId): void {
-        $this->userConfig->setValueString($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId, '1');
+        // The value is the time the cleanup became pending; an existing marker keeps its (older) time,
+        // so repeated removals do not postpone the give-up deadline of the retrying job.
+        if (!$this->isCleanupPending($libraryId, $userId)) {
+            $this->userConfig->setValueString($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId, (string)time());
+        }
+    }
+
+    /** @return ?int when the cleanup became pending, null when none is */
+    public function cleanupPendingSince(int $libraryId, string $userId): ?int {
+        $value = $this->userConfig->getValueString($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId, '');
+        return $value === '' ? null : (int)$value;
     }
 
     public function isCleanupPending(int $libraryId, string $userId): bool {
-        return $this->userConfig->getValueString($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId, '') === '1';
+        return $this->cleanupPendingSince($libraryId, $userId) !== null;
     }
 
     private function clearCleanupPending(int $libraryId, ?string $userId): void {

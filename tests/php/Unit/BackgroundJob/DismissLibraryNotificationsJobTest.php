@@ -29,6 +29,8 @@ class DismissLibraryNotificationsJobTest extends TestCase {
         $this->logger = $this->createMock(LoggerInterface::class);
         $this->clock = $this->createMock(ITimeFactory::class);
         $this->clock->method('getTime')->willReturn(1_000_000);
+        // pending since shortly before "now" unless a test says otherwise
+        $this->service->method('cleanupPendingSince')->willReturn(999_000);
     }
 
     private function job(): DismissLibraryNotificationsJob {
@@ -47,7 +49,7 @@ class DismissLibraryNotificationsJobTest extends TestCase {
         $this->service->expects($this->once())->method('dismissLibrary')->with(5, 'bob', true, $this->isInstanceOf(\Closure::class));
         $this->jobList->expects($this->once())->method('remove');
 
-        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob', 'queuedAt' => 999_000]);
+        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob']);
     }
 
     public function testDoesNothingWhenTheUserIsAMemberAgainButStillRemovesItself(): void {
@@ -55,7 +57,7 @@ class DismissLibraryNotificationsJobTest extends TestCase {
         $this->service->expects($this->never())->method('dismissLibrary');
         $this->jobList->expects($this->once())->method('remove');
 
-        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob', 'queuedAt' => 999_000]);
+        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob']);
     }
 
     public function testIncompleteArgumentsAreDropped(): void {
@@ -71,15 +73,26 @@ class DismissLibraryNotificationsJobTest extends TestCase {
         $this->service->method('dismissLibrary')->willThrowException(new \RuntimeException('db timeout'));
         $this->jobList->expects($this->never())->method('remove');
 
-        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob', 'queuedAt' => 999_000]);
+        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob']);
     }
 
     public function testItGivesUpAfterThreeDays(): void {
+        $this->service = $this->createMock(ReleaseNotificationService::class);
+        $this->service->method('cleanupPendingSince')->willReturn(1_000_000 - 4 * 24 * 3600);
         $this->members->method('findMembership')->willReturn(null);
         $this->service->method('dismissLibrary')->willThrowException(new \RuntimeException('db timeout'));
         $this->logger->expects($this->once())->method('warning');
         $this->jobList->expects($this->once())->method('remove');
 
-        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob', 'queuedAt' => 1_000_000 - 4 * 24 * 3600]);
+        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob']);
+    }
+
+    public function testAJobWhoseCleanupIsAlreadyDoneRemovesItselfWithoutScanning(): void {
+        $this->service = $this->createMock(ReleaseNotificationService::class);
+        $this->service->method('cleanupPendingSince')->willReturn(null);
+        $this->service->expects($this->never())->method('dismissLibrary');
+        $this->jobList->expects($this->once())->method('remove');
+
+        $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob']);
     }
 }

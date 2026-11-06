@@ -433,7 +433,9 @@ class LibraryService {
     private function cleanUpNotifications(int $libraryId, string $userId): void {
         if ($this->jobList !== null) {
             try {
-                $this->jobList->add(DismissLibraryNotificationsJob::class, ['libraryId' => $libraryId, 'userId' => $userId, 'queuedAt' => time()]);
+                // Stable arguments: Nextcloud adds a job with the same class and arguments only once,
+                // so repeated removals do not pile up cleanups. The time lives in the pending marker.
+                $this->jobList->add(DismissLibraryNotificationsJob::class, ['libraryId' => $libraryId, 'userId' => $userId]);
                 return;
             } catch (\Throwable $e) {
                 // fall through to the inline cleanup

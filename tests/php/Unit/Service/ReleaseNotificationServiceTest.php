@@ -278,4 +278,18 @@ class ReleaseNotificationServiceTest extends TestCase {
         $this->expectException(\RuntimeException::class);
         $this->service->dismissLibrary(1, 'bob', true);
     }
+
+    public function testTheMarkerKeepsItsFirstTimeSoRepeatedRemovalsDoNotPostponeTheDeadline(): void {
+        $config = $this->createMock(IUserConfig::class);
+        $config->method('getValueString')->willReturn('12345');
+        $config->expects($this->never())->method('setValueString');
+        $service = new ReleaseNotificationService(
+            $this->episodes, $this->watchlist, $this->series, $this->libraries, $this->members,
+            $config, $this->manager, $this->createMock(LoggerInterface::class)
+        );
+
+        $service->markCleanupPending(1, 'bob');
+
+        $this->assertSame(12345, $service->cleanupPendingSince(1, 'bob'));
+    }
 }

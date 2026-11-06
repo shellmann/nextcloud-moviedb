@@ -256,7 +256,7 @@ class LibraryServiceTest extends TestCase {
         $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
         $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
         $jobs->expects($this->once())->method('add')
-            ->with(\OCA\MovieDB\BackgroundJob\DismissLibraryNotificationsJob::class, $this->callback(fn (array $a): bool => $a['libraryId'] === 5 && $a['userId'] === 'bob' && $a['queuedAt'] > 0));
+            ->with(\OCA\MovieDB\BackgroundJob\DismissLibraryNotificationsJob::class, ['libraryId' => 5, 'userId' => 'bob']); // stable arguments: Nextcloud adds the same job only once
         $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
         $notifications->expects($this->never())->method('dismissLibrary');
         $service = new LibraryService(
@@ -306,7 +306,7 @@ class LibraryServiceTest extends TestCase {
         $notifications->method('isCleanupPending')->with(5, 'bob')->willReturn(true);
         $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
         $jobs->expects($this->once())->method('add')
-            ->with(\OCA\MovieDB\BackgroundJob\DismissLibraryNotificationsJob::class, $this->callback(fn (array $a): bool => $a['libraryId'] === 5 && $a['userId'] === 'bob' && $a['queuedAt'] > 0));
+            ->with(\OCA\MovieDB\BackgroundJob\DismissLibraryNotificationsJob::class, ['libraryId' => 5, 'userId' => 'bob']); // stable arguments: Nextcloud adds the same job only once
 
         $this->serviceWith($notifications, $jobs)->removeMember(5, 'alice', 'bob');
     }

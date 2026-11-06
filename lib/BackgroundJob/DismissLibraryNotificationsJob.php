@@ -38,12 +38,19 @@ class DismissLibraryNotificationsJob extends TimedJob {
         $this->setTimeSensitivity(IJob::TIME_INSENSITIVE);
     }
 
-    /** @param array{libraryId?: int, userId?: string, queuedAt?: int}|mixed $argument */
+    /** @param array{libraryId?: int, userId?: string}|mixed $argument */
     protected function run($argument): void {
         $argument = is_array($argument) ? $argument : [];
         $libraryId = (int)($argument['libraryId'] ?? 0);
         $userId = isset($argument['userId']) ? (string)$argument['userId'] : '';
         if ($libraryId <= 0 || $userId === '') {
+            $this->jobList->remove($this, $argument);
+            return;
+        }
+
+        // The cleanup is done (or was never pending): this job is not needed any more.
+        $since = $this->service->cleanupPendingSince($libraryId, $userId);
+        if ($since === null) {
             $this->jobList->remove($this, $argument);
             return;
         }
@@ -56,8 +63,7 @@ class DismissLibraryNotificationsJob extends TimedJob {
             // done, or moot because the user is back: the job has served its purpose
             $this->jobList->remove($this, $argument);
         } catch (\Throwable $e) {
-            $queuedAt = (int)($argument['queuedAt'] ?? 0);
-            if ($queuedAt > 0 && $this->clock->getTime() - $queuedAt > self::MAX_AGE_SECONDS) {
+            if ($this->clock->getTime() - $since > self::MAX_AGE_SECONDS) {
                 $this->logger->warning('Gave up removing the MovieDB notifications of a former library member', ['exception' => $e]);
                 $this->jobList->remove($this, $argument);
                 return;
