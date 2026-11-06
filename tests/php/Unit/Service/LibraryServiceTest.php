@@ -278,7 +278,7 @@ class LibraryServiceTest extends TestCase {
         $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
         $jobs->method('add')->willThrowException(new \RuntimeException('job list down'));
         $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
-        $notifications->expects($this->once())->method('dismissLibrary')->with(5, 'bob')->willReturnCallback(function () use (&$order) {
+        $notifications->expects($this->once())->method('dismissLibrary')->with(5, 'bob', true)->willReturnCallback(function () use (&$order) {
             $order[] = 'inline cleanup';
         });
         $service = new LibraryService(
@@ -289,6 +289,38 @@ class LibraryServiceTest extends TestCase {
         $service->removeMember(5, 'alice', 'bob');
 
         $this->assertSame(['delete', 'inline cleanup'], $order);
+    }
+
+    public function testARetryOfTheRemovalRunsTheCleanupAgainEvenThoughTheMembershipIsGone(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn(null);
+        $this->memberMapper->expects($this->never())->method('delete');
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->expects($this->once())->method('add')
+            ->with(\OCA\MovieDB\BackgroundJob\DismissLibraryNotificationsJob::class, ['libraryId' => 5, 'userId' => 'bob']);
+        $service = new LibraryService(
+            $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
+            $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, null, $jobs
+        );
+
+        $service->removeMember(5, 'alice', 'bob');
+    }
+
+    public function testAFailedInlineCleanupIsThrownSoTheRemovalCanBeRepeated(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
+        $this->memberMapper->method('delete')->willReturnArgument(0);
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->method('add')->willThrowException(new \RuntimeException('job list down'));
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->method('dismissLibrary')->willThrowException(new \RuntimeException('db timeout'));
+        $service = new LibraryService(
+            $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
+            $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, $notifications, $jobs
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $service->removeMember(5, 'alice', 'bob');
     }
 
     public function testTheCleanupIsQueuedOnlyAfterTheMembershipIsDeleted(): void {

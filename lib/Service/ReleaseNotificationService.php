@@ -147,12 +147,9 @@ class ReleaseNotificationService {
 
     /** Removes the pending notifications about everything in a library (for one user, or all). */
     public function dismissLibrary(int $libraryId, ?string $userId = null, bool $strict = false, ?callable $stillWanted = null): void {
-        $n = 0;
-        // $stillWanted is asked every few entries: a long cleanup stops when the situation it was
+        // $stillWanted is asked before every entry: a long cleanup stops when the situation it was
         // started for is over (the user joined the library again).
-        $go = static function () use (&$n, $stillWanted): bool {
-            return $stillWanted === null || ++$n % 25 !== 0 || $stillWanted();
-        };
+        $go = static fn (): bool => $stillWanted === null || $stillWanted();
         foreach ($this->seriesMapper->findAllByLibrary($libraryId) as $series) {
             if (!$go()) {
                 return;

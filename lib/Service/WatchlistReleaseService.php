@@ -48,14 +48,13 @@ class WatchlistReleaseService {
             return false;
         }
 
+        $now = (new DateTime())->format('Y-m-d H:i:s');
+        // One statement: new date, "new date" marker and - a postponed title that was already
+        // announced is announced again on the new date - the forgotten announcement stamp.
+        $this->mapper->updateReleaseDate((int)$item->getId(), $date, $now);
         $item->setReleaseDate($date);
-        $item->setReleaseDateChangedAt((new DateTime())->format('Y-m-d H:i:s'));
-        // A postponed title that was already announced is announced again on the new date.
+        $item->setReleaseDateChangedAt($now);
         $item->setReleaseNotifiedAt(null);
-        $this->mapper->update($item);
-        // Own statement: update() only writes fields that changed in memory, and a notification run
-        // may have stamped the entry after this entity was loaded.
-        $this->mapper->clearReleaseNotified((int)$item->getId());
 
         return true;
     }

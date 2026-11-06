@@ -297,6 +297,21 @@ class WatchlistMapper extends QBMapper {
     }
 
     /**
+     * Moves a release date in ONE statement together with the "new date" marker and the
+     * forgotten "announced" stamp: nothing can slip in between (a notification run stamping the
+     * entry, a failure after the date was saved but before the stamp was cleared).
+     */
+    public function updateReleaseDate(int $id, string $date, string $now): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->update($this->getTableName())
+            ->set('release_date', $qb->createNamedParameter($date))
+            ->set('release_date_changed_at', $qb->createNamedParameter($now))
+            ->set('release_notified_at', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+        $qb->executeStatement();
+    }
+
+    /**
      * Forgets that a release was announced (its date moved): own statement, so it does not
      * depend on what an in-memory entity happened to hold when a notification run stamped it.
      */

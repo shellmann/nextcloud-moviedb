@@ -258,11 +258,14 @@ describe('Watchlist cold links and removed links', () => {
 		const wrapper = mountView({}, route)
 		await flushPromises()
 
+		const callsBefore = store.fetchAll.mock.calls.length
 		route.query = {} // back to the plain watchlist while page 2 is still loading
 		await flushPromises()
 		releasePage2()
 		await flushPromises()
 
 		expect(wrapper.findAll('.watchlist-item--highlight')).toHaveLength(0)
+		// a fresh request for the list replaces the page the scan had moved to
+		expect(store.fetchAll.mock.calls.length).toBeGreaterThan(callsBefore)
 	})
 })

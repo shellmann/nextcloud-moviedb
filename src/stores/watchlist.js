@@ -67,6 +67,8 @@ export const useWatchlistStore = defineStore('watchlist', {
 				this.page = response.data.page
 				this.totalPages = response.data.totalPages
 			} catch (error) {
+				// A superseded request failing is of no interest: the newer one decides what the user sees.
+				if (requestNo !== latestFetchAll) { return }
 				console.error('Failed to fetch watchlist:', error)
 				showError(t('moviedb', 'Failed to load watchlist. Please try again.'))
 			} finally {

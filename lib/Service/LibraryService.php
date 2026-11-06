@@ -407,26 +407,31 @@ class LibraryService {
         }
 
         $membership = $this->memberMapper->findMembership($libraryId, $memberUserId);
-        if ($membership === null) {
-            // Not a member — silently succeed (idempotent remove).
-            return;
+        if ($membership !== null) {
+            $this->memberMapper->delete($membership);
         }
+        // Also for a user who is not a member (any more): that is what a retry after a failed
+        // cleanup looks like, and the cleanup is idempotent.
+        $this->cleanUpNotifications($libraryId, $memberUserId);
+    }
 
-        $this->memberMapper->delete($membership);
-
-        // One markProcessed() per entry: in a big library that is too slow for the request, so it
-        // is queued. Queued after the delete: the job checks that the user is really gone, and a
-        // worker that picked it up earlier would find the membership still there and do nothing.
-        // If queueing fails, the cleanup runs here instead (slow, but never lost).
+    /**
+     * Removes the release notifications of a user who left a library. One markProcessed() per
+     * entry is too slow for the request in a big library, so it is queued (after the delete: the
+     * job checks that the user is really gone). If queueing fails it runs here instead, and a
+     * failure there is thrown: the membership is gone, so the caller repeats the removal, which
+     * runs the cleanup again.
+     */
+    private function cleanUpNotifications(int $libraryId, string $userId): void {
         if ($this->jobList !== null) {
             try {
-                $this->jobList->add(DismissLibraryNotificationsJob::class, ['libraryId' => $libraryId, 'userId' => $memberUserId]);
+                $this->jobList->add(DismissLibraryNotificationsJob::class, ['libraryId' => $libraryId, 'userId' => $userId]);
                 return;
             } catch (\Throwable $e) {
                 // fall through to the inline cleanup
             }
         }
-        $this->notifications?->dismissLibrary($libraryId, $memberUserId);
+        $this->notifications?->dismissLibrary($libraryId, $userId, true);
     }
 
     /**

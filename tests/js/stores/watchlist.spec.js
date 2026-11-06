@@ -485,4 +485,23 @@ describe('Watchlist store fetchAll ordering', () => {
 		expect(store.page).toBe(1)
 		expect(store.loading).toBe(false)
 	})
+
+	it('does not report the failure of a superseded request', async () => {
+		setActivePinia(createPinia())
+		const store = useWatchlistStore()
+		let failFirst
+		api.getWatchlist.mockImplementationOnce(() => new Promise((resolve, reject) => { failFirst = reject }))
+		api.getWatchlist.mockResolvedValueOnce({ data: { items: [{ id: 2 }], total: 1, totalUnfiltered: 1, page: 1, totalPages: 1 } })
+		const { showError } = await import('@nextcloud/dialogs')
+		showError.mockClear()
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+
+		const first = store.fetchAll()
+		await store.fetchAll()
+		failFirst(new Error('network'))
+		await first
+
+		expect(showError).not.toHaveBeenCalled()
+		expect(store.items).toEqual([{ id: 2 }])
+	})
 })

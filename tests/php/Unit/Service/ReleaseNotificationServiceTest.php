@@ -252,7 +252,7 @@ class ReleaseNotificationServiceTest extends TestCase {
         }
         $this->series->method('findAllByLibrary')->willReturn([]);
         $this->watchlist->method('findAllByLibrary')->willReturn($items);
-        $this->manager->expects($this->exactly(24))->method('markProcessed'); // stops at the 25th entry
+        $this->manager->expects($this->never())->method('markProcessed'); // asked before every entry: stops at once
 
         $this->service->dismissLibrary(1, 'bob', false, fn (): bool => false);
     }

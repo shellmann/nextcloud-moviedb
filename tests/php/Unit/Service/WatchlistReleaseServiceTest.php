@@ -35,7 +35,7 @@ class WatchlistReleaseServiceTest extends TestCase {
     public function testTakesOverANewDateAndMarksItAsNews(): void {
         $item = $this->item(null);
         $this->tmdb->method('getMovieDetails')->with(42, 'owner', 'de-DE')->willReturn(['release_date' => '2027-03-12']);
-        $this->mapper->expects($this->once())->method('update')->with($item)->willReturnArgument(0);
+        $this->mapper->expects($this->once())->method('updateReleaseDate')->with((int)$item->getId(), '2027-03-12', $this->anything());
 
         $this->assertTrue($this->service->refresh($item, 'owner', 'de-DE'));
         $this->assertSame('2027-03-12', $item->getReleaseDate());
@@ -45,7 +45,7 @@ class WatchlistReleaseServiceTest extends TestCase {
     public function testTakesOverAMovedDate(): void {
         $item = $this->item('2027-03-12');
         $this->tmdb->method('getMovieDetails')->willReturn(['release_date' => '2027-06-01']);
-        $this->mapper->expects($this->once())->method('update')->willReturnArgument(0);
+        $this->mapper->expects($this->once())->method('updateReleaseDate');
 
         $this->assertTrue($this->service->refresh($item, 'owner', 'de-DE'));
         $this->assertSame('2027-06-01', $item->getReleaseDate());
@@ -55,7 +55,7 @@ class WatchlistReleaseServiceTest extends TestCase {
     public function testDoesNothingWhenTheDateIsTheSame(): void {
         $item = $this->item('2027-03-12');
         $this->tmdb->method('getMovieDetails')->willReturn(['release_date' => '2027-03-12']);
-        $this->mapper->expects($this->never())->method('update');
+        $this->mapper->expects($this->never())->method('updateReleaseDate');
 
         $this->assertFalse($this->service->refresh($item, 'owner', 'de-DE'));
         $this->assertFalse($item->hasReleaseDateNews());
@@ -67,7 +67,7 @@ class WatchlistReleaseServiceTest extends TestCase {
     public function testKeepsTheStoredDateWhenTmdbHasNone(array $details): void {
         $item = $this->item('2027-03-12');
         $this->tmdb->method('getMovieDetails')->willReturn($details);
-        $this->mapper->expects($this->never())->method('update');
+        $this->mapper->expects($this->never())->method('updateReleaseDate');
 
         $this->assertFalse($this->service->refresh($item, 'owner', 'de-DE'));
         $this->assertSame('2027-03-12', $item->getReleaseDate());
@@ -85,7 +85,7 @@ class WatchlistReleaseServiceTest extends TestCase {
         $item = $this->item(null, 'series');
         $this->tmdb->expects($this->never())->method('getMovieDetails');
         $this->tmdb->method('getSeriesDetails')->with(42, 'owner', 'de-DE')->willReturn(['first_air_date' => '2027-01-15']);
-        $this->mapper->expects($this->once())->method('update')->willReturnArgument(0);
+        $this->mapper->expects($this->once())->method('updateReleaseDate');
 
         $this->assertTrue($this->service->refresh($item, 'owner', 'de-DE'));
         $this->assertSame('2027-01-15', $item->getReleaseDate());
@@ -101,9 +101,8 @@ class WatchlistReleaseServiceTest extends TestCase {
         $item = $this->item('2027-03-12');
         $item->setReleaseNotifiedAt('2027-03-12 08:00:00');
         $this->tmdb->method('getMovieDetails')->willReturn(['release_date' => '2027-06-01']);
-        $this->mapper->method('update')->willReturnArgument(0);
-        // a statement of its own: update() writes only fields that changed in memory
-        $this->mapper->expects($this->once())->method('clearReleaseNotified')->with((int)$item->getId());
+        // one statement moves the date AND forgets the announcement: nothing can slip in between
+        $this->mapper->expects($this->once())->method('updateReleaseDate')->with((int)$item->getId(), '2027-06-01', $this->anything());
 
         $this->service->refresh($item, 'owner', 'de-DE');
 

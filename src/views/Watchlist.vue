@@ -294,6 +294,7 @@ export default {
 			highlightedId: null,
 			highlightTimer: null,
 			revealToken: 0,
+			scanning: false,
 			showWatchedModal: false,
 			showEditModal: false,
 			showRemoveDialog: false,
@@ -370,8 +371,14 @@ export default {
 			if (item) {
 				this.loadAndReveal()
 			} else {
-				// The link is gone (back to the plain watchlist): a running search ends.
+				// The link is gone (back to the plain watchlist): a running search ends. Its page
+				// request may still be the newest one and would show the scanned page, so the normal
+				// list is requested again (newest request wins in the store).
 				this.revealToken++
+				if (this.scanning) {
+					this.scanning = false
+					this.watchlistStore.fetchAll()
+				}
 			}
 		},
 
@@ -426,6 +433,7 @@ export default {
 			// does not exist any more is skipped silently and the first page comes back.
 			const startPage = this.watchlistStore.page
 			let found = this.items.some((i) => i.id === id)
+			this.scanning = !found
 			for (let page = 1; !found && page <= this.watchlistStore.totalPages; page++) {
 				if (page === startPage) { continue }
 				this.watchlistStore.page = page
@@ -433,6 +441,7 @@ export default {
 				if (stale()) { return }
 				found = this.items.some((i) => i.id === id)
 			}
+			this.scanning = false
 			if (!found) {
 				if (this.watchlistStore.page !== startPage) {
 					this.watchlistStore.page = startPage

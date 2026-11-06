@@ -72,6 +72,9 @@ class RefreshWatchlistReleaseDatesJob extends TimedJob {
             } catch (\Throwable $e) {
                 if (SeriesRefreshService::isRateLimited($e)) {
                     $this->logger->warning('TMDB asked to slow down; the release date check continues in the next run.', ['checked' => $checked]);
+                    // Back of the queue like the rest: an entry that is rate limited every time must
+                    // not stay first and keep everyone behind it from ever being checked.
+                    $this->markChecked($item);
                     return;
                 }
                 // A removed or broken title is simply tried again tomorrow.
