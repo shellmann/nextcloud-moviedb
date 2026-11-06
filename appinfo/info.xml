@@ -16,6 +16,8 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Continue Watching**: The dashboard lists the shows you are in the middle of with the next episode; stop watching a show you gave up on, and filter the TV list by in progress, finished and stopped
 - **Always Up to Date**: A background job keeps the episodes of your TV shows in sync with TMDB, so new seasons and episodes show up by themselves, and the dashboard lists what airs soon under "Coming up"
 - **Release dates stay current**: Watchlist titles without a release date get it from TMDB by themselves, with a "New date" badge on the poster
+- **Never miss an episode**: Get a Nextcloud notification when an episode of one of your shows airs or a watchlist title comes out, and see it all in a read-only "MovieDB – Upcoming" calendar in the Calendar app and on devices that sync your calendars (both can be switched off per user)
+- **More show details**: Type, network, TMDB score and cast on the TV show page
 - **Rewatch Support**: Log multiple viewings of the same movie with separate ratings and dates
 - **TMDB Integration**: Automatically fetch posters, cast, plot, and episode data
 - **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews
@@ -38,7 +40,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 
 Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.themoviedb.org/). This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
     ]]></description>
-    <version>1.10.2</version>
+    <version>1.11.0</version>
     <licence>AGPL-3.0-or-later</licence>
     <author>shellmann</author>
     <namespace>MovieDB</namespace>

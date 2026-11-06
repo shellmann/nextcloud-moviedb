@@ -537,6 +537,10 @@ OC.L10N.register(
         "You get a Nextcloud notification for shows you follow and for watchlist titles, in every library you belong to.": "Vous recevez une notification Nextcloud pour les séries que vous suivez et les titres de la liste à voir, dans chaque bibliothèque dont vous faites partie.",
         "Hide API key": "Masquer la clé d'API",
         "Show API key": "Afficher la clé d'API",
-        "Delete platform {name}": "Supprimer la plateforme {name}"
+        "Delete platform {name}": "Supprimer la plateforme {name}",
+        "Never miss an episode: you get a notification when an episode airs or a watchlist title comes out. You can turn it off in Settings.": "Ne manquez aucun épisode : vous recevez une notification lorsqu'un épisode sort ou qu'un titre de votre liste à voir est disponible. Vous pouvez la désactiver dans les paramètres.",
+        "A new calendar \"MovieDB – Upcoming\" in the Calendar app and on your synced devices shows upcoming episodes and releases.": "Un nouveau calendrier « MovieDB – Upcoming » dans l'application Agenda et sur vos appareils synchronisés affiche les épisodes et sorties à venir.",
+        "The TV show page shows more from TMDB: the type of show, the network, the TMDB score and the cast.": "La page de la série affiche plus de données de TMDB : le type de série, la chaîne, la note TMDB et la distribution.",
+        "Better for screen readers and keyboard use, and Settings fits narrow screens.": "Mieux adapté aux lecteurs d'écran et au clavier, et les paramètres tiennent sur les écrans étroits."
     },
 "nplurals=2; plural=(n > 1);");

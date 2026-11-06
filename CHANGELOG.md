@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-11-06
+
+### Added
+- **More from TMDB on the TV show page**: the type of show (scripted, miniseries, …),
+  its network, the TMDB user score with the number of votes, and the cast. Existing
+  shows are filled in by the daily TMDB refresh or with "Update from TMDB"; the new
+  values are part of export and import. The status and type are translated. (#107)
+- **A read-only calendar "MovieDB – Upcoming"** with the episodes of your shows and the
+  release dates of your watchlist titles, across all libraries you can access. It shows
+  up in the Calendar app and on every device that syncs your calendars (CalDAV), and can
+  be switched off in Settings. Needs no extra app: it works through Nextcloud's calendar
+  provider interface on Nextcloud 33, 34 and 35. (#108)
+- **Notifications for releases**: when an episode airs or a watchlist title comes out,
+  every member of the library (the owner included) gets a Nextcloud notification (the
+  bell, and a browser notification when you allow them). Several episodes
+  of one show on one day arrive as one notification. A show you added after an episode
+  aired does not notify about it. On by default; each user can opt out in Settings. (#114)
+- Links in notifications and calendar events open the show or the watchlist entry
+  (scrolled to and highlighted) in the right library, and announce a library switch.
+- Settings → "Notifications and calendar" with a switch for each.
+- The upgrade check in CI now also runs on Nextcloud 33, and on every database it
+  runs the notification job, reads the new calendar and calls the upcoming-events API.
+
+### Changed
+- A TV show or movie page opened from another one (for example from a notification
+  while a show page is open) now loads the new title instead of keeping the old one.
+
+### Fixed
+- Accessibility: icon buttons (show/hide API key, delete platform) and the select boxes
+  now have names for screen readers; the Settings switches keep keyboard focus while
+  saving; hint texts and links in Settings meet the contrast requirement; Settings and
+  the TV show page fit a 320 px wide screen without horizontal scrolling.
+
 ## [1.10.2] - 2026-11-05
 
 ### Fixed

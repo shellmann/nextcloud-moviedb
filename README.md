@@ -21,6 +21,8 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Continue Watching**: The dashboard lists the shows you are in the middle of with the next episode; stop watching a show you gave up on, and filter the TV list by in progress, finished and stopped
 - **Release dates stay current**: Watchlist titles without a release date (or with one still ahead) get it from TMDB by themselves, and a "New date" badge shows when a date was set or moved
 - **Coming up & always up to date**: The dashboard lists the shows you are up to date on whose next episode airs soon; new seasons and episodes come in from TMDB by themselves, or with "Update from TMDB" on the show page
+- **Never miss an episode**: Nextcloud notifications when an episode airs or a watchlist title comes out, and a read-only "MovieDB – Upcoming" calendar in the Calendar app and on synced devices; both can be switched off per user
+- **More show details**: Type, network, TMDB score and cast on the TV show page
 - **Rewatch Support**: Log multiple viewings with separate ratings, platforms, and dates
 - **TMDB Integration**: Automatically fetch movie and TV posters, cast, plot, and episode data
 - **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews
@@ -149,6 +151,12 @@ A background job brings the episodes of all TV shows up to date with TMDB once a
 ### Keeping watchlist release dates up to date
 
 A second background job runs once a day and asks TMDB for every watchlist title that has no release date yet or one that is still ahead. It fills in or moves the date and shows a "New date" badge on the poster for 30 days; the cross on the badge or editing the item dismisses it. Titles that have come out are not asked again. The job uses the same TMDB key and the same Cron advice as the TV show job above.
+
+### Notifications and the "MovieDB – Upcoming" calendar
+
+An hourly background job (`ReleaseNotificationJob`) sends a Nextcloud notification when an episode of a show airs or a watchlist title is released, to the owner and every member of the library. It looks back two days, sends one notification per show and day, and never notifies about episodes that aired before the show was added or about stopped shows. Each user can turn it off under **Settings → Notifications and calendar**. Delivery (the bell, browser notifications, email, push to the Nextcloud apps) is up to the Nextcloud **Notifications** app, which must be enabled; use **Cron** for background jobs, as above. Notifications disappear when the show or watchlist entry is deleted or the user leaves the library.
+
+The same page lets users switch the read-only **MovieDB – Upcoming** calendar on or off. It lists the episodes of the last 30 and next 180 days and the release dates of watchlist titles across every library the user can access, and appears in the Calendar app (no separate app is needed besides Calendar itself) and on every device that syncs the user's calendars over CalDAV. It cannot be edited from there; use MovieDB for that.
 
 ### Moving a library to another instance
 

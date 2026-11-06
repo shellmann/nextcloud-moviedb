@@ -18,6 +18,16 @@ import { translate as t } from '@nextcloud/l10n'
 export function releaseNotes() {
 	return [
 		{
+			version: '1.11.0',
+			rateInAppStore: true,
+			items: [
+				t('moviedb', 'Never miss an episode: you get a notification when an episode airs or a watchlist title comes out. You can turn it off in Settings.'),
+				t('moviedb', 'A new calendar "MovieDB – Upcoming" in the Calendar app and on your synced devices shows upcoming episodes and releases.'),
+				t('moviedb', 'The TV show page shows more from TMDB: the type of show, the network, the TMDB score and the cast.'),
+				t('moviedb', 'Better for screen readers and keyboard use, and Settings fits narrow screens.'),
+			],
+		},
+		{
 			version: '1.10.2',
 			rateInAppStore: true,
 			items: [
