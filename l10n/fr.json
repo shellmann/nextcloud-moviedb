@@ -503,7 +503,25 @@
 		"The quiz history shows the first and last date under the chart instead of dates that were left out.": "L’historique du quiz affiche la première et la dernière date sous le graphique, au lieu de dates qui étaient omises.",
 		"Movies without an original title or a date can be edited with all fields again, and the add forms fit narrow windows.": "Les films sans titre original ou sans date peuvent de nouveau être modifiés avec tous les champs, et les formulaires d’ajout tiennent dans les fenêtres étroites.",
 		"Numbers and highlighted text are easy to read with a dark theme again.": "Les chiffres et le texte mis en évidence sont de nouveau lisibles avec un thème sombre.",
-		"The \"Watches by Year\" chart on the dashboard now works with PostgreSQL databases.": "Le graphique « Visionnages par année » du tableau de bord fonctionne désormais avec les bases de données PostgreSQL."
+		"The \"Watches by Year\" chart on the dashboard now works with PostgreSQL databases.": "Le graphique « Visionnages par année » du tableau de bord fonctionne désormais avec les bases de données PostgreSQL.",
+		"Canceled": "Annulée",
+		"Documentary": "Documentaire",
+		"Ended": "Terminée",
+		"First aired": "Première diffusion",
+		"In Production": "En production",
+		"Miniseries": "Mini-série",
+		"Network": "Chaîne",
+		"News": "Actualités",
+		"Pilot": "Pilote",
+		"Planned": "Prévue",
+		"Reality": "Téléréalité",
+		"Returning Series": "Série en cours",
+		"Scripted": "Fiction",
+		"Status": "Statut",
+		"TMDB user score": "Note des utilisateurs TMDB",
+		"Talk Show": "Talk-show",
+		"Video": "Vidéo",
+		"{score} % ({count} votes)": "{score} % ({count} votes)"
 	},
 	"pluralForm": "nplurals=2; plural=(n > 1);"
 }

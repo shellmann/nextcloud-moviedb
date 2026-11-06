@@ -10,6 +10,7 @@ use OCA\MovieDB\Db\EpisodeMapper;
 use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Util\TmdbEpisode;
+use OCA\MovieDB\Util\TmdbSeriesFields;
 use OCP\IDBConnection;
 
 /**
@@ -150,6 +151,18 @@ class SeriesRefreshService {
         }
         if (isset($details['number_of_episodes'])) {
             $series->setNumberOfEpisodes((int)$details['number_of_episodes']);
+        }
+        $fields = TmdbSeriesFields::fromDetails($details);
+        $series->setSeriesType($fields['seriesType']);
+        $series->setNetworks($fields['networks']);
+        $series->setTmdbRating($fields['tmdbRating']);
+        $series->setTmdbVoteCount($fields['tmdbVoteCount']);
+        // Shows added before the cast was kept up to date: fill gaps, never blank existing data.
+        if (is_array($details['cast'] ?? null) && $details['cast'] !== []) {
+            $series->setCastData($details['cast']);
+        }
+        if (is_string($details['director'] ?? null) && $details['director'] !== '') {
+            $series->setDirector($details['director']);
         }
         $series->setTmdbRefreshedAt($now);
     }

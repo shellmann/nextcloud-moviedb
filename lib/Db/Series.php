@@ -57,6 +57,14 @@ use OCP\AppFramework\Db\Entity;
  * @method string getCreatedAt()
  * @method void setCreatedAt(string $createdAt)
  * @method string|null getUpdatedAt()
+ * @method ?string getSeriesType()
+ * @method void setSeriesType(?string $seriesType)
+ * @method ?array getNetworks()
+ * @method void setNetworks(?array $networks)
+ * @method ?int getTmdbRating()
+ * @method void setTmdbRating(?int $tmdbRating)
+ * @method ?int getTmdbVoteCount()
+ * @method void setTmdbVoteCount(?int $tmdbVoteCount)
  * @method void setUpdatedAt(?string $updatedAt)
  */
 class Series extends Entity implements JsonSerializable {
@@ -82,6 +90,10 @@ class Series extends Entity implements JsonSerializable {
     protected bool $isFavorite = false;
     protected ?bool $stoppedWatching = false;
     protected ?string $tmdbRefreshedAt = null;
+    protected ?string $seriesType = null;
+    protected ?array $networks = null;
+    protected ?int $tmdbRating = null;
+    protected ?int $tmdbVoteCount = null;
     protected string $createdAt = '';
     protected ?string $updatedAt = null;
 
@@ -97,6 +109,9 @@ class Series extends Entity implements JsonSerializable {
         $this->addType('lastRating', 'integer');
         $this->addType('isFavorite', 'boolean');
         $this->addType('stoppedWatching', 'boolean');
+        $this->addType('networks', 'json');
+        $this->addType('tmdbRating', 'integer');
+        $this->addType('tmdbVoteCount', 'integer');
     }
 
     public function jsonSerialize(): array {
@@ -124,6 +139,10 @@ class Series extends Entity implements JsonSerializable {
             'isFavorite' => $this->isFavorite,
             'stoppedWatching' => (bool)$this->stoppedWatching,
             'tmdbRefreshedAt' => $this->tmdbRefreshedAt,
+            'seriesType' => $this->seriesType,
+            'networks' => $this->networks,
+            'tmdbRating' => $this->tmdbRating,
+            'tmdbVoteCount' => $this->tmdbVoteCount,
             'createdAt' => $this->createdAt,
             'updatedAt' => $this->updatedAt,
         ];

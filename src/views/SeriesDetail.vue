@@ -64,11 +64,36 @@
 						</div>
 					</div>
 
-					<div class="series-meta">
-						<span v-if="series.firstAirYear">{{ series.firstAirYear }}</span>
-						<span v-if="series.status">{{ series.status }}</span>
-						<span v-if="series.director">{{ t('moviedb', 'Creator') }}: {{ series.director }}</span>
-					</div>
+					<dl class="series-meta">
+						<div v-if="series.firstAirYear" class="meta-item">
+							<dt class="hidden-visually">
+								{{ t('moviedb', 'First aired') }}
+							</dt>
+							<dd>{{ series.firstAirYear }}</dd>
+						</div>
+						<div v-if="series.status" class="meta-item">
+							<dt class="hidden-visually">
+								{{ t('moviedb', 'Status') }}
+							</dt>
+							<dd>{{ statusText }}</dd>
+						</div>
+						<div v-if="series.seriesType" class="meta-item">
+							<dt>{{ t('moviedb', 'Type') }}</dt>
+							<dd>{{ typeText }}</dd>
+						</div>
+						<div v-if="networkNames" class="meta-item">
+							<dt>{{ t('moviedb', 'Network') }}</dt>
+							<dd>{{ networkNames }}</dd>
+						</div>
+						<div v-if="series.director" class="meta-item">
+							<dt>{{ t('moviedb', 'Creator') }}</dt>
+							<dd>{{ series.director }}</dd>
+						</div>
+						<div v-if="scoreText" class="meta-item">
+							<dt>{{ t('moviedb', 'TMDB user score') }}</dt>
+							<dd>{{ scoreText }}</dd>
+						</div>
+					</dl>
 					<p v-if="series.tmdbId && refreshedOn" class="refreshed-note">
 						{{ t('moviedb', 'Episodes last updated from TMDB: {date}', { date: refreshedOn }) }}
 					</p>
@@ -161,6 +186,8 @@
 					<p v-if="series.overview" class="series-overview">
 						{{ series.overview }}
 					</p>
+
+					<CastList :cast="series.castData || []" class="series-cast" />
 
 					<!-- Seasons -->
 					<div class="seasons">
@@ -256,12 +283,14 @@ import Pencil from 'vue-material-design-icons/Pencil.vue'
 import PlayCircleOutline from 'vue-material-design-icons/PlayCircleOutline.vue'
 import Refresh from 'vue-material-design-icons/Refresh.vue'
 import Television from 'vue-material-design-icons/Television.vue'
+import CastList from '../components/CastList.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getLanguageFlag, LANGUAGE_OPTIONS } from '../constants.js'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { useSeriesStore } from '../stores/series.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { episodeCode, formatDate, formatRuntime } from '../utils/formatters.js'
+import { statusLabel, typeLabel } from '../utils/tmdbLabels.js'
 
 export default {
 	name: 'SeriesDetail',
@@ -272,6 +301,7 @@ export default {
 		NcDialog,
 		NcProgressBar,
 		NcCheckboxRadioSwitch,
+		CastList,
 		Pencil,
 		Delete,
 		ArrowLeft,
@@ -311,6 +341,26 @@ export default {
 	computed: {
 		series() {
 			return this.seriesStore.currentSeries
+		},
+
+		statusText() {
+			return statusLabel(this.series?.status)
+		},
+
+		typeText() {
+			return typeLabel(this.series?.seriesType)
+		},
+
+		networkNames() {
+			return (this.series?.networks || []).map((n) => n.name).filter(Boolean).join(' · ')
+		},
+
+		scoreText() {
+			const s = this.series
+			if (!s || !s.tmdbVoteCount || s.tmdbRating === null || s.tmdbRating === undefined) {
+				return ''
+			}
+			return this.t('moviedb', '{score} % ({count} votes)', { score: s.tmdbRating, count: s.tmdbVoteCount })
 		},
 
 		loading() {
@@ -564,10 +614,27 @@ export default {
 
 .series-meta {
     display: flex;
-    gap: 16px;
-    color: var(--color-text-lighter);
-    margin-bottom: 16px;
+    gap: 4px 16px;
+    color: var(--color-text-maxcontrast);
+    margin: 0 0 16px;
     flex-wrap: wrap;
+
+    .meta-item {
+        display: flex;
+        gap: 4px;
+    }
+
+    dt::after {
+        content: ':';
+    }
+
+    dd {
+        margin: 0;
+    }
+}
+
+.series-cast {
+    margin-bottom: 24px;
 }
 
 .series-watch-summary {

@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Service;
 
 use OCA\MovieDB\Util\DateValue;
 use OCA\MovieDB\Util\TmdbPath;
+use OCA\MovieDB\Util\TmdbSeriesFields;
 
 /**
  * Validates and normalizes a decoded library export file before import.
@@ -225,6 +226,11 @@ class ImportValidator {
             'isFavorite' => ($s['isFavorite'] ?? false) === true,
             // Added in v1.9; older exports lack it and import as not stopped.
             'stoppedWatching' => ($s['stoppedWatching'] ?? false) === true,
+            // Added in v1.11; older exports lack them and import as null (the refresh job fills them).
+            'seriesType' => $this->str($s['seriesType'] ?? null, 32),
+            'networks' => TmdbSeriesFields::sanitizeNetworks($s['networks'] ?? null),
+            'tmdbRating' => $this->intRange($s['tmdbRating'] ?? null, 0, 100),
+            'tmdbVoteCount' => $this->intRange($s['tmdbVoteCount'] ?? null, 0, 100000000),
             'watch' => $watch,
             'episodes' => $episodes,
         ];

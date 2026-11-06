@@ -265,6 +265,42 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->assertNotNull($series->getTmdbRefreshedAt());
     }
 
+    public function testStoresTypeNetworksScoreAndFillsCast(): void {
+        $series = $this->series('Returning Series');
+        $this->episodeMapper->method('findBySeries')->willReturn([]);
+        $details = $this->details([1 => 0]) + [
+            'type' => 'Miniseries',
+            'networks' => [['id' => 1, 'name' => 'HBO', 'logo_path' => '/hbo.png']],
+            'vote_average' => 8.44,
+            'vote_count' => 1234,
+            'cast' => [['name' => 'A', 'character' => 'B', 'profilePath' => null]],
+            'director' => 'Jane Doe',
+        ];
+        $this->tmdb->method('getSeriesDetails')->willReturn($details);
+        $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => []]);
+
+        $this->service->refresh($series, 'alice', 'en-US');
+
+        $this->assertSame('Miniseries', $series->getSeriesType());
+        $this->assertSame([['name' => 'HBO', 'logoPath' => '/hbo.png']], $series->getNetworks());
+        $this->assertSame(84, $series->getTmdbRating());
+        $this->assertSame(1234, $series->getTmdbVoteCount());
+        $this->assertSame('A', $series->getCastData()[0]['name']);
+        $this->assertSame('Jane Doe', $series->getDirector());
+    }
+
+    public function testMissingTypeIsStoredAsEmptyStringSoTheBackfillDoesNotLoop(): void {
+        $series = $this->series('Ended');
+        $this->episodeMapper->method('findBySeries')->willReturn([]);
+        $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 0], 'Ended'));
+        $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => []]);
+
+        $this->service->refresh($series, 'alice', 'en-US');
+
+        $this->assertSame('', $series->getSeriesType());
+        $this->assertNull($series->getTmdbRating());
+    }
+
     public function testCallsTmdbBeforeOpeningTheTransaction(): void {
         $this->episodeMapper->method('findBySeries')->willReturn([]);
         $this->tmdb->method('getSeriesDetails')->willReturnCallback(function (): array {

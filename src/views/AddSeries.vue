@@ -232,6 +232,10 @@ export default {
 					status: details.status,
 					castData: details.cast,
 					director: details.director,
+					seriesType: details.type,
+					networks: (details.networks || []).map((n) => ({ name: n.name, logoPath: n.logo_path })),
+					tmdbRating: details.vote_count > 0 ? Math.round(details.vote_average * 10) : null,
+					tmdbVoteCount: details.vote_count ?? null,
 					// TMDB season list drives per-season episode fetch server-side.
 					seasons: details.seasons || [],
 				}

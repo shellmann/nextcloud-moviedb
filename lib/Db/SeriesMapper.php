@@ -23,7 +23,8 @@ class SeriesMapper extends QBMapper {
         'id', 'user_id', 'library_id', 'tmdb_id', 'title', 'original_title', 'poster_path',
         'backdrop_path', 'overview', 'genre_ids', 'first_air_date', 'first_air_year',
         'number_of_seasons', 'number_of_episodes', 'status', 'cast_data', 'director',
-        'is_favorite', 'stopped_watching', 'tmdb_refreshed_at', 'created_at', 'updated_at',
+        'is_favorite', 'stopped_watching', 'tmdb_refreshed_at', 'series_type', 'networks',
+        'tmdb_rating', 'tmdb_vote_count', 'created_at', 'updated_at',
     ];
 
     public function __construct(IDBConnection $db) {
@@ -289,6 +290,8 @@ class SeriesMapper extends QBMapper {
             ->where($qb->expr()->isNotNull('tmdb_id'))
             ->andWhere($qb->expr()->orX(
                 $qb->expr()->isNull('tmdb_refreshed_at'),
+                // Shows from before 1.11 have no type yet: backfill them, ended ones too.
+                $qb->expr()->isNull('series_type'),
                 $qb->expr()->andX(
                     $qb->expr()->orX($qb->expr()->isNull('status'), $qb->expr()->notIn('status', $endedStatuses)),
                     $qb->expr()->lt('tmdb_refreshed_at', $qb->createNamedParameter($ongoingBefore))

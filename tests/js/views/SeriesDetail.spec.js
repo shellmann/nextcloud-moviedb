@@ -4,6 +4,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLibrariesStore } from '@/stores/libraries.js'
 import { useSeriesStore } from '@/stores/series.js'
 import SeriesDetail from '@/views/SeriesDetail.vue'
+import { expectNoAxeViolations } from '../a11y.js'
 
 vi.mock('@nextcloud/vue', () => ({
 	NcButton: { emits: ['click'], template: '<button class="nc-button" @click="$emit(\'click\')"><slot /></button>' },
@@ -246,5 +247,55 @@ describe('SeriesDetail seasons and episodes for assistive technology', () => {
 		const labels = wrapper.findAll('.episode-check .nc-switch').map((l) => l.attributes('data-aria-label'))
 
 		expect(labels).toEqual(['S01E01 Pilot watched', 'S01E02 Episode 2 watched', 'S02E01 Return watched'])
+	})
+})
+
+describe('SeriesDetail TMDB details', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+	})
+
+	it('shows type, network and score with readable labels, vote count included as text', async () => {
+		const { wrapper } = await mountDetail(show({
+			firstAirYear: 2019, status: 'Ended', seriesType: 'Miniseries',
+			networks: [{ name: 'HBO', logoPath: null }, { name: 'Sky', logoPath: null }],
+			tmdbRating: 84, tmdbVoteCount: 1234, director: 'Jane Doe',
+		}))
+
+		const meta = wrapper.find('dl.series-meta')
+		expect(meta.exists()).toBe(true)
+		expect(meta.text()).toContain('Miniseries')
+		expect(meta.text()).toContain('HBO · Sky')
+		expect(meta.text()).toContain('TMDB user score')
+		expect(meta.text()).toContain('84 % (1234 votes)')
+		expect(meta.text()).toContain('Jane Doe')
+	})
+
+	it('hides the score when nobody voted and omits unknown fields', async () => {
+		const { wrapper } = await mountDetail(show({ tmdbRating: null, tmdbVoteCount: 0, seriesType: '' }))
+
+		expect(wrapper.find('.series-meta').text()).not.toContain('TMDB user score')
+		expect(wrapper.find('.series-meta').text()).not.toContain('Type')
+	})
+
+	it('shows the cast between overview and seasons', async () => {
+		const { wrapper } = await mountDetail(show({
+			overview: 'Plot',
+			castData: [{ name: 'Phoebe', character: 'Fleabag' }],
+		}))
+
+		expect(wrapper.find('.series-cast li').text()).toContain('Phoebe')
+	})
+
+	it('has no axe violations', async () => {
+		const { wrapper } = await mountDetail(show({
+			firstAirYear: 2019, status: 'Ended', seriesType: 'Scripted', networks: [{ name: 'BBC', logoPath: null }],
+			tmdbRating: 90, tmdbVoteCount: 10, castData: [{ name: 'A', character: 'B' }],
+		}))
+		await expectNoAxeViolations(wrapper)
 	})
 })

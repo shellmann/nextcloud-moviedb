@@ -71,15 +71,7 @@
 						<p>{{ latestWatch.review }}</p>
 					</div>
 
-					<div v-if="movie.castData && movie.castData.length" class="movie-cast">
-						<h3>{{ t('moviedb', 'Cast') }}</h3>
-						<div class="cast-list">
-							<div v-for="actor in movie.castData.slice(0, 6)" :key="actor.name" class="cast-item">
-								<strong>{{ actor.name }}</strong>
-								<span>{{ actor.character }}</span>
-							</div>
-						</div>
-					</div>
+					<CastList :cast="movie.castData || []" class="movie-cast" />
 
 					<!-- Watch history -->
 					<div class="watch-history">
@@ -187,6 +179,7 @@ import Delete from 'vue-material-design-icons/Delete.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
+import CastList from '../components/CastList.vue'
 import RatingStars from '../components/RatingStars.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getLanguageFlag, getLanguageName } from '../constants.js'
@@ -205,6 +198,7 @@ export default {
 		NcDialog,
 		NcActions,
 		NcActionButton,
+		CastList,
 		Pencil,
 		Delete,
 		ArrowLeft,
@@ -477,31 +471,6 @@ export default {
     p {
         margin: 0;
         white-space: pre-wrap;
-    }
-}
-
-.movie-cast {
-    h3 {
-        margin: 0 0 12px;
-        font-size: 1.1em;
-    }
-}
-
-.cast-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 12px;
-}
-
-.cast-item {
-    strong {
-        display: block;
-        font-size: 14px;
-    }
-
-    span {
-        font-size: 12px;
-        color: var(--color-text-lighter);
     }
 }
 

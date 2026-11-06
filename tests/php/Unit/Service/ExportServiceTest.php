@@ -278,7 +278,7 @@ class ExportServiceTest extends TestCase {
         $this->assertSame(
             ['tmdbId', 'title', 'originalTitle', 'posterPath', 'backdropPath', 'overview', 'genreIds', 'firstAirDate',
                 'firstAirYear', 'numberOfSeasons', 'numberOfEpisodes', 'status', 'castData', 'director', 'isFavorite', 'stoppedWatching',
-                'watch', 'episodes'],
+                'seriesType', 'networks', 'tmdbRating', 'tmdbVoteCount', 'watch', 'episodes'],
             array_keys($data['series'][0])
         );
         $this->assertSame(
