@@ -55,6 +55,8 @@ class DismissLibraryNotificationsJobTest extends TestCase {
     public function testDoesNothingWhenTheUserIsAMemberAgainButStillRemovesItself(): void {
         $this->members->method('findMembership')->willReturn(new LibraryMember());
         $this->service->expects($this->never())->method('dismissLibrary');
+        // the old pending time must not survive: a later leave would inherit an expired deadline
+        $this->service->expects($this->once())->method('clearCleanupPending')->with(5, 'bob');
         $this->jobList->expects($this->once())->method('remove');
 
         $this->job()->runNow(['libraryId' => 5, 'userId' => 'bob']);

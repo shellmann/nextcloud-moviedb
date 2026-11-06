@@ -169,7 +169,7 @@ class ReleaseNotificationService {
         return $this->cleanupPendingSince($libraryId, $userId) !== null;
     }
 
-    private function clearCleanupPending(int $libraryId, ?string $userId): void {
+    public function clearCleanupPending(int $libraryId, ?string $userId): void {
         if ($userId !== null) {
             $this->userConfig->deleteUserConfig($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId);
         }

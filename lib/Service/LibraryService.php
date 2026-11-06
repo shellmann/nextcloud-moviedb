@@ -384,7 +384,12 @@ class LibraryService {
         $member->setPermissionEdit($canEdit);
         $member->setCreatedAt($now);
 
-        return $this->memberMapper->insert($member);
+        $inserted = $this->memberMapper->insert($member);
+        // Back in the library: a pending cleanup from an earlier leave is moot, and its old time
+        // must not shorten the deadline of a later one.
+        $this->notifications?->clearCleanupPending($libraryId, $memberUserId);
+
+        return $inserted;
     }
 
     /**

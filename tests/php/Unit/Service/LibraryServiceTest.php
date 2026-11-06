@@ -311,6 +311,17 @@ class LibraryServiceTest extends TestCase {
         $this->serviceWith($notifications, $jobs)->removeMember(5, 'alice', 'bob');
     }
 
+    public function testAddingAMemberClearsAPendingCleanupOfAnEarlierLeave(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn(null);
+        $this->memberMapper->method('insert')->willReturnArgument(0);
+        $this->userManager->method('userExists')->willReturn(true);
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->expects($this->once())->method('clearCleanupPending')->with(5, 'bob');
+
+        $this->serviceWith($notifications, null)->addMember(5, 'alice', 'bob', false);
+    }
+
     public function testRemovingANonMemberWithNothingPendingQueuesNothing(): void {
         // Any authenticated user can call "leave" for any library: that must stay free.
         $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));

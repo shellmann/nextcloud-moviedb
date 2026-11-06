@@ -59,6 +59,9 @@ class DismissLibraryNotificationsJob extends TimedJob {
             $isGone = fn (): bool => $this->members->findMembership($libraryId, $userId) === null;
             if ($isGone()) {
                 $this->service->dismissLibrary($libraryId, $userId, true, $isGone);
+            } else {
+                // The user is back: the cleanup is moot, and its time must not linger for a later leave.
+                $this->service->clearCleanupPending($libraryId, $userId);
             }
             // done, or moot because the user is back: the job has served its purpose
             $this->jobList->remove($this, $argument);
