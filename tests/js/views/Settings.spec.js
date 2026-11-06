@@ -550,6 +550,17 @@ describe('Settings notifications and calendar', () => {
 		expect(input.element.disabled).toBe(false)
 	})
 
+	it('does not disable the switch while saving (a disabled input drops keyboard focus)', async () => {
+		let finish
+		settings.update = vi.fn().mockReturnValue(new Promise((resolve) => { finish = resolve }))
+
+		await switchFor(CALENDAR).find('input').setValue(false)
+
+		expect(switchFor(CALENDAR).find('input').element.disabled).toBe(false)
+		finish()
+		await flushPromises()
+	})
+
 	it('has a visible hint under each switch', () => {
 		const hints = wrapper.findAll('.hint').map((h) => h.text())
 		expect(hints.some((h) => h.includes('Nextcloud notification'))).toBe(true)

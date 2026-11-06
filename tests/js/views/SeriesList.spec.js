@@ -12,9 +12,9 @@ vi.mock('@nextcloud/vue', () => ({
 	NcTextField: { template: '<input />' },
 	// Renders the options so a test can pick one, like a user would.
 	NcSelect: {
-		props: ['modelValue', 'options', 'ariaLabel'],
+		props: ['modelValue', 'options', 'ariaLabelCombobox'],
 		emits: ['update:modelValue'],
-		template: '<div class="nc-select" :data-label="ariaLabel"><button v-for="o in options" :key="String(o.id)" class="option" @click="$emit(\'update:modelValue\', o)">{{ o.label }}</button><span class="selected">{{ modelValue?.label }}</span></div>',
+		template: '<div class="nc-select" :data-label="ariaLabelCombobox"><button v-for="o in options" :key="String(o.id)" class="option" @click="$emit(\'update:modelValue\', o)">{{ o.label }}</button><span class="selected">{{ modelValue?.label }}</span></div>',
 	},
 }))
 

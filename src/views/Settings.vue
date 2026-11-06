@@ -25,7 +25,9 @@
 						:type="showApiKey ? 'text' : 'password'"
 						:placeholder="hasUserApiKey ? t('moviedb', 'Enter new key to update') : t('moviedb', 'Enter your TMDB API key')" />
 				</div>
-				<NcButton @click="showApiKey = !showApiKey">
+				<NcButton
+					:aria-label="showApiKey ? t('moviedb', 'Hide API key') : t('moviedb', 'Show API key')"
+					@click="showApiKey = !showApiKey">
 					<template #icon>
 						<Eye v-if="!showApiKey" :size="20" />
 						<EyeOff v-else :size="20" />
@@ -47,6 +49,7 @@
 				<NcSelect
 					v-model="selectedLanguage"
 					:options="languageOptions"
+					:aria-label-combobox="t('moviedb', 'Default TMDB Language')"
 					:placeholder="t('moviedb', 'Select language')" />
 				<p class="hint">
 					{{ t('moviedb', 'Language used for fetching movie metadata from TMDB (title, description, genres).') }}
@@ -69,7 +72,6 @@
 			<NcCheckboxRadioSwitch
 				:modelValue="showContinueWatching"
 				type="switch"
-				:disabled="savingDashboard"
 				@update:modelValue="saveDashboardSwitch('showContinueWatching', $event)">
 				{{ t('moviedb', 'Show "Continue watching" on the dashboard') }}
 			</NcCheckboxRadioSwitch>
@@ -79,7 +81,6 @@
 			<NcCheckboxRadioSwitch
 				:modelValue="showComingUp"
 				type="switch"
-				:disabled="savingDashboard"
 				@update:modelValue="saveDashboardSwitch('showComingUp', $event)">
 				{{ t('moviedb', 'Show "Coming up" on the dashboard') }}
 			</NcCheckboxRadioSwitch>
@@ -93,7 +94,6 @@
 			<NcCheckboxRadioSwitch
 				:modelValue="notifyReleases"
 				type="switch"
-				:disabled="savingDashboard"
 				@update:modelValue="saveDashboardSwitch('notifyReleases', $event)">
 				{{ t('moviedb', 'Notify me when a new episode or a watchlist title is released') }}
 			</NcCheckboxRadioSwitch>
@@ -103,7 +103,6 @@
 			<NcCheckboxRadioSwitch
 				:modelValue="showCalendar"
 				type="switch"
-				:disabled="savingDashboard"
 				@update:modelValue="saveDashboardSwitch('showCalendar', $event)">
 				{{ t('moviedb', 'Show the "MovieDB – Upcoming" calendar') }}
 			</NcCheckboxRadioSwitch>
@@ -124,7 +123,10 @@
 					:key="platform.id"
 					class="platform-item">
 					<span>{{ platform.name }}</span>
-					<NcButton variant="error" @click="deletePlatform(platform.id)">
+					<NcButton
+						variant="error"
+						:aria-label="t('moviedb', 'Delete platform {name}', { name: platform.name })"
+						@click="deletePlatform(platform.id)">
 						<template #icon>
 							<Delete :size="20" />
 						</template>
@@ -359,7 +361,6 @@ export default {
 			languageOptions: getTmdbLanguageOptions(),
 			newPlatformName: '',
 			saving: false,
-			savingDashboard: false,
 			showContinueWatching: this.settingsStore.showContinueWatching,
 			showComingUp: this.settingsStore.showComingUp,
 			notifyReleases: this.settingsStore.notifyReleases,
@@ -466,7 +467,8 @@ export default {
 		},
 
 		/**
-		 * Saves a dashboard switch right away; on failure it flips back.
+		 * Saves a switch right away; on failure it flips back. The switch is not disabled while
+		 * saving: a disabled input drops keyboard focus.
 		 *
 		 * @param {'showContinueWatching'|'showComingUp'|'notifyReleases'|'showCalendar'} field - Setting to change
 		 * @param {boolean} value - New switch state
@@ -474,7 +476,6 @@ export default {
 		async saveDashboardSwitch(field, value) {
 			const previous = this[field]
 			this[field] = value
-			this.savingDashboard = true
 			try {
 				await this.settingsStore.update({ [field]: value })
 				showSuccess(t('moviedb', 'Settings saved successfully.'))
@@ -482,8 +483,6 @@ export default {
 				console.error('Failed to save dashboard setting:', error)
 				this[field] = previous
 				showError(t('moviedb', 'Failed to save settings. Please try again.'))
-			} finally {
-				this.savingDashboard = false
 			}
 		},
 
@@ -655,11 +654,14 @@ export default {
     }
 
     .section-description {
-        color: var(--color-text-lighter);
+        color: var(--color-text-maxcontrast);
         margin-bottom: 16px;
 
+        // The primary link colour is 4.4:1 on the dark section background (needs 4.5:1),
+        // so these in-text links use the main text colour and are told apart by the underline.
         a {
-            color: var(--color-primary-element);
+            color: var(--color-main-text);
+            text-decoration: underline;
         }
     }
 
@@ -686,12 +688,19 @@ export default {
         font-weight: bold;
     }
 
+    // NcSelect has a 260px minimum width, which overflows a 320px screen (WCAG reflow)
+    :deep(.v-select.select) {
+        min-width: 0;
+        max-width: 100%;
+    }
+
     .hint {
         font-size: 12px;
-        color: var(--color-text-lighter);
+        color: var(--color-text-maxcontrast);
         margin: 4px 0 0;
 
         &.hint-note {
+            color: var(--color-main-text);
             font-style: italic;
             padding: 8px;
             background: var(--color-background-darker);

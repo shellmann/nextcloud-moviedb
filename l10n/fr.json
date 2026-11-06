@@ -533,7 +533,10 @@
 		"Notify me when a new episode or a watchlist title is released": "Me prévenir quand un nouvel épisode ou un titre de la liste à voir sort",
 		"Show the \"MovieDB – Upcoming\" calendar": "Afficher le calendrier « MovieDB – À venir »",
 		"Switched to library \"{name}\"": "Passage à la bibliothèque « {name} »",
-		"You get a Nextcloud notification for shows you follow and for watchlist titles, in every library you belong to.": "Vous recevez une notification Nextcloud pour les séries que vous suivez et les titres de la liste à voir, dans chaque bibliothèque dont vous faites partie."
+		"You get a Nextcloud notification for shows you follow and for watchlist titles, in every library you belong to.": "Vous recevez une notification Nextcloud pour les séries que vous suivez et les titres de la liste à voir, dans chaque bibliothèque dont vous faites partie.",
+		"Hide API key": "Masquer la clé d'API",
+		"Show API key": "Afficher la clé d'API",
+		"Delete platform {name}": "Supprimer la plateforme {name}"
 	},
 	"pluralForm": "nplurals=2; plural=(n > 1);"
 }

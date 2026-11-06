@@ -28,14 +28,14 @@
 				v-model="selectedType"
 				:options="typeOptions"
 				:placeholder="t('moviedb', 'Type')"
-				:aria-label="t('moviedb', 'Filter by type')"
+				:aria-label-combobox="t('moviedb', 'Filter by type')"
 				:clearable="false"
 				@update:modelValue="onTypeChange" />
 			<NcSelect
 				v-model="selectedSort"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
-				:aria-label="t('moviedb', 'Sort by')"
+				:aria-label-combobox="t('moviedb', 'Sort by')"
 				@update:modelValue="onSortChange" />
 		</div>
 
@@ -158,14 +158,16 @@
 					<NcSelect
 						v-model="watchedData.platform"
 						:options="platformOptions"
-						:placeholder="t('moviedb', 'Select platform')" />
+						:placeholder="t('moviedb', 'Select platform')"
+						:aria-label-combobox="t('moviedb', 'Select platform')" />
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Language Watched') }}</label>
 					<NcSelect
 						v-model="watchedData.language"
 						:options="languageOptions"
-						:placeholder="t('moviedb', 'Select language')" />
+						:placeholder="t('moviedb', 'Select language')"
+						:aria-label-combobox="t('moviedb', 'Select language')" />
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Date Watched') }}</label>
@@ -176,7 +178,8 @@
 					<NcSelect
 						v-model="watchedData.rating"
 						:options="ratingOptions"
-						:placeholder="t('moviedb', 'Select rating')" />
+						:placeholder="t('moviedb', 'Select rating')"
+						:aria-label-combobox="t('moviedb', 'Select rating')" />
 				</div>
 				<div class="modal-actions">
 					<NcButton @click="showWatchedModal = false">
@@ -198,7 +201,8 @@
 					<NcSelect
 						v-model="editData.priority"
 						:options="priorityOptions"
-						:placeholder="t('moviedb', 'Select priority')" />
+						:placeholder="t('moviedb', 'Select priority')"
+						:aria-label-combobox="t('moviedb', 'Select priority')" />
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Notes') }}</label>

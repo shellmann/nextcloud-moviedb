@@ -168,7 +168,7 @@
 						class="chart-media-filter"
 						:options="chartMediaTypeOptions"
 						:clearable="false"
-						:aria-label="t('moviedb', 'Show')"
+						:aria-label-combobox="t('moviedb', 'Show')"
 						@update:modelValue="onChartMediaTypeChange" />
 				</div>
 				<h4>{{ t('moviedb', 'Watches by Year') }}</h4>

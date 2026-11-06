@@ -61,14 +61,16 @@
 								<NcSelect
 									v-model="selectedPlatform"
 									:options="platformOptions"
-									:placeholder="t('moviedb', 'Select platform')" />
+									:placeholder="t('moviedb', 'Select platform')"
+									:aria-label-combobox="t('moviedb', 'Select platform')" />
 							</div>
 							<div class="watch-meta-field">
 								<label>{{ t('moviedb', 'Language Watched') }}</label>
 								<NcSelect
 									v-model="selectedLanguage"
 									:options="languageOptions"
-									:placeholder="t('moviedb', 'Select language')" />
+									:placeholder="t('moviedb', 'Select language')"
+									:aria-label-combobox="t('moviedb', 'Select language')" />
 							</div>
 						</div>
 						<div class="watch-meta-row">
@@ -81,7 +83,8 @@
 								<NcSelect
 									v-model="selectedRating"
 									:options="ratingOptions"
-									:placeholder="t('moviedb', 'Select rating')" />
+									:placeholder="t('moviedb', 'Select rating')"
+									:aria-label-combobox="t('moviedb', 'Select rating')" />
 							</div>
 						</div>
 					</div>

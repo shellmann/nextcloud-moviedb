@@ -71,7 +71,8 @@
 						<NcSelect
 							v-model="selectedPriority"
 							:options="priorityOptions"
-							:placeholder="t('moviedb', 'Select priority')" />
+							:placeholder="t('moviedb', 'Select priority')"
+							:aria-label-combobox="t('moviedb', 'Select priority')" />
 					</div>
 
 					<div class="form-actions">

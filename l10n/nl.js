@@ -534,6 +534,9 @@ OC.L10N.register(
         "Notify me when a new episode or a watchlist title is released": "Waarschuw me als een nieuwe aflevering of een titel van de kijklijst uitkomt",
         "Show the \"MovieDB – Upcoming\" calendar": "Agenda 'MovieDB – Binnenkort' tonen",
         "Switched to library \"{name}\"": "Overgeschakeld naar bibliotheek '{name}'",
-        "You get a Nextcloud notification for shows you follow and for watchlist titles, in every library you belong to.": "Je krijgt een Nextcloud-melding voor series die je volgt en titels van de kijklijst, in elke bibliotheek waartoe je behoort."
+        "You get a Nextcloud notification for shows you follow and for watchlist titles, in every library you belong to.": "Je krijgt een Nextcloud-melding voor series die je volgt en titels van de kijklijst, in elke bibliotheek waartoe je behoort.",
+        "Hide API key": "API-sleutel verbergen",
+        "Show API key": "API-sleutel tonen",
+        "Delete platform {name}": "Platform {name} verwijderen"
     },
 "nplurals=2; plural=(n != 1);");
