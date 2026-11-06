@@ -1,4 +1,5 @@
 import { flushPromises, mount } from '@vue/test-utils'
+import { reactive } from 'vue'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Watchlist from '@/views/Watchlist.vue'
@@ -21,7 +22,7 @@ const IconStub = { template: '<span />' }
 
 const routerReplace = vi.fn()
 
-function mountView(query = {}) {
+function mountView(query = {}, route = { path: '/watchlist', query }) {
 	return mount(Watchlist, {
 		global: {
 			stubs: {
@@ -33,7 +34,7 @@ function mountView(query = {}) {
 				PlaylistPlay: IconStub,
 				Plus: IconStub,
 			},
-			mocks: { t: (app, text) => text, $router: { push: vi.fn(), replace: routerReplace }, $route: { path: '/watchlist', query } },
+			mocks: { t: (app, text) => text, $router: { push: vi.fn(), replace: routerReplace }, $route: route },
 		},
 	})
 }
@@ -155,5 +156,58 @@ describe('Watchlist link to an entry on a later page', () => {
 
 		expect(store.page).toBe(1)
 		expect(wrapper.findAll('.watchlist-item--highlight')).toHaveLength(0)
+	})
+})
+
+describe('Watchlist already open when a link arrives', () => {
+	let store
+	const pages = {
+		1: [{ id: 1, title: 'Heat 2', mediaType: 'movie', priority: 0 }],
+		2: [{ id: 60, title: 'Dune', mediaType: 'movie', priority: 0 }],
+	}
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		store = useWatchlistStore()
+		store.totalPages = 2
+		store.fetchAll = vi.fn(async () => { store.items = pages[store.page] })
+		Element.prototype.scrollIntoView = vi.fn()
+	})
+
+	it('reloads and reveals the entry when ?item= is added to the open route', async () => {
+		const route = reactive({ path: '/watchlist', query: {} })
+		const wrapper = mountView({}, route)
+		await flushPromises()
+		expect(wrapper.findAll('.watchlist-item--highlight')).toHaveLength(0)
+
+		route.query = { item: '60' }
+		await flushPromises()
+
+		expect(wrapper.find('#watchlist-item-60').classes()).toContain('watchlist-item--highlight')
+	})
+
+	it('a newer user action cancels the search for the linked entry', async () => {
+		let releasePage2
+		store.fetchAll = vi.fn(async () => {
+			if (store.page === 2) {
+				await new Promise((resolve) => { releasePage2 = resolve })
+			}
+			store.items = pages[store.page]
+		})
+		const wrapper = mountView({ item: '60' })
+		await flushPromises()
+		expect(store.page).toBe(2)
+
+		wrapper.vm.onTypeChange(null) // the user picks another filter while the scan waits
+		releasePage2()
+		await flushPromises()
+
+		expect(wrapper.findAll('.watchlist-item--highlight')).toHaveLength(0)
+		// the filter change reset the page itself; the old scan did not move it again
+		expect(store.page).toBe(1)
 	})
 })

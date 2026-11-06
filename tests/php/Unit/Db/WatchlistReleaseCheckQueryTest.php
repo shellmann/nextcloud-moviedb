@@ -40,13 +40,14 @@ class WatchlistReleaseCheckQueryTest extends TestCase {
         return end($this->rec->executed) ?: '';
     }
 
-    public function testPicksItemsWithoutDateOrWithADateFromTodayOn(): void {
+    public function testPicksItemsWithoutDateOrWithADateWithinTheCorrectionWindow(): void {
         $sql = $this->sql();
 
         $this->assertStringContainsString('tmdb_id IS NOT NULL', $sql);
         $this->assertStringContainsString('release_date IS NULL', $sql);
         $this->assertStringContainsString('release_date >= :', $sql);
-        $this->assertContains('2026-10-29', $this->rec->params);
+        // today minus the 7-day correction window: a postponement shortly after the release is still noticed
+        $this->assertContains('2026-10-22', $this->rec->params);
     }
 
     public function testNeverPicksReleasedTitles(): void {

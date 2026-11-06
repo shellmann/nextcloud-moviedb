@@ -150,7 +150,7 @@ A background job brings the episodes of all TV shows up to date with TMDB once a
 
 ### Keeping watchlist release dates up to date
 
-A second background job runs once a day and asks TMDB for every watchlist title that has no release date yet or one that is still ahead. It fills in or moves the date and shows a "New date" badge on the poster for 30 days; the cross on the badge or editing the item dismisses it. Titles that have come out are not asked again. The job uses the same TMDB key and the same Cron advice as the TV show job above.
+A second background job runs once a day and asks TMDB for every watchlist title that has no release date yet or one that is still ahead. It fills in or moves the date and shows a "New date" badge on the poster for 30 days; the cross on the badge or editing the item dismisses it. Titles that have been out for more than a week are not asked again. The job uses the same TMDB key and the same Cron advice as the TV show job above.
 
 ### Notifications and the "MovieDB – Upcoming" calendar
 

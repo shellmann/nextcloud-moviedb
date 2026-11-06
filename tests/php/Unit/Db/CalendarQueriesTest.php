@@ -103,11 +103,14 @@ class CalendarQueriesTest extends TestCase {
     }
 
     public function testMarkingNotifiedUpdatesOnlyTheGivenIdsInChunks(): void {
-        (new EpisodeMapper($this->db))->markNotified(range(1, 1200), '2026-11-06 10:00:00');
+        (new EpisodeMapper($this->db))->markNotified(array_fill_keys(range(1, 1200), '2026-11-06'), '2026-11-06 10:00:00');
 
         $this->assertCount(3, $this->rec->executed);
         $this->assertStringContainsString('UPDATE moviedb_episodes SET notified_at =', $this->rec->executed[0]);
         $this->assertStringContainsString('id IN', $this->rec->executed[0]);
+        // only while the air date is still the one the row was selected with (a moved date keeps its cleared stamp)
+        $this->assertStringContainsString('air_date =', $this->rec->executed[0]);
+        $this->assertStringContainsString('notified_at IS NULL', $this->rec->executed[0]);
     }
     public function testEpisodesToNotifyKeepOnlyShowsAddedBeforeTheEpisodeAired(): void {
         $row = fn (int $id, string $created, string $airDate) => ['id' => $id, 'air_date' => $airDate, 'series_created_at' => $created];
@@ -120,6 +123,10 @@ class CalendarQueriesTest extends TestCase {
         $rows = (new EpisodeMapper($this->db))->findToNotify('2026-11-04', '2026-11-06');
 
         $this->assertSame([1], array_column($rows, 'id'));
+        // the two rows that can never be announced are stamped as handled, so they do not
+        // fill the batch every hour
+        $updates = array_values(array_filter($this->rec->executed, fn (string $q): bool => str_starts_with($q, 'UPDATE moviedb_episodes')));
+        $this->assertCount(1, $updates, 'one UPDATE per air date (both skipped rows share it)');
     }
 
     public function testWatchlistToNotifyKeepOnlyItemsAddedBeforeTheirRelease(): void {

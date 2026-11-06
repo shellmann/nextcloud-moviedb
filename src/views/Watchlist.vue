@@ -293,6 +293,7 @@ export default {
 		return {
 			highlightedId: null,
 			highlightTimer: null,
+			revealToken: 0,
 			showWatchedModal: false,
 			showEditModal: false,
 			showRemoveDialog: false,
@@ -362,21 +363,44 @@ export default {
 		},
 	},
 
-	async created() {
-		this.selectedSort = this.sortOptions[0]
-		this.selectedType = this.typeOptions[0]
-		this.watchlistStore.resetFilters()
-		// Wait for libraries so the active library id is known before fetching.
-		await this.librariesStore.whenReady()
-		await this.watchlistStore.fetchAll()
-		this.revealLinkedItem()
+	watch: {
+		// A link to an entry while the watchlist is already open (the router reuses this component,
+		// and a link into another library has switched the library underneath): reload, then reveal.
+		'$route.query.item': function (item) {
+			if (item) {
+				this.loadAndReveal()
+			}
+		},
+
+		// A library switch invalidates a running search for a linked entry.
+		'librariesStore.activeLibraryId': function () {
+			this.revealToken++
+		},
+	},
+
+	created() {
+		this.loadAndReveal()
 	},
 
 	beforeUnmount() {
+		this.revealToken++
 		clearTimeout(this.highlightTimer)
 	},
 
 	methods: {
+		async loadAndReveal() {
+			const token = ++this.revealToken
+			this.selectedSort = this.sortOptions[0]
+			this.selectedType = this.typeOptions[0]
+			this.watchlistStore.resetFilters()
+			// Wait for libraries so the active library id is known before fetching.
+			await this.librariesStore.whenReady()
+			if (token !== this.revealToken) { return }
+			await this.watchlistStore.fetchAll()
+			if (token !== this.revealToken) { return }
+			this.revealLinkedItem()
+		},
+
 		/**
 		 * Opened from a notification or calendar event (`?item=<id>`): scrolls to the entry,
 		 * moves keyboard focus to it (so screen readers read it) and highlights it for a moment.
@@ -386,6 +410,10 @@ export default {
 			if (!Number.isInteger(id)) {
 				return
 			}
+			// Any newer action (another filter, page, library, link, leaving the page) cancels this
+			// search; it then neither changes pages any more nor restores an old one.
+			const token = ++this.revealToken
+			const stale = () => token !== this.revealToken
 			// The list is paged: look through the pages until the entry shows up. An entry that
 			// does not exist any more is skipped silently and the first page comes back.
 			const startPage = this.watchlistStore.page
@@ -394,6 +422,7 @@ export default {
 				if (page === startPage) { continue }
 				this.watchlistStore.page = page
 				await this.watchlistStore.fetchAll()
+				if (stale()) { return }
 				found = this.items.some((i) => i.id === id)
 			}
 			if (!found) {
@@ -403,6 +432,7 @@ export default {
 				}
 				return
 			}
+			if (stale()) { return }
 			this.highlightedId = id
 			// Drop ?item= so a reload or a shared URL does not highlight the entry again.
 			const query = { ...this.$route.query }
@@ -425,16 +455,19 @@ export default {
 		},
 
 		onSortChange(selected) {
+			this.revealToken++
 			if (selected) {
 				this.watchlistStore.setSort(selected.id, 'DESC')
 			}
 		},
 
 		onTypeChange(selected) {
+			this.revealToken++
 			this.watchlistStore.setTypeFilter(selected ? selected.id : 'all')
 		},
 
 		goToPage(page) {
+			this.revealToken++
 			this.watchlistStore.setPage(page)
 		},
 

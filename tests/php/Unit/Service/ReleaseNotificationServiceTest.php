@@ -98,7 +98,7 @@ class ReleaseNotificationServiceTest extends TestCase {
 
     public function testNotifiesOwnerAndMemberOnceAndStampsTheEpisodes(): void {
         $this->episodes->method('findToNotify')->with('2026-11-04', '2026-11-06')->willReturn([$this->row(1, 1)]);
-        $this->episodes->expects($this->once())->method('markNotified')->with([1], $this->matchesRegularExpression('/^\d{4}-\d{2}-\d{2} /'));
+        $this->episodes->expects($this->once())->method('markNotified')->with([1 => '2026-11-06'], $this->matchesRegularExpression('/^\d{4}-\d{2}-\d{2} /'));
 
         $count = $this->service->notifyAiredEpisodes('2026-11-06');
 
@@ -111,7 +111,7 @@ class ReleaseNotificationServiceTest extends TestCase {
 
     public function testEpisodesOfOneShowAndDayAreOneNotificationWithACount(): void {
         $this->episodes->method('findToNotify')->willReturn([$this->row(1, 1), $this->row(2, 2), $this->row(3, 3)]);
-        $this->episodes->expects($this->once())->method('markNotified')->with([1, 2, 3], $this->anything());
+        $this->episodes->expects($this->once())->method('markNotified')->with([1 => '2026-11-06', 2 => '2026-11-06', 3 => '2026-11-06'], $this->anything());
 
         $this->assertSame(2, $this->service->notifyAiredEpisodes('2026-11-06'));
         $this->assertSame(3, $this->sent[0]['params']['count']);
@@ -165,8 +165,9 @@ class ReleaseNotificationServiceTest extends TestCase {
         $item->setUserId('alice');
         $item->setTitle('Dune Part Three');
         $item->setMediaType('movie');
+        $item->setReleaseDate('2026-11-06');
         $this->watchlist->method('findToNotify')->with('2026-11-04', '2026-11-06')->willReturn([$item]);
-        $this->watchlist->expects($this->once())->method('markReleaseNotified')->with([9], $this->anything());
+        $this->watchlist->expects($this->once())->method('markReleaseNotified')->with([9 => '2026-11-06'], $this->anything());
 
         $this->assertSame(2, $this->service->notifyReleasedWatchlist('2026-11-06'));
         $this->assertSame(['watchlist', '9'], $this->sent[0]['object']);
@@ -229,6 +230,7 @@ class ReleaseNotificationServiceTest extends TestCase {
         $ok->setId(9);
         $ok->setUserId('carol');
         $ok->setTitle('Solo');
+        $ok->setReleaseDate('2026-11-06');
         $shared = new WatchlistItem();
         $shared->setId(10);
         $shared->setUserId('alice');
@@ -236,7 +238,7 @@ class ReleaseNotificationServiceTest extends TestCase {
         $shared->setTitle('Shared');
         $this->failFor = ['bob'];
         $this->watchlist->method('findToNotify')->willReturn([$ok, $shared]);
-        $this->watchlist->expects($this->once())->method('markReleaseNotified')->with([9], $this->anything());
+        $this->watchlist->expects($this->once())->method('markReleaseNotified')->with([9 => '2026-11-06'], $this->anything());
 
         $this->service->notifyReleasedWatchlist('2026-11-06');
     }

@@ -86,7 +86,7 @@ class ReleaseNotificationService {
             // (inside the look-back window). Recipients that already got it may see it twice.
             if (!$failed) {
                 foreach ($group as $r) {
-                    $done[] = (int)$r['id'];
+                    $done[(int)$r['id']] = (string)$r['air_date'];
                 }
             }
         }
@@ -126,7 +126,7 @@ class ReleaseNotificationService {
                 $failed = $failed || $result < 0;
             }
             if (!$failed) {
-                $done[] = (int)$item->getId();
+                $done[(int)$item->getId()] = (string)$item->getReleaseDate();
             }
         }
 
@@ -136,26 +136,29 @@ class ReleaseNotificationService {
     }
 
     /** Removes the pending notifications about one show (it was deleted). */
-    public function dismissSeries(int $seriesId, ?string $userId = null): void {
-        $this->dismiss(Notifier::OBJECT_SERIES, (string)$seriesId, $userId);
+    public function dismissSeries(int $seriesId, ?string $userId = null, bool $strict = false): void {
+        $this->dismiss(Notifier::OBJECT_SERIES, (string)$seriesId, $userId, $strict);
     }
 
     /** Removes the pending notifications about one watchlist item. */
-    public function dismissWatchlistItem(int $itemId, ?string $userId = null): void {
-        $this->dismiss(Notifier::OBJECT_WATCHLIST, (string)$itemId, $userId);
+    public function dismissWatchlistItem(int $itemId, ?string $userId = null, bool $strict = false): void {
+        $this->dismiss(Notifier::OBJECT_WATCHLIST, (string)$itemId, $userId, $strict);
     }
 
     /** Removes the pending notifications about everything in a library (for one user, or all). */
-    public function dismissLibrary(int $libraryId, ?string $userId = null): void {
+    public function dismissLibrary(int $libraryId, ?string $userId = null, bool $strict = false): void {
         foreach ($this->seriesMapper->findAllByLibrary($libraryId) as $series) {
-            $this->dismissSeries((int)$series->getId(), $userId);
+            $this->dismissSeries((int)$series->getId(), $userId, $strict);
         }
         foreach ($this->watchlistMapper->findAllByLibrary($libraryId) as $item) {
-            $this->dismissWatchlistItem((int)$item->getId(), $userId);
+            $this->dismissWatchlistItem((int)$item->getId(), $userId, $strict);
         }
     }
 
-    private function dismiss(string $type, string $id, ?string $userId): void {
+    /**
+     * @param bool $strict throw on failure (the queued cleanup job retries) instead of only logging
+     */
+    private function dismiss(string $type, string $id, ?string $userId, bool $strict = false): void {
         try {
             $n = $this->notifications->createNotification();
             $n->setApp(Application::APP_ID)->setObject($type, $id);
@@ -166,6 +169,9 @@ class ReleaseNotificationService {
         } catch (\Throwable $e) {
             // A stale notification must never break a delete.
             $this->logger->warning('Could not dismiss MovieDB notifications', ['exception' => $e]);
+            if ($strict) {
+                throw $e;
+            }
         }
     }
 

@@ -267,6 +267,21 @@ class LibraryServiceTest extends TestCase {
         $service->removeMember(5, 'alice', 'bob');
     }
 
+    public function testTheMembershipIsKeptWhenQueueingTheCleanupFails(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
+        $this->memberMapper->expects($this->never())->method('delete');
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->method('add')->willThrowException(new \RuntimeException('job list down'));
+        $service = new LibraryService(
+            $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
+            $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, null, $jobs
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $service->removeMember(5, 'alice', 'bob');
+    }
+
     public function testMemberCanRemoveThemselves(): void {
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 

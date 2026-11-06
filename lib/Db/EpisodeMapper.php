@@ -311,26 +311,48 @@ class EpisodeMapper extends QBMapper {
 
         $result = $qb->executeQuery();
         $rows = [];
+        $skipped = [];
         while ($row = $result->fetch()) {
             // "Added before it aired" is checked here: created_at is a timestamp and
             // air_date a string, and PostgreSQL refuses to compare the two.
             if (substr((string)$row['series_created_at'], 0, 10) < (string)$row['air_date']) {
                 $rows[] = $row;
+            } else {
+                $skipped[(int)$row['id']] = (string)$row['air_date'];
             }
         }
         $result->closeCursor();
 
+        // A show added after the episode aired never gets a notification for it. Mark those rows
+        // as handled, so they neither fill the batch every hour nor hide eligible rows behind
+        // them. A moved air date clears the stamp again (SeriesRefreshService).
+        $this->markNotified($skipped, (new \DateTime())->format('Y-m-d H:i:s'));
+
         return $rows;
     }
 
-    /** @param int[] $ids */
-    public function markNotified(array $ids, string $now): void {
-        foreach (array_chunk($ids, 500) as $chunk) {
-            $qb = $this->db->getQueryBuilder();
-            $qb->update($this->getTableName())
-                ->set('notified_at', $qb->createNamedParameter($now))
-                ->where($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
-            $qb->executeStatement();
+    /**
+     * Stamps episodes as announced, but only while they still have the air date they were
+     * selected with: a refresh that moved the date in the meantime must keep its new
+     * (cleared) stamp, so the new date is announced.
+     *
+     * @param array<int, string> $airDates episode id => air date at selection time
+     */
+    public function markNotified(array $airDates, string $now): void {
+        $byDate = [];
+        foreach ($airDates as $id => $date) {
+            $byDate[(string)$date][] = (int)$id;
+        }
+        foreach ($byDate as $date => $ids) {
+            foreach (array_chunk($ids, 500) as $chunk) {
+                $qb = $this->db->getQueryBuilder();
+                $qb->update($this->getTableName())
+                    ->set('notified_at', $qb->createNamedParameter($now))
+                    ->where($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+                    ->andWhere($qb->expr()->eq('air_date', $qb->createNamedParameter((string)$date)))
+                    ->andWhere($qb->expr()->isNull('notified_at'));
+                $qb->executeStatement();
+            }
         }
     }
 

@@ -89,18 +89,18 @@
 							<NcLoadingIcon :size="24" />
 						</div>
 
-						<div v-else-if="watchesStore.watches.length === 0" class="watches-empty">
+						<div v-else-if="watches.length === 0" class="watches-empty">
 							{{ t('moviedb', 'No watch history yet.') }}
 						</div>
 
 						<ul v-else class="watches-list">
-							<li v-for="watch in watchesStore.watches" :key="watch.id" class="watch-entry">
+							<li v-for="watch in watches" :key="watch.id" class="watch-entry">
 								<span class="watch-date">{{ watch.watchedAt ? formatDate(watch.watchedAt) : t('moviedb', 'Unknown date') }}</span>
 								<span v-if="watch.rating" class="watch-rating">★ {{ watch.rating }}/10</span>
 								<span v-if="watch.platformName || getPlatformName(watch.platformId)" class="watch-platform">{{ watch.platformName || getPlatformName(watch.platformId) }}</span>
 								<span v-if="watch.languageWatched" class="watch-language"><span aria-hidden="true">{{ getLanguageFlag(watch.languageWatched) }}</span> {{ getLanguageName(watch.languageWatched) }}</span>
 								<span v-if="watch.review" class="watch-review-indicator" :title="watch.review">💬</span>
-								<NcActions v-if="activeCanEdit && watchesStore.watches.length > 1">
+								<NcActions v-if="activeCanEdit && watches.length > 1">
 									<NcActionButton @click="deleteWatch(watch.id)">
 										<template #icon>
 											<Delete :size="20" />
@@ -224,6 +224,7 @@ export default {
 
 	data() {
 		return {
+			gone: false,
 			showDeleteDialog: false,
 			showLogDialog: false,
 			logForm: {
@@ -235,6 +236,11 @@ export default {
 	},
 
 	computed: {
+		watches() {
+			// Only the history of the movie of this route (never the previous movie's).
+			return String(this.watchesStore.movieId) === String(this.id) ? this.watchesStore.watches : []
+		},
+
 		movie() {
 			// Only the movie of this route, never the previous one while the next is loading.
 			const current = this.moviesStore.currentMovie
@@ -251,7 +257,7 @@ export default {
 
 		latestWatch() {
 			// Store returns watches sorted by watched_at DESC, so the first is latest.
-			return this.watchesStore.watches[0] ?? null
+			return this.watches[0] ?? null
 		},
 
 		posterUrl() {
@@ -272,8 +278,11 @@ export default {
 	},
 
 	watch: {
-		// The router reuses this component when only the id changes.
+		// The router reuses this component when only the id changes. An open dialog belongs to
+		// the previous movie: close it, so confirming cannot act on the new one.
 		id() {
+			this.showDeleteDialog = false
+			this.showLogDialog = false
 			this.loadMovie()
 		},
 	},
@@ -282,12 +291,23 @@ export default {
 		this.loadMovie()
 	},
 
+	beforeUnmount() {
+		this.gone = true
+	},
+
 	methods: {
 		async loadMovie() {
+			// After every await: the page may be gone, or the route may have moved on to another
+			// movie. A stale continuation must not start new requests (the newest request token
+			// would let the old movie's history win).
+			const id = this.id
+			const stale = () => this.gone || id !== this.id
 			// Wait for libraries so the active library id is known before fetching.
 			await this.librariesStore.whenReady()
-			await this.moviesStore.fetchOne(this.id)
-			await this.watchesStore.fetchForMovie(this.id)
+			if (stale()) { return }
+			await this.moviesStore.fetchOne(id)
+			if (stale()) { return }
+			await this.watchesStore.fetchForMovie(id)
 		},
 
 		formatRuntime,

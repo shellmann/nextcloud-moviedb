@@ -331,6 +331,7 @@ export default {
 
 	data() {
 		return {
+			gone: false,
 			showDeleteDialog: false,
 			marking: false,
 			refreshing: false,
@@ -414,6 +415,8 @@ export default {
 		// Vue Router reuses this component when only the id changes (e.g. from one
 		// notification to the next), so load the new show instead of keeping the old one.
 		id() {
+			// An open dialog belongs to the previous show: confirming must not delete the new one.
+			this.showDeleteDialog = false
 			this.loadSeries()
 		},
 	},
@@ -422,11 +425,18 @@ export default {
 		this.loadSeries()
 	},
 
+	beforeUnmount() {
+		this.gone = true
+	},
+
 	methods: {
 		async loadSeries() {
+			const id = this.id
 			// Wait for libraries so the active library id is known before fetching.
 			await this.librariesStore.whenReady()
-			await this.seriesStore.fetchOne(this.id)
+			if (this.gone || id !== this.id) { return }
+			await this.seriesStore.fetchOne(id)
+			if (this.gone || id !== this.id) { return }
 			// Expand the first non-special season by default.
 			const first = this.series?.seasons?.find((s) => s.seasonNumber !== 0)
 				?? this.series?.seasons?.[0]

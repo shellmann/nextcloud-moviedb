@@ -211,38 +211,67 @@ class WatchlistMapper extends QBMapper {
 
         // "Added before its release date" is checked here: added_at is a timestamp and
         // release_date a string, and PostgreSQL refuses to compare the two.
-        return array_values(array_filter(
-            $this->findEntities($qb),
-            static fn (WatchlistItem $item): bool => substr((string)$item->getAddedAt(), 0, 10) < (string)$item->getReleaseDate()
-        ));
-    }
-
-    /** @param int[] $ids */
-    public function markReleaseNotified(array $ids, string $now): void {
-        foreach (array_chunk($ids, 500) as $chunk) {
-            $qb = $this->db->getQueryBuilder();
-            $qb->update($this->getTableName())
-                ->set('release_notified_at', $qb->createNamedParameter($now))
-                ->where($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)));
-            $qb->executeStatement();
+        $eligible = [];
+        $skipped = [];
+        foreach ($this->findEntities($qb) as $item) {
+            if (substr((string)$item->getAddedAt(), 0, 10) < (string)$item->getReleaseDate()) {
+                $eligible[] = $item;
+            } else {
+                $skipped[(int)$item->getId()] = (string)$item->getReleaseDate();
+            }
         }
+        // Added after the release: never announced. Mark as handled so these rows do not fill the
+        // batch every hour; a moved release date clears the stamp again (WatchlistReleaseService).
+        $this->markReleaseNotified($skipped, (new \DateTime())->format('Y-m-d H:i:s'));
+
+        return $eligible;
     }
 
     /**
-     * Items whose release date can still change at TMDB: no date yet, or one
-     * that is today or later. Released titles are never asked again.
+     * Stamps items as announced while they still have the release date they were selected with
+     * (see EpisodeMapper::markNotified).
+     *
+     * @param array<int, string> $releaseDates item id => release date at selection time
+     */
+    public function markReleaseNotified(array $releaseDates, string $now): void {
+        $byDate = [];
+        foreach ($releaseDates as $id => $date) {
+            $byDate[(string)$date][] = (int)$id;
+        }
+        foreach ($byDate as $date => $ids) {
+            foreach (array_chunk($ids, 500) as $chunk) {
+                $qb = $this->db->getQueryBuilder();
+                $qb->update($this->getTableName())
+                    ->set('release_notified_at', $qb->createNamedParameter($now))
+                    ->where($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+                    ->andWhere($qb->expr()->eq('release_date', $qb->createNamedParameter((string)$date)))
+                    ->andWhere($qb->expr()->isNull('release_notified_at'));
+                $qb->executeStatement();
+            }
+        }
+    }
+
+    /** Days after the release date during which a title is still asked about a postponement. */
+    public const RELEASE_CORRECTION_DAYS = 7;
+
+    /**
+     * Items whose release date can still change at TMDB: no date yet, one that is today or
+     * later, or one that passed within the last RELEASE_CORRECTION_DAYS days (a release that
+     * was announced and then postponed is noticed and announced again). Titles that have been
+     * out for longer are not asked again.
      *
      * @return WatchlistItem[]
      */
     public function findDueForReleaseCheck(int $limit, string $today): array {
         $qb = $this->db->getQueryBuilder();
+        $since = (new \DateTime($today))->modify('-' . self::RELEASE_CORRECTION_DAYS . ' days')->format('Y-m-d');
 
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->isNotNull('tmdb_id'))
             ->andWhere($qb->expr()->orX(
                 $qb->expr()->isNull('release_date'),
-                $qb->expr()->gte('release_date', $qb->createNamedParameter($today))
+                $qb->expr()->gte('release_date', $qb->createNamedParameter($since))
             ))
             ->orderBy('id', 'ASC')
             ->setMaxResults($limit);

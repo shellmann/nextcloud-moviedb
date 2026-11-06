@@ -412,11 +412,14 @@ class LibraryService {
             return;
         }
 
-        $this->memberMapper->delete($membership);
-        // One markProcessed() per entry: in a big library that is too slow for the request.
+        // One markProcessed() per entry: in a big library that is too slow for the request, so it
+        // is queued. Queued first: if that fails the member is still there and the call can be
+        // repeated; the job itself skips a user who is a member again when it runs.
         if ($this->jobList !== null) {
             $this->jobList->add(DismissLibraryNotificationsJob::class, ['libraryId' => $libraryId, 'userId' => $memberUserId]);
+            $this->memberMapper->delete($membership);
         } else {
+            $this->memberMapper->delete($membership);
             $this->notifications?->dismissLibrary($libraryId, $memberUserId);
         }
     }
