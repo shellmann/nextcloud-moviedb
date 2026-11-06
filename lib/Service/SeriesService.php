@@ -454,12 +454,15 @@ class SeriesService {
             $this->watchMapper->deleteBySeries($id, $libraryId);
             $this->episodeMapper->deleteBySeries($id);
             $this->mapper->delete($series);
-            $this->notifications?->dismissSeries($id);
             $this->db->commit();
         } catch (\Throwable $e) {
             $this->db->rollBack();
             throw $e;
         }
+
+        // After the commit: the notification tables are not part of this transaction, so a
+        // rollback must not leave the show with its notifications already gone.
+        $this->notifications?->dismissSeries($id);
     }
 
     private function extractYear(?string $date): ?int {
