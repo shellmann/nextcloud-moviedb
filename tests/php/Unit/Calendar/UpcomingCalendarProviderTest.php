@@ -48,7 +48,7 @@ class UpcomingCalendarProviderTest extends TestCase {
         $second = $this->provider->getCalendars('principals/users/alice', ['moviedb-upcoming']);
 
         $this->assertCount(1, $first);
-        $this->assertSame('moviedb-upcoming', $first[0]->getUri());
+        $this->assertSame('app-generated--dav-wrapper--moviedb-upcoming', $first[0]->getUri());
         $this->assertSame($first[0], $second[0]);
 
         $first[0]->search('');

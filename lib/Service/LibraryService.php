@@ -17,6 +17,8 @@ use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Db\WatchlistMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception;
+use OCA\MovieDB\BackgroundJob\DismissLibraryNotificationsJob;
+use OCP\BackgroundJob\IJobList;
 use OCP\IDBConnection;
 use OCP\IUserManager;
 
@@ -44,7 +46,8 @@ class LibraryService {
         QuizResultMapper $quizResultMapper,
         IUserManager $userManager,
         IDBConnection $db,
-        private ?ReleaseNotificationService $notifications = null
+        private ?ReleaseNotificationService $notifications = null,
+        private ?IJobList $jobList = null
     ) {
         $this->libraryMapper   = $libraryMapper;
         $this->memberMapper    = $memberMapper;
@@ -410,7 +413,12 @@ class LibraryService {
         }
 
         $this->memberMapper->delete($membership);
-        $this->notifications?->dismissLibrary($libraryId, $memberUserId);
+        // One markProcessed() per entry: in a big library that is too slow for the request.
+        if ($this->jobList !== null) {
+            $this->jobList->add(DismissLibraryNotificationsJob::class, ['libraryId' => $libraryId, 'userId' => $memberUserId]);
+        } else {
+            $this->notifications?->dismissLibrary($libraryId, $memberUserId);
+        }
     }
 
     /**

@@ -52,6 +52,23 @@ describe('Watches Store', () => {
 			expect(store.loading).toBe(false)
 		})
 
+		it('keeps the newest movie when an older answer arrives late and never shows the previous history', async () => {
+			let answerFirst
+			api.getWatches.mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve }))
+			api.getWatches.mockResolvedValueOnce({ data: { watches: [{ id: 2, movieId: 6 }] } })
+			store.watches = [{ id: 9, movieId: 4 }]
+			store.movieId = 4
+
+			const first = store.fetchForMovie(5)
+			expect(store.watches).toEqual([])
+			await store.fetchForMovie(6)
+			answerFirst({ data: { watches: [{ id: 1, movieId: 5 }] } })
+			await first
+
+			expect(store.movieId).toBe(6)
+			expect(store.watches).toEqual([{ id: 2, movieId: 6 }])
+		})
+
 		it('should show error on failure', async () => {
 			api.getWatches.mockRejectedValue(new Error('Network error'))
 

@@ -206,7 +206,8 @@ class WatchlistMapper extends QBMapper {
             ->andWhere($qb->expr()->isNotNull('release_date'))
             ->andWhere($qb->expr()->gte('release_date', $qb->createNamedParameter($from)))
             ->andWhere($qb->expr()->lte('release_date', $qb->createNamedParameter($today)))
-            ->orderBy('id', 'ASC');
+            ->orderBy('id', 'ASC')
+            ->setMaxResults(EpisodeMapper::NOTIFY_BATCH);
 
         // "Added before its release date" is checked here: added_at is a timestamp and
         // release_date a string, and PostgreSQL refuses to compare the two.

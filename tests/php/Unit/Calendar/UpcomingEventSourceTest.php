@@ -125,4 +125,19 @@ class UpcomingEventSourceTest extends TestCase {
 
         $this->assertSame('Severance S03E02', $this->source->eventsFor('alice', $this->l, '2026-11-06')[0]['summary']);
     }
+
+    public function testAWindowNarrowsTheQueriesButNeverWidensThem(): void {
+        $this->libraries->method('findAccessible')->willReturn([$this->library(1, 'Personal')]);
+        $seen = [];
+        $this->episodes->method('airingBetween')->willReturnCallback(function (int $lib, string $from, string $until) use (&$seen) {
+            $seen[] = [$from, $until];
+            return [];
+        });
+        $this->watchlist->method('releasingBetween')->willReturn([]);
+
+        $this->source->eventsFor('alice', $this->l, '2026-11-06', '2026-11-10', '2026-11-20');
+        $this->source->eventsFor('alice', $this->l, '2026-11-06', '2000-01-01', '2100-01-01');
+
+        $this->assertSame([['2026-11-10', '2026-11-20'], ['2026-10-07', '2027-05-05']], $seen);
+    }
 }

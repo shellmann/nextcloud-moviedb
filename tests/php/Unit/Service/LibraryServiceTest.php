@@ -251,6 +251,22 @@ class LibraryServiceTest extends TestCase {
         $this->service->removeMember(5, 'alice', 'bob');
     }
 
+    public function testRemovingAMemberQueuesTheNotificationCleanupInsteadOfDoingItInline(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->expects($this->once())->method('add')
+            ->with(\OCA\MovieDB\BackgroundJob\DismissLibraryNotificationsJob::class, ['libraryId' => 5, 'userId' => 'bob']);
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->expects($this->never())->method('dismissLibrary');
+        $service = new LibraryService(
+            $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
+            $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, $notifications, $jobs
+        );
+
+        $service->removeMember(5, 'alice', 'bob');
+    }
+
     public function testMemberCanRemoveThemselves(): void {
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 

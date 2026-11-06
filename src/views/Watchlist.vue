@@ -383,8 +383,24 @@ export default {
 		 */
 		async revealLinkedItem() {
 			const id = Number.parseInt(String(this.$route.query.item ?? ''), 10)
-			// An entry that is not in the loaded list (another filter, a deleted item) is skipped silently.
-			if (!Number.isInteger(id) || !this.items.some((i) => i.id === id)) {
+			if (!Number.isInteger(id)) {
+				return
+			}
+			// The list is paged: look through the pages until the entry shows up. An entry that
+			// does not exist any more is skipped silently and the first page comes back.
+			const startPage = this.watchlistStore.page
+			let found = this.items.some((i) => i.id === id)
+			for (let page = 1; !found && page <= this.watchlistStore.totalPages; page++) {
+				if (page === startPage) { continue }
+				this.watchlistStore.page = page
+				await this.watchlistStore.fetchAll()
+				found = this.items.some((i) => i.id === id)
+			}
+			if (!found) {
+				if (this.watchlistStore.page !== startPage) {
+					this.watchlistStore.page = startPage
+					await this.watchlistStore.fetchAll()
+				}
 				return
 			}
 			this.highlightedId = id

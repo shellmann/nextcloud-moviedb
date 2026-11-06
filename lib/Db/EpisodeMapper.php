@@ -16,6 +16,9 @@ class EpisodeMapper extends QBMapper {
     /** Hard cap for the calendar query: the nearest dates win (ordered by air date). */
     public const CALENDAR_MAX_ROWS = 2000;
 
+    /** Rows one hourly notification run looks at; the rest follows in the next run. */
+    public const NOTIFY_BATCH = 5000;
+
     public function __construct(IDBConnection $db) {
         parent::__construct($db, 'moviedb_episodes', Episode::class);
     }
@@ -303,7 +306,8 @@ class EpisodeMapper extends QBMapper {
             ->orderBy('e.series_id', 'ASC')
             ->addOrderBy('e.air_date', 'ASC')
             ->addOrderBy('e.season_number', 'ASC')
-            ->addOrderBy('e.episode_number', 'ASC');
+            ->addOrderBy('e.episode_number', 'ASC')
+            ->setMaxResults(self::NOTIFY_BATCH);
 
         $result = $qb->executeQuery();
         $rows = [];

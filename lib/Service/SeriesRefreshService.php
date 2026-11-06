@@ -107,7 +107,12 @@ class SeriesRefreshService {
                         continue;
                     }
 
+                    $airDateBefore = $episode->getAirDate();
                     TmdbEpisode::apply($episode, $ep, $seasonNumber);
+                    // TMDB moved an episode that was already announced: announce it again on the new date.
+                    if ($episode->getAirDate() !== $airDateBefore && $episode->getNotifiedAt() !== null) {
+                        $episode->setNotifiedAt(null);
+                    }
                     if ($episode->getUpdatedFields() !== []) {
                         $this->episodeMapper->update($episode);
                         $result['updatedEpisodes']++;
@@ -139,6 +144,12 @@ class SeriesRefreshService {
         // status and counts from the rolled-back write, which must not be saved now.
         $fresh = $this->seriesMapper->find($series->getId());
         $fresh->setTmdbRefreshedAt((new DateTime())->format('Y-m-d H:i:s'));
+        // "Looked at, nothing to add": '' leaves the metadata backfill set (series_type IS NULL), so a
+        // show that cannot be fetched (no key, removed at TMDB) does not fill every run's batch.
+        // A later successful refresh writes the real type.
+        if ($fresh->getSeriesType() === null) {
+            $fresh->setSeriesType('');
+        }
         $this->seriesMapper->update($fresh);
     }
 

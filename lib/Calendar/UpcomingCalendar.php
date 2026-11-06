@@ -30,14 +30,17 @@ use Sabre\VObject\Component\VCalendar;
  */
 class UpcomingCalendar implements ICalendar {
     public const URI = 'moviedb-upcoming';
+    /** Name of the collection core's AppCalendar publishes this calendar under. */
+    public const DAV_COLLECTION = 'app-generated--dav-wrapper--moviedb-upcoming';
     private const DAV_CALLER = 'OCA\\DAV\\CalDAV\\AppCalendar\\AppCalendar';
 
-    /** @var list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}>|null */
-    private ?array $built = null;
+    /** @var array<string, list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}>> built events per requested window */
+    private array $built = [];
 
     /**
-     * @param list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}>|\Closure(): list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}> $events
-     *        the events, or a closure that builds them on first use
+     * @param list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}>|\Closure(?string, ?string): list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}> $events
+     *        the events, or a closure that builds them on first use for the requested date window
+     *        ("Y-m-d" from / until, null = the calendar's whole window)
      */
     public function __construct(
         private array|\Closure $events,
@@ -45,11 +48,30 @@ class UpcomingCalendar implements ICalendar {
     ) {
     }
 
-    private function events(): array {
-        if ($this->built === null) {
-            $this->built = $this->events instanceof \Closure ? ($this->events)() : $this->events;
+    private function events(?string $from = null, ?string $until = null): array {
+        if (!$this->events instanceof \Closure) {
+            return $this->events;
         }
-        return $this->built;
+        $key = ($from ?? '') . '|' . ($until ?? '');
+        return $this->built[$key] ??= ($this->events)($from, $until);
+    }
+
+    /**
+     * The date window a timerange option asks for, with a day of margin on both sides (all-day
+     * events, time zones); the exact test is still done per event in matches().
+     *
+     * @return array{0: ?string, 1: ?string}
+     */
+    private function windowOf(array $options): array {
+        $from = $until = null;
+        $range = $options['timerange'] ?? [];
+        if (($range['start'] ?? null) instanceof DateTimeInterface) {
+            $from = DateTimeImmutable::createFromInterface($range['start'])->setTimezone(new DateTimeZone('UTC'))->modify('-1 day')->format('Y-m-d');
+        }
+        if (($range['end'] ?? null) instanceof DateTimeInterface) {
+            $until = DateTimeImmutable::createFromInterface($range['end'])->setTimezone(new DateTimeZone('UTC'))->modify('+1 day')->format('Y-m-d');
+        }
+        return [$from, $until];
     }
 
     #[\Override]
@@ -57,9 +79,16 @@ class UpcomingCalendar implements ICalendar {
         return self::URI;
     }
 
+    /**
+     * The DAV wrapper (AppCalendar) builds its collection name from this value
+     * (`app-generated--dav-wrapper--<uri>`), so it must get the plain URI. Every other
+     * caller, above all the dashboard's "Upcoming events", builds links to
+     * /remote.php/dav/calendars/<user>/<uri>/ from it, which only exists under the
+     * wrapped name: they get that one.
+     */
     #[\Override]
     public function getUri(): string {
-        return self::URI;
+        return $this->calledByDav() ? self::URI : self::DAV_COLLECTION;
     }
 
     #[\Override]
@@ -89,8 +118,9 @@ class UpcomingCalendar implements ICalendar {
             return [];
         }
 
+        [$windowFrom, $windowUntil] = $this->windowOf($options);
         $matches = array_values(array_filter(
-            $this->events(),
+            $this->events($windowFrom, $windowUntil),
             fn (array $e): bool => $this->matches($e, $pattern, $searchProperties, $options)
         ));
         $matches = array_slice($matches, $offset ?? 0, $limit);

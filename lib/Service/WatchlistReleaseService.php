@@ -50,6 +50,8 @@ class WatchlistReleaseService {
 
         $item->setReleaseDate($date);
         $item->setReleaseDateChangedAt((new DateTime())->format('Y-m-d H:i:s'));
+        // A postponed title that was already announced is announced again on the new date.
+        $item->setReleaseNotifiedAt(null);
         $this->mapper->update($item);
 
         return true;

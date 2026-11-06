@@ -31,7 +31,9 @@ class UpcomingCalendarProvider implements ICalendarProvider {
         if (!str_starts_with($principalUri, self::PRINCIPAL_PREFIX)) {
             return [];
         }
-        if ($calendarUris !== [] && !in_array(UpcomingCalendar::URI, $calendarUris, true)) {
+        if ($calendarUris !== []
+            && !in_array(UpcomingCalendar::URI, $calendarUris, true)
+            && !in_array(UpcomingCalendar::DAV_COLLECTION, $calendarUris, true)) {
             return [];
         }
         $userId = substr($principalUri, strlen(self::PRINCIPAL_PREFIX));
@@ -43,7 +45,7 @@ class UpcomingCalendarProvider implements ICalendarProvider {
             $l = $this->l10nFactory->get(Application::APP_ID);
             // Lazy: a plain calendar listing (PROPFIND on the home, Calendar app start) must not
             // run the event queries; they run on the first search().
-            $this->cache[$userId] = new UpcomingCalendar(fn (): array => $this->source->eventsFor($userId, $l), $l);
+            $this->cache[$userId] = new UpcomingCalendar(fn (?string $from, ?string $until): array => $this->source->eventsFor($userId, $l, null, $from, $until), $l);
         }
 
         return [$this->cache[$userId]];

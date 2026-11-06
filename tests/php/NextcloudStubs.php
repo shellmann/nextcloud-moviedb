@@ -475,6 +475,21 @@ namespace OCP\BackgroundJob {
         public const TIME_SENSITIVE = 1;
     }
 
+    interface IJobList {
+        public function add($job, $argument = null): void;
+    }
+
+    abstract class QueuedJob implements IJob {
+        public function __construct(\OCP\AppFramework\Utility\ITimeFactory $time) {}
+
+        /** Run the job body directly. */
+        public function runNow($argument = null): void {
+            $this->run($argument);
+        }
+
+        abstract protected function run($argument);
+    }
+
     abstract class TimedJob implements IJob {
         protected int $interval = 0;
         protected int $timeSensitivity = self::TIME_SENSITIVE;

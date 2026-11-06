@@ -38,10 +38,21 @@ class UpcomingEventSource {
     /**
      * @return list<array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}>
      */
-    public function eventsFor(string $userId, IL10N $l, ?string $today = null): array {
+    public function eventsFor(string $userId, IL10N $l, ?string $today = null, ?string $windowFrom = null, ?string $windowUntil = null): array {
         $today ??= (new DateTime())->format('Y-m-d');
         $from = (new DateTime($today))->modify('-' . self::DAYS_BACK . ' days')->format('Y-m-d');
         $until = (new DateTime($today))->modify('+' . self::DAYS_AHEAD . ' days')->format('Y-m-d');
+        // A caller that only wants a part of the window (a month view, "the next 14 days")
+        // narrows the queries; it can never widen them beyond the calendar's own window.
+        if ($windowFrom !== null && $windowFrom > $from) {
+            $from = $windowFrom;
+        }
+        if ($windowUntil !== null && $windowUntil < $until) {
+            $until = $windowUntil;
+        }
+        if ($from > $until) {
+            return [];
+        }
         $base = $this->urlGenerator->linkToRouteAbsolute('moviedb.page.index');
 
         $events = [];

@@ -318,4 +318,9 @@ class ImportValidatorTest extends TestCase {
         $this->assertSame('Netflix', $r['movies'][0]['watches'][0]['platform']);
         $this->assertSame(1, $r['invalid']['movies']);
     }
+
+    public function testTheNoTypeMarkerSurvivesAnImport(): void {
+        $r = $this->validator->validate($this->file(['series' => [['title' => 'Typeless', 'seriesType' => '']]]));
+        $this->assertSame('', $r['series'][0]['seriesType']);
+    }
 }

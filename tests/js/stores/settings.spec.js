@@ -83,6 +83,36 @@ describe('Settings Store', () => {
 		})
 	})
 
+	describe('update ordering', () => {
+		it('sends the writes one after the other, in the order they were made', async () => {
+			const order = []
+			let releaseFirst
+			api.updateSettings.mockImplementationOnce(() => new Promise((resolve) => { releaseFirst = () => { order.push('first done'); resolve() } }))
+			api.updateSettings.mockImplementationOnce(async () => { order.push('second sent') })
+			api.getSettings.mockResolvedValue({ data: {} })
+
+			const first = store.update({ notifyReleases: false })
+			const second = store.update({ notifyReleases: true })
+			await new Promise((resolve) => setTimeout(resolve, 0))
+			expect(api.updateSettings).toHaveBeenCalledTimes(1)
+			releaseFirst()
+			await Promise.all([first, second])
+
+			expect(order).toEqual(['first done', 'second sent'])
+		})
+
+		it('a failed write does not block the next one', async () => {
+			api.updateSettings.mockRejectedValueOnce(new Error('nope'))
+			api.updateSettings.mockResolvedValueOnce()
+			api.getSettings.mockResolvedValue({ data: {} })
+
+			await expect(store.update({ showCalendar: false })).rejects.toThrow('nope')
+			await store.update({ showCalendar: true })
+
+			expect(api.updateSettings).toHaveBeenCalledTimes(2)
+		})
+	})
+
 	describe('fetch', () => {
 		it('should load settings', async () => {
 			api.getSettings.mockResolvedValue({ data: { hasApiKey: true, defaultLanguage: 'en-US', appLanguage: 'auto' } })

@@ -25,7 +25,10 @@ use Psr\Log\LoggerInterface;
  * was released, and only releases of the last two days are looked at, so a
  * show added late or a job that did not run for a while cannot flood anyone.
  * The notified_at / release_notified_at stamp is written after notify(), so a
- * crash can at worst send twice, never lose a notification silently.
+ * crash can at worst send twice, never lose a notification silently. A row is only
+ * stamped when every enabled recipient was served; a failed delivery is retried by
+ * the next hourly run (inside the look-back window). TMDB moving a release date
+ * clears the stamp, so the new date is announced.
  */
 class ReleaseNotificationService {
     public const LOOKBACK_DAYS = 2;
@@ -61,6 +64,7 @@ class ReleaseNotificationService {
         }
 
         $sent = 0;
+        $done = [];
         foreach ($groups as $group) {
             $first = $group[0];
             $last = end($group);
@@ -72,12 +76,22 @@ class ReleaseNotificationService {
                 'episode' => (int)$last['episode_number'],
                 'count' => count($group),
             ];
+            $failed = false;
             foreach ($this->recipientsOf((int)$first['library_id']) as $userId) {
-                $sent += $this->send($userId, Notifier::SUBJECT_EPISODES, Notifier::OBJECT_SERIES, (string)$first['series_id'], $params);
+                $result = $this->send($userId, Notifier::SUBJECT_EPISODES, Notifier::OBJECT_SERIES, (string)$first['series_id'], $params);
+                $sent += max(0, $result);
+                $failed = $failed || $result < 0;
+            }
+            // A failed delivery leaves the rows unstamped so the next hourly run retries them
+            // (inside the look-back window). Recipients that already got it may see it twice.
+            if (!$failed) {
+                foreach ($group as $r) {
+                    $done[] = (int)$r['id'];
+                }
             }
         }
 
-        $this->episodeMapper->markNotified(array_map(static fn (array $r): int => (int)$r['id'], $rows), $this->now());
+        $this->episodeMapper->markNotified($done, $this->now());
 
         return $sent;
     }
@@ -93,6 +107,7 @@ class ReleaseNotificationService {
         }
 
         $sent = 0;
+        $done = [];
         foreach ($items as $item) {
             $libraryId = $item->getLibraryId();
             $users = $libraryId !== null ? $this->recipientsOf($libraryId) : [$item->getUserId()];
@@ -104,12 +119,18 @@ class ReleaseNotificationService {
             if ($libraryId !== null) {
                 $params['libraryId'] = $libraryId;
             }
+            $failed = false;
             foreach ($users as $userId) {
-                $sent += $this->send($userId, Notifier::SUBJECT_WATCHLIST, Notifier::OBJECT_WATCHLIST, (string)$item->getId(), $params);
+                $result = $this->send($userId, Notifier::SUBJECT_WATCHLIST, Notifier::OBJECT_WATCHLIST, (string)$item->getId(), $params);
+                $sent += max(0, $result);
+                $failed = $failed || $result < 0;
+            }
+            if (!$failed) {
+                $done[] = (int)$item->getId();
             }
         }
 
-        $this->watchlistMapper->markReleaseNotified(array_map(static fn ($i): int => (int)$i->getId(), $items), $this->now());
+        $this->watchlistMapper->markReleaseNotified($done, $this->now());
 
         return $sent;
     }
@@ -148,6 +169,7 @@ class ReleaseNotificationService {
         }
     }
 
+    /** @return int 1 sent, 0 skipped (the user opted out), -1 failed */
     private function send(string $userId, string $subject, string $objectType, string $objectId, array $params): int {
         if ($this->userConfig->getValueString($userId, Application::APP_ID, 'notify_releases', '1') === '0') {
             return 0;
@@ -163,7 +185,7 @@ class ReleaseNotificationService {
             return 1;
         } catch (\Throwable $e) {
             $this->logger->warning('Could not send a MovieDB notification to ' . $userId, ['exception' => $e]);
-            return 0;
+            return -1;
         }
     }
 

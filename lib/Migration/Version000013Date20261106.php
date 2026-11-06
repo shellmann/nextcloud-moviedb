@@ -53,6 +53,21 @@ class Version000013Date20261106 extends SimpleMigrationStep {
         $add('moviedb_episodes', 'notified_at', Types::STRING, ['length' => 32]);
         $add('moviedb_watchlist', 'release_notified_at', Types::STRING, ['length' => 32]);
 
+        // The calendar and the hourly notification job look episodes up by air date and watchlist
+        // entries by release date across all libraries.
+        $index = function (string $tableName, string $indexName, array $columns) use ($schema, &$changed): void {
+            if (!$schema->hasTable($tableName)) {
+                return;
+            }
+            $table = $schema->getTable($tableName);
+            if (!$table->hasIndex($indexName)) {
+                $table->addIndex($columns, $indexName);
+                $changed = true;
+            }
+        };
+        $index('moviedb_episodes', 'moviedb_ep_air_date_idx', ['air_date']);
+        $index('moviedb_watchlist', 'moviedb_wl_release_idx', ['release_date']);
+
         return $changed ? $schema : null;
     }
 }

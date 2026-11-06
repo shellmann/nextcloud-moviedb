@@ -340,7 +340,10 @@ export default {
 
 	computed: {
 		series() {
-			return this.seriesStore.currentSeries
+			// Only the show of this route: while another id is loading, the previous show must not
+			// be shown (and its Delete / Mark buttons must not act on the new id).
+			const current = this.seriesStore.currentSeries
+			return current && String(current.id) === String(this.id) ? current : null
 		},
 
 		statusText() {

@@ -96,4 +96,15 @@ class WatchlistReleaseServiceTest extends TestCase {
 
         $this->assertFalse($this->service->refresh($this->item(null, 'movie', null), 'owner', 'de-DE'));
     }
+
+    public function testAPostponedTitleThatWasAlreadyAnnouncedIsAnnouncedAgain(): void {
+        $item = $this->item('2027-03-12');
+        $item->setReleaseNotifiedAt('2027-03-12 08:00:00');
+        $this->tmdb->method('getMovieDetails')->willReturn(['release_date' => '2027-06-01']);
+        $this->mapper->method('update')->willReturnArgument(0);
+
+        $this->service->refresh($item, 'owner', 'de-DE');
+
+        $this->assertNull($item->getReleaseNotifiedAt());
+    }
 }

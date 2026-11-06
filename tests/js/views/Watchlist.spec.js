@@ -121,3 +121,39 @@ describe('Watchlist link from a notification (?item=)', () => {
 		expect(wrapper.findAll('.watchlist-item--highlight')).toHaveLength(0)
 	})
 })
+
+describe('Watchlist link to an entry on a later page', () => {
+	let store
+	const pages = {
+		1: [{ id: 1, title: 'Heat 2', mediaType: 'movie', priority: 0 }],
+		2: [{ id: 60, title: 'Dune', mediaType: 'movie', priority: 0 }],
+	}
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		store = useWatchlistStore()
+		store.totalPages = 2
+		store.fetchAll = vi.fn(async () => { store.items = pages[store.page] })
+		Element.prototype.scrollIntoView = vi.fn()
+	})
+
+	it('looks through the pages until the entry shows up', async () => {
+		const wrapper = mountView({ item: '60' })
+		await flushPromises()
+
+		expect(store.page).toBe(2)
+		expect(wrapper.find('#watchlist-item-60').classes()).toContain('watchlist-item--highlight')
+	})
+
+	it('goes back to the first page when the entry does not exist any more', async () => {
+		const wrapper = mountView({ item: '999' })
+		await flushPromises()
+
+		expect(store.page).toBe(1)
+		expect(wrapper.findAll('.watchlist-item--highlight')).toHaveLength(0)
+	})
+})

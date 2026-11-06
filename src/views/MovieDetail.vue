@@ -236,7 +236,9 @@ export default {
 
 	computed: {
 		movie() {
-			return this.moviesStore.currentMovie
+			// Only the movie of this route, never the previous one while the next is loading.
+			const current = this.moviesStore.currentMovie
+			return current && String(current.id) === String(this.id) ? current : null
 		},
 
 		loading() {

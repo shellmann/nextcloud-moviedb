@@ -323,6 +323,24 @@ describe('SeriesDetail TMDB details', () => {
 })
 
 describe('SeriesDetail route changes', () => {
+	it('does not show or act on the previous show while another id is loading', async () => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		const { wrapper, store } = await mountDetail(show({ id: 3, title: 'Andor' }))
+		expect(wrapper.find('h2').exists()).toBe(true)
+
+		let finish
+		store.fetchOne.mockImplementation(() => new Promise((resolve) => { finish = resolve }))
+		await wrapper.setProps({ id: '6' })
+
+		expect(wrapper.text()).not.toContain('Andor')
+		expect(wrapper.find('.series-titles').exists()).toBe(false)
+		finish()
+	})
+
 	beforeEach(() => {
 		setActivePinia(createPinia())
 		const libraries = useLibrariesStore()

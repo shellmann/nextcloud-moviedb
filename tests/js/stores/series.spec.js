@@ -190,6 +190,18 @@ describe('Series Store', () => {
 			expect(result).toEqual(refreshed)
 		})
 
+		it('a late mutation answer for another show does not replace the current show', async () => {
+			store.currentSeries = { id: 6, title: 'Now showing' }
+			let answer
+			api.markEpisodeWatched.mockImplementation(() => new Promise((resolve) => { answer = resolve }))
+
+			const pending = store.markEpisodeWatched(5, 101, true)
+			answer({ data: { series: { id: 5, title: 'Earlier show' } } })
+			await pending
+
+			expect(store.currentSeries.id).toBe(6)
+		})
+
 		it('markEpisodeWatched forwards a false flag to untick', async () => {
 			const refreshed = { id: 5, progress: 0, watchedEpisodeCount: 0 }
 			api.markEpisodeWatched.mockResolvedValue({ data: { series: refreshed } })

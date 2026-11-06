@@ -247,6 +247,19 @@ export const useSeriesStore = defineStore('series', {
 		},
 
 		/**
+		 * Stores the answer of a mutation as the current series, unless the user has
+		 * navigated to another show meanwhile: a late answer for show 5 must not
+		 * replace the page of show 6.
+		 *
+		 * @param {object} series - Series returned by the API
+		 */
+		applyToCurrent(series) {
+			if (!this.currentSeries || this.currentSeries.id === series.id) {
+				this.currentSeries = series
+			}
+		},
+
+		/**
 		 * Toggles a single episode's watched flag; refreshes currentSeries with server progress.
 		 *
 		 * @param {number} id - Series ID
@@ -258,7 +271,7 @@ export const useSeriesStore = defineStore('series', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const response = await api.markEpisodeWatched(id, episodeId, watched, libraryId !== null ? libraryId : undefined)
-				this.currentSeries = response.data.series
+				this.applyToCurrent(response.data.series)
 				return response.data.series
 			} catch (error) {
 				console.error('Failed to mark episode watched:', error)
@@ -279,7 +292,7 @@ export const useSeriesStore = defineStore('series', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const response = await api.markSeasonWatched(id, seasonNumber, watched, libraryId !== null ? libraryId : undefined)
-				this.currentSeries = response.data.series
+				this.applyToCurrent(response.data.series)
 				showSuccess(watched
 					? t('moviedb', 'Season marked as watched.')
 					: t('moviedb', 'Season marked as unwatched.'))
@@ -302,7 +315,7 @@ export const useSeriesStore = defineStore('series', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const response = await api.markSeriesWatched(id, watched, libraryId !== null ? libraryId : undefined)
-				this.currentSeries = response.data.series
+				this.applyToCurrent(response.data.series)
 				showSuccess(watched
 					? t('moviedb', 'Series marked as watched.')
 					: t('moviedb', 'Series marked as unwatched.'))

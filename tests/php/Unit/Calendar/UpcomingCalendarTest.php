@@ -40,11 +40,32 @@ class UpcomingCalendarTest extends TestCase {
     }
 
     public function testIdentityAndReadOnlyPermissions(): void {
-        $this->assertSame('moviedb-upcoming', $this->calendar->getUri());
         $this->assertSame('moviedb-upcoming', $this->calendar->getKey());
         $this->assertSame('T:MovieDB – Upcoming', $this->calendar->getDisplayName());
         $this->assertSame(Constants::PERMISSION_READ, $this->calendar->getPermissions());
         $this->assertFalse($this->calendar->isDeleted());
+    }
+
+    public function testTheDavWrapperGetsThePlainUriAndEveryoneElseTheWrappedCollectionName(): void {
+        // The dashboard's "Upcoming events" builds /remote.php/dav/calendars/<user>/<uri>/ links from
+        // getUri(); only the wrapped name exists as a collection.
+        $this->assertSame('app-generated--dav-wrapper--moviedb-upcoming', $this->calendar->getUri());
+        $this->assertSame('moviedb-upcoming', (new \OCA\DAV\CalDAV\AppCalendar\AppCalendar())->uriOf($this->calendar));
+    }
+
+    public function testASearchWithATimerangeOnlyBuildsThatWindow(): void {
+        $l = $this->createMock(IL10N::class);
+        $windows = [];
+        $calendar = new UpcomingCalendar(function (?string $from, ?string $until) use (&$windows): array {
+            $windows[] = [$from, $until];
+            return [];
+        }, $l);
+
+        $calendar->search('', [], ['timerange' => ['start' => $this->utc('2026-11-10'), 'end' => $this->utc('2026-11-12')]]);
+        $calendar->search('', [], ['timerange' => ['start' => $this->utc('2026-11-10'), 'end' => $this->utc('2026-11-12')]]);
+        $calendar->search('');
+
+        $this->assertSame([['2026-11-09', '2026-11-13'], [null, null]], $windows);
     }
 
     public function testOtherCallersGetTheDocumentedArrays(): void {

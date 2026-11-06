@@ -32,6 +32,8 @@ class ReleaseNotificationServiceTest extends TestCase {
     private ReleaseNotificationService $service;
     /** @var array<int, array{user: ?string, subject: ?string, params: array, object: ?array}> */
     private array $sent = [];
+    /** @var string[] users whose delivery fails */
+    private array $failFor = [];
 
     protected function setUp(): void {
         parent::setUp();
@@ -45,6 +47,9 @@ class ReleaseNotificationServiceTest extends TestCase {
         $this->manager = $this->createMock(IManager::class);
         $this->manager->method('createNotification')->willReturnCallback(fn () => $this->fakeNotification());
         $this->manager->method('notify')->willReturnCallback(function (INotification $n): void {
+            if (in_array($n->state['user'], $this->failFor, true)) {
+                throw new \RuntimeException('push is down');
+            }
             $this->sent[] = $n->state;
         });
 
@@ -208,5 +213,31 @@ class ReleaseNotificationServiceTest extends TestCase {
 
         $service->dismissWatchlistItem(1);
         $this->addToAssertionCount(1);
+    }
+
+    public function testAFailedDeliveryLeavesTheEpisodesUnstampedForTheNextRun(): void {
+        $this->failFor = ['bob'];
+        $this->episodes->method('findToNotify')->willReturn([$this->row(1, 1), $this->row(2, 2, '2026-11-05')]);
+        // both groups include bob, so nothing may be stamped
+        $this->episodes->expects($this->once())->method('markNotified')->with([], $this->anything());
+
+        $this->assertSame(2, $this->service->notifyAiredEpisodes('2026-11-06'), 'alice was served');
+    }
+
+    public function testOnlyFullyDeliveredWatchlistItemsAreStamped(): void {
+        $ok = new WatchlistItem();
+        $ok->setId(9);
+        $ok->setUserId('carol');
+        $ok->setTitle('Solo');
+        $shared = new WatchlistItem();
+        $shared->setId(10);
+        $shared->setUserId('alice');
+        $shared->setLibraryId(1);
+        $shared->setTitle('Shared');
+        $this->failFor = ['bob'];
+        $this->watchlist->method('findToNotify')->willReturn([$ok, $shared]);
+        $this->watchlist->expects($this->once())->method('markReleaseNotified')->with([9], $this->anything());
+
+        $this->service->notifyReleasedWatchlist('2026-11-06');
     }
 }

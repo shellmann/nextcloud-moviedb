@@ -389,4 +389,38 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->assertTrue(SeriesRefreshService::isRateLimited(new \RuntimeException('slow down', 429)));
         $this->assertFalse(SeriesRefreshService::isRateLimited(new \RuntimeException('gone', 404)));
     }
+
+    public function testAMovedEpisodeThatWasAlreadyAnnouncedIsAnnouncedAgain(): void {
+        $announced = $this->stored(1, 1, '2030-01-01');
+        $announced->setNotifiedAt('2029-12-31 10:00:00');
+        $this->episodeMapper->method('findBySeries')->willReturn([$announced]);
+        $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1]));
+        $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => [$this->tmdbEp(1, 1, '2030-02-01')]]);
+
+        $this->service->refresh($this->series(), 'alice', 'en-US');
+
+        $this->assertNull($announced->getNotifiedAt());
+    }
+
+    public function testAnUnchangedAirDateKeepsTheAnnouncedStamp(): void {
+        $announced = $this->stored(1, 1, '2030-01-01');
+        $announced->setNotifiedAt('2029-12-31 10:00:00');
+        $this->episodeMapper->method('findBySeries')->willReturn([$announced]);
+        $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1]));
+        $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => [$this->tmdbEp(1, 1, '2030-01-01', 'Renamed')]]);
+
+        $this->service->refresh($this->series(), 'alice', 'en-US');
+
+        $this->assertSame('2029-12-31 10:00:00', $announced->getNotifiedAt());
+    }
+
+    public function testMarkRefreshedLeavesTheMetadataBackfillWithTheNoTypeMarker(): void {
+        $stored = $this->series('Returning Series');
+        $stored->setSeriesType(null);
+        $this->seriesMapper->method('find')->willReturn($stored);
+
+        $this->service->markRefreshed($stored);
+
+        $this->assertSame('', $stored->getSeriesType(), 'a show that cannot be fetched must not stay in the backfill set');
+    }
 }
