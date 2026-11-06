@@ -19,6 +19,8 @@ vi.mock('@nextcloud/vue', () => ({
 
 const IconStub = { template: '<span />' }
 
+const routerReplace = vi.fn()
+
 function mountView(query = {}) {
 	return mount(Watchlist, {
 		global: {
@@ -31,7 +33,7 @@ function mountView(query = {}) {
 				PlaylistPlay: IconStub,
 				Plus: IconStub,
 			},
-			mocks: { t: (app, text) => text, $router: { push: vi.fn() }, $route: { query } },
+			mocks: { t: (app, text) => text, $router: { push: vi.fn(), replace: routerReplace }, $route: { path: '/watchlist', query } },
 		},
 	})
 }
@@ -108,6 +110,8 @@ describe('Watchlist link from a notification (?item=)', () => {
 		expect(wrapper.find('#watchlist-item-1').classes()).not.toContain('watchlist-item--highlight')
 		expect(entry.attributes('tabindex')).toBe('-1')
 		expect(Element.prototype.scrollIntoView).toHaveBeenCalled()
+		// the stale ?item= is dropped from the URL
+		expect(routerReplace).toHaveBeenCalledWith({ path: '/watchlist', query: {} })
 	})
 
 	it('ignores an item that is not in the list', async () => {

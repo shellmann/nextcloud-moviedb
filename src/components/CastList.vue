@@ -4,7 +4,7 @@
 			{{ t('moviedb', 'Cast') }}
 		</h3>
 		<ul class="cast-list">
-			<li v-for="actor in visibleCast" :key="actor.name" class="cast-item">
+			<li v-for="(actor, index) in visibleCast" :key="`${index}-${actor.name}`" class="cast-item">
 				<strong>{{ actor.name }}</strong>
 				<span v-if="actor.character" class="cast-character">{{ actor.character }}</span>
 			</li>

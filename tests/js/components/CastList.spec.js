@@ -39,3 +39,17 @@ describe('CastList', () => {
 		wrapper.unmount()
 	})
 })
+
+describe('CastList duplicate names', () => {
+	it('renders every entry when two cast members share a name (unique keys)', () => {
+		const warn = vi.spyOn(console, 'warn').mockImplementation(() => {})
+		const wrapper = mount(CastList, {
+			props: { cast: [{ name: 'Sam Smith', character: 'Guard' }, { name: 'Sam Smith', character: 'Waiter' }] },
+			global: { mocks: { t: (app, text) => text } },
+		})
+
+		expect(wrapper.findAll('li')).toHaveLength(2)
+		expect(warn.mock.calls.flat().join(' ')).not.toContain('Duplicate keys')
+		warn.mockRestore()
+	})
+})

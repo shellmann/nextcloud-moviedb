@@ -371,6 +371,10 @@ export default {
 		this.revealLinkedItem()
 	},
 
+	beforeUnmount() {
+		clearTimeout(this.highlightTimer)
+	},
+
 	methods: {
 		/**
 		 * Opened from a notification or calendar event (`?item=<id>`): scrolls to the entry,
@@ -382,11 +386,16 @@ export default {
 				return
 			}
 			this.highlightedId = id
+			// Drop ?item= so a reload or a shared URL does not highlight the entry again.
+			const query = { ...this.$route.query }
+			delete query.item
+			this.$router.replace({ path: this.$route.path, query })
 			await this.$nextTick()
 			const el = this.$el.querySelector('#watchlist-item-' + id)
 			el?.scrollIntoView({ block: 'center' })
 			el?.focus({ preventScroll: true })
-			setTimeout(() => { this.highlightedId = null }, 4000)
+			clearTimeout(this.highlightTimer)
+			this.highlightTimer = setTimeout(() => { this.highlightedId = null }, 4000)
 		},
 
 		formatDate,
