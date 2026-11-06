@@ -630,6 +630,13 @@ export default {
         gap: 4px;
     }
 
+    // Nextcloud core gives <dt> a fixed, right-aligned column; here the labels sit inline
+    dt:not(.hidden-visually) {
+        width: auto;
+        min-width: 0;
+        text-align: start;
+    }
+
     dt::after {
         content: ':';
     }
