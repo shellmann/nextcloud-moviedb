@@ -407,19 +407,29 @@ export default {
 		},
 	},
 
-	async created() {
-		// Wait for libraries so the active library id is known before fetching.
-		await this.librariesStore.whenReady()
-		await this.seriesStore.fetchOne(this.id)
-		// Expand the first non-special season by default.
-		const first = this.series?.seasons?.find((s) => s.seasonNumber !== 0)
-			?? this.series?.seasons?.[0]
-		if (first) {
-			this.expandedSeasons = [first.seasonNumber]
-		}
+	watch: {
+		// Vue Router reuses this component when only the id changes (e.g. from one
+		// notification to the next), so load the new show instead of keeping the old one.
+		id() {
+			this.loadSeries()
+		},
+	},
+
+	created() {
+		this.loadSeries()
 	},
 
 	methods: {
+		async loadSeries() {
+			// Wait for libraries so the active library id is known before fetching.
+			await this.librariesStore.whenReady()
+			await this.seriesStore.fetchOne(this.id)
+			// Expand the first non-special season by default.
+			const first = this.series?.seasons?.find((s) => s.seasonNumber !== 0)
+				?? this.series?.seasons?.[0]
+			this.expandedSeasons = first ? [first.seasonNumber] : []
+		},
+
 		getLanguageFlag,
 		formatDate,
 		formatRuntime,

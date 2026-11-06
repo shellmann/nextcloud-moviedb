@@ -269,6 +269,13 @@ export default {
 		},
 	},
 
+	watch: {
+		// The router reuses this component when only the id changes.
+		id() {
+			this.loadMovie()
+		},
+	},
+
 	created() {
 		this.loadMovie()
 	},

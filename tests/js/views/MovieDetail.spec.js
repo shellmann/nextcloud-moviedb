@@ -54,3 +54,29 @@ describe('MovieDetail watch history', () => {
 		expect(entries[1].find('.watch-language').exists()).toBe(false)
 	})
 })
+
+describe('MovieDetail route changes', () => {
+	it('loads the other movie when only the id changes', async () => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		const movies = useMoviesStore()
+		movies.fetchOne = vi.fn(async (id) => { movies.currentMovie = { id: Number(id), title: 'Movie ' + id } })
+		const watchesStore = useWatchesStore()
+		watchesStore.fetchForMovie = vi.fn(async () => { watchesStore.watches = [] })
+		const wrapper = mount(MovieDetail, {
+			props: { id: '5' },
+			global: {
+				stubs: { ArrowLeft: IconStub, Delete: IconStub, Movie: IconStub, Pencil: IconStub, Plus: IconStub, RatingStars: IconStub },
+				mocks: { t: (app, text) => text, $router: { push: vi.fn() } },
+			},
+		})
+		await flushPromises()
+
+		await wrapper.setProps({ id: '9' })
+		await flushPromises()
+
+		expect(movies.fetchOne).toHaveBeenLastCalledWith('9')
+		expect(watchesStore.fetchForMovie).toHaveBeenLastCalledWith('9')
+	})
+})

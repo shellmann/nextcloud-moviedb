@@ -321,3 +321,25 @@ describe('SeriesDetail TMDB details', () => {
 		await expectNoAxeViolations(wrapper)
 	})
 })
+
+describe('SeriesDetail route changes', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+	})
+
+	it('loads the other show when only the id changes (notification to notification)', async () => {
+		const { wrapper, store } = await mountDetail(show({ id: 3, title: 'Andor' }))
+		expect(store.fetchOne).toHaveBeenLastCalledWith('3')
+
+		store.fetchOne.mockImplementation(async () => { store.currentSeries = show({ id: 6, title: 'Severance' }) })
+		await wrapper.setProps({ id: '6' })
+		await flushPromises()
+
+		expect(store.fetchOne).toHaveBeenLastCalledWith('6')
+		expect(wrapper.find('h2').text()).toContain('Severance')
+	})
+})
