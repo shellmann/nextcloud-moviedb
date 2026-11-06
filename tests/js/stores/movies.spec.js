@@ -279,3 +279,20 @@ describe('Movies Store', () => {
 		})
 	})
 })
+
+describe('Movies store fetchOne ordering', () => {
+	it('keeps the newest request when an older answer arrives late', async () => {
+		setActivePinia(createPinia())
+		const store = useMoviesStore()
+		let answerFirst
+		api.getMovie.mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve }))
+		api.getMovie.mockResolvedValueOnce({ data: { movie: { id: 6, title: 'Newer' } } })
+
+		const first = store.fetchOne(5)
+		await store.fetchOne(6)
+		answerFirst({ data: { movie: { id: 5, title: 'Older' } } })
+		await first
+
+		expect(store.currentMovie.id).toBe(6)
+	})
+})

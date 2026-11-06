@@ -8,6 +8,10 @@ import { useLibrariesStore } from './libraries.js'
  * Movies store - Manages movie collection state and CRUD operations.
  * Handles pagination, filtering, and sorting of watched movies.
  */
+// Only the newest fetchOne() may write the current item: a slow answer for an earlier id
+// (a quick 5 -> 6 -> 5 navigation) must not overwrite it.
+let latestFetchOne = 0
+
 export const useMoviesStore = defineStore('movies', {
 	state: () => ({
 		/** @type {Array<object>} List of movies for current page */
@@ -84,18 +88,23 @@ export const useMoviesStore = defineStore('movies', {
 		 * @return {Promise<object | null>} The movie object or null on error
 		 */
 		async fetchOne(id) {
+			const requestNo = ++latestFetchOne
 			this.loading = true
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const response = await api.getMovie(id, libraryId !== null ? libraryId : undefined)
-				this.currentMovie = response.data.movie
+				if (requestNo === latestFetchOne) {
+					this.currentMovie = response.data.movie
+				}
 				return response.data.movie
 			} catch (error) {
 				console.error('Failed to fetch movie:', error)
 				showError(t('moviedb', 'Failed to load movie details.'))
 				return null
 			} finally {
-				this.loading = false
+				if (requestNo === latestFetchOne) {
+					this.loading = false
+				}
 			}
 		},
 

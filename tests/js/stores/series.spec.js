@@ -141,6 +141,20 @@ describe('Series Store', () => {
 			const result = await store.fetchOne(9)
 			expect(result).toBeNull()
 		})
+
+		it('keeps the newest request when an older answer arrives late', async () => {
+			let answerFirst
+			api.getSeriesItem.mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve }))
+			api.getSeriesItem.mockResolvedValueOnce({ data: { series: { id: 6, title: 'Newer' } } })
+
+			const first = store.fetchOne(5)
+			await store.fetchOne(6)
+			answerFirst({ data: { series: { id: 5, title: 'Older' } } })
+			await first
+
+			expect(store.currentSeries.id).toBe(6)
+			expect(store.loading).toBe(false)
+		})
 	})
 
 	describe('delete action', () => {

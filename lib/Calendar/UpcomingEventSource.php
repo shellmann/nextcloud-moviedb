@@ -16,8 +16,9 @@ use OCP\IURLGenerator;
  * episodes of followed shows and watchlist releases, over all libraries the
  * user can access, deduplicated across libraries.
  *
- * "Today" is the server date (UTC), like SeriesProgressService::today(): TMDB
- * air dates carry no time zone and the events are all-day events.
+ * "Today" is the server date in PHP's default time zone (Nextcloud sets UTC), like
+ * SeriesProgressService::today(): TMDB air dates carry no time zone and the events
+ * are all-day events.
  *
  * @psalm-type EventRecord = array{uid: string, summary: string, date: string, description: string, url: string, lastModified: string}
  */
