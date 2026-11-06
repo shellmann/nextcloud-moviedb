@@ -267,5 +267,7 @@ describe('Watchlist cold links and removed links', () => {
 		expect(wrapper.findAll('.watchlist-item--highlight')).toHaveLength(0)
 		// a fresh request for the list replaces the page the scan had moved to
 		expect(store.fetchAll.mock.calls.length).toBeGreaterThan(callsBefore)
+		// ... for the page the user was on, not the one the scan had moved to
+		expect(store.page).toBe(1)
 	})
 })

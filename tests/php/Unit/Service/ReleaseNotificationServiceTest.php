@@ -256,4 +256,26 @@ class ReleaseNotificationServiceTest extends TestCase {
 
         $this->service->dismissLibrary(1, 'bob', false, fn (): bool => false);
     }
+
+    public function testThePendingMarkerStaysAfterAFailedCleanupAndGoesAfterASuccessfulOne(): void {
+        $item = new WatchlistItem();
+        $item->setId(1);
+        $this->series->method('findAllByLibrary')->willReturn([]);
+        $this->watchlist->method('findAllByLibrary')->willReturn([$item]);
+        $this->config->expects($this->once())->method('deleteUserConfig')->with('bob', 'moviedb', 'cleanup_pending_1');
+
+        $this->service->dismissLibrary(1, 'bob', true);
+    }
+
+    public function testAFailedStrictCleanupKeepsTheMarker(): void {
+        $item = new WatchlistItem();
+        $item->setId(1);
+        $this->series->method('findAllByLibrary')->willReturn([]);
+        $this->watchlist->method('findAllByLibrary')->willReturn([$item]);
+        $this->manager->method('markProcessed')->willThrowException(new \RuntimeException('db timeout'));
+        $this->config->expects($this->never())->method('deleteUserConfig');
+
+        $this->expectException(\RuntimeException::class);
+        $this->service->dismissLibrary(1, 'bob', true);
+    }
 }

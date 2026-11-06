@@ -146,22 +146,45 @@ class ReleaseNotificationService {
     }
 
     /** Removes the pending notifications about everything in a library (for one user, or all). */
+    /**
+     * A user left a library and the cleanup of their notifications is still to do. Stored per user
+     * (it survives a failed job and a failed request), so a repeated removal can tell "retry the
+     * cleanup" from "nothing to do" without scanning the library for every caller.
+     */
+    public function markCleanupPending(int $libraryId, string $userId): void {
+        $this->userConfig->setValueString($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId, '1');
+    }
+
+    public function isCleanupPending(int $libraryId, string $userId): bool {
+        return $this->userConfig->getValueString($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId, '') === '1';
+    }
+
+    private function clearCleanupPending(int $libraryId, ?string $userId): void {
+        if ($userId !== null) {
+            $this->userConfig->deleteUserConfig($userId, Application::APP_ID, 'cleanup_pending_' . $libraryId);
+        }
+    }
+
     public function dismissLibrary(int $libraryId, ?string $userId = null, bool $strict = false, ?callable $stillWanted = null): void {
         // $stillWanted is asked before every entry: a long cleanup stops when the situation it was
         // started for is over (the user joined the library again).
         $go = static fn (): bool => $stillWanted === null || $stillWanted();
         foreach ($this->seriesMapper->findAllByLibrary($libraryId) as $series) {
             if (!$go()) {
+                $this->clearCleanupPending($libraryId, $userId); // the user is back: nothing left to do
                 return;
             }
             $this->dismissSeries((int)$series->getId(), $userId, $strict);
         }
         foreach ($this->watchlistMapper->findAllByLibrary($libraryId) as $item) {
             if (!$go()) {
+                $this->clearCleanupPending($libraryId, $userId);
                 return;
             }
             $this->dismissWatchlistItem((int)$item->getId(), $userId, $strict);
         }
+        // Only a cleanup that ran to the end (or was moot) clears the marker: a failure keeps it.
+        $this->clearCleanupPending($libraryId, $userId);
     }
 
     /**

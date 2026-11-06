@@ -407,20 +407,28 @@ class LibraryService {
         }
 
         $membership = $this->memberMapper->findMembership($libraryId, $memberUserId);
-        if ($membership !== null) {
-            $this->memberMapper->delete($membership);
+        if ($membership === null) {
+            // Not a member. Only a cleanup that is still pending (an earlier removal whose
+            // cleanup failed) is run again; any other call has nothing to do and costs nothing.
+            if ($this->notifications?->isCleanupPending($libraryId, $memberUserId) === true) {
+                $this->cleanUpNotifications($libraryId, $memberUserId);
+            }
+            return;
         }
-        // Also for a user who is not a member (any more): that is what a retry after a failed
-        // cleanup looks like, and the cleanup is idempotent.
+
+        // Written before the delete: a failure anywhere after it leaves the marker, so the
+        // removal can be repeated to finish the cleanup.
+        $this->notifications?->markCleanupPending($libraryId, $memberUserId);
+        $this->memberMapper->delete($membership);
         $this->cleanUpNotifications($libraryId, $memberUserId);
     }
 
     /**
      * Removes the release notifications of a user who left a library. One markProcessed() per
      * entry is too slow for the request in a big library, so it is queued (after the delete: the
-     * job checks that the user is really gone). If queueing fails it runs here instead, and a
-     * failure there is thrown: the membership is gone, so the caller repeats the removal, which
-     * runs the cleanup again.
+     * job checks that the user is really gone). If queueing fails it runs here instead, with the
+     * same rejoin check, and a failure there is thrown: the pending marker stays, so the caller
+     * repeats the removal, which runs the cleanup again.
      */
     private function cleanUpNotifications(int $libraryId, string $userId): void {
         if ($this->jobList !== null) {
@@ -431,7 +439,12 @@ class LibraryService {
                 // fall through to the inline cleanup
             }
         }
-        $this->notifications?->dismissLibrary($libraryId, $userId, true);
+        $this->notifications?->dismissLibrary(
+            $libraryId,
+            $userId,
+            true,
+            fn (): bool => $this->memberMapper->findMembership($libraryId, $userId) === null
+        );
     }
 
     /**

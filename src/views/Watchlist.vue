@@ -295,6 +295,7 @@ export default {
 			highlightTimer: null,
 			revealToken: 0,
 			scanning: false,
+			scanStartPage: 1,
 			showWatchedModal: false,
 			showEditModal: false,
 			showRemoveDialog: false,
@@ -377,6 +378,8 @@ export default {
 				this.revealToken++
 				if (this.scanning) {
 					this.scanning = false
+					// Back to the page the user was on, not the one the scan had moved to.
+					this.watchlistStore.page = this.scanStartPage
 					this.watchlistStore.fetchAll()
 				}
 			}
@@ -432,6 +435,7 @@ export default {
 			// The list is paged: look through the pages until the entry shows up. An entry that
 			// does not exist any more is skipped silently and the first page comes back.
 			const startPage = this.watchlistStore.page
+			this.scanStartPage = startPage
 			let found = this.items.some((i) => i.id === id)
 			this.scanning = !found
 			for (let page = 1; !found && page <= this.watchlistStore.totalPages; page++) {
