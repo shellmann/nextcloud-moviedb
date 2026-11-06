@@ -366,14 +366,14 @@ export default {
 	watch: {
 		// A link to an entry while the watchlist is already open (the router reuses this component,
 		// and a link into another library has switched the library underneath): reload, then reveal.
-		'$route.query.item': function (item) {
+		'$route.query.item': function(item) {
 			if (item) {
 				this.loadAndReveal()
 			}
 		},
 
 		// A library switch invalidates a running search for a linked entry.
-		'librariesStore.activeLibraryId': function () {
+		'librariesStore.activeLibraryId': function() {
 			this.revealToken++
 		},
 	},
