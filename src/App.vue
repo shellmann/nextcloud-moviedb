@@ -167,6 +167,14 @@ export default {
 		},
 	},
 
+	watch: {
+		activeLibraryId(id, previous) {
+			// The first library appearing while the app starts is not a switch.
+			if (previous === null || previous === undefined || id === null) { return }
+			this.refreshForLibrary()
+		},
+	},
+
 	async created() {
 		// Fetch libraries first so the active library is known before data loads
 		await this.librariesStore.fetchLibraries()
@@ -179,7 +187,12 @@ export default {
 	methods: {
 		onLibraryChange(option) {
 			if (!option) { return }
+			// The refetch happens in the activeLibraryId watcher, so a switch made by a link
+			// (notification, calendar event) refreshes the data exactly like the selector does.
 			this.librariesStore.setActive(option.id)
+		},
+
+		refreshForLibrary() {
 			// Reset pagination/filters before refetching — otherwise a page
 			// number or filter left over from the previous library (which may
 			// have far more/fewer items) can point past the end of the new
