@@ -42,7 +42,9 @@ class Version000013Date20261106 extends SimpleMigrationStep {
         };
 
         $add('moviedb_series', 'series_type', Types::STRING, ['length' => 32]);
-        $add('moviedb_series', 'networks', Types::JSON, []);
+        // TEXT, not JSON: a JSON column added to an existing SQLite table is reported by
+        // db:schema:check as differing in type. The entity still maps it with addType('networks', 'json').
+        $add('moviedb_series', 'networks', Types::TEXT, []);
         $add('moviedb_series', 'tmdb_rating', Types::SMALLINT, []);
         $add('moviedb_series', 'tmdb_vote_count', Types::INTEGER, []);
         $add('moviedb_episodes', 'notified_at', Types::STRING, ['length' => 32]);
