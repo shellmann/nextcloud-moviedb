@@ -14,7 +14,8 @@ use OCP\IURLGenerator;
 /**
  * Plain event records for the "MovieDB – Upcoming" calendar of one user:
  * episodes of followed shows and watchlist releases, over all libraries the
- * user can access, deduplicated across libraries.
+ * user can access, deduplicated across libraries. Each library query is capped at
+ * EpisodeMapper::CALENDAR_MAX_ROWS rows (a memory guard per query, not a total).
  *
  * "Today" is the server date in PHP's default time zone (Nextcloud sets UTC), like
  * SeriesProgressService::today(): TMDB air dates carry no time zone and the events

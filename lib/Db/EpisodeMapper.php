@@ -13,6 +13,8 @@ use OCP\IDBConnection;
  * @extends QBMapper<Episode>
  */
 class EpisodeMapper extends QBMapper {
+    /** Hard cap for the calendar query: the nearest dates win (ordered by air date). */
+    public const CALENDAR_MAX_ROWS = 2000;
 
     public function __construct(IDBConnection $db) {
         parent::__construct($db, 'moviedb_episodes', Episode::class);
@@ -237,9 +239,6 @@ class EpisodeMapper extends QBMapper {
      *
      * @return array<int, array<string, mixed>>
      */
-    /** Hard cap for the calendar query: the nearest dates win (ordered by air date). */
-    public const CALENDAR_MAX_ROWS = 2000;
-
     public function airingBetween(int $libraryId, string $from, string $until): array {
         $qb = $this->db->getQueryBuilder();
 
