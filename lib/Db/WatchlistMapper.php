@@ -204,10 +204,14 @@ class WatchlistMapper extends QBMapper {
             ->andWhere($qb->expr()->isNotNull('release_date'))
             ->andWhere($qb->expr()->gte('release_date', $qb->createNamedParameter($from)))
             ->andWhere($qb->expr()->lte('release_date', $qb->createNamedParameter($today)))
-            ->andWhere($qb->expr()->lt('added_at', 'release_date'))
             ->orderBy('id', 'ASC');
 
-        return $this->findEntities($qb);
+        // "Added before its release date" is checked here: added_at is a timestamp and
+        // release_date a string, and PostgreSQL refuses to compare the two.
+        return array_values(array_filter(
+            $this->findEntities($qb),
+            static fn (WatchlistItem $item): bool => substr((string)$item->getAddedAt(), 0, 10) < (string)$item->getReleaseDate()
+        ));
     }
 
     /** @param int[] $ids */

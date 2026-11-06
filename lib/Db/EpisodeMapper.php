@@ -285,6 +285,7 @@ class EpisodeMapper extends QBMapper {
         $qb->select('e.id', 'e.series_id', 'e.season_number', 'e.episode_number', 'e.air_date')
             ->selectAlias('s.title', 'series_title')
             ->selectAlias('s.library_id', 'library_id')
+            ->selectAlias('s.created_at', 'series_created_at')
             ->from($this->getTableName(), 'e')
             ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
             ->where($qb->expr()->isNull('e.notified_at'))
@@ -296,7 +297,6 @@ class EpisodeMapper extends QBMapper {
             ->andWhere($qb->expr()->gte('e.air_date', $qb->createNamedParameter($from)))
             ->andWhere($qb->expr()->lte('e.air_date', $qb->createNamedParameter($today)))
             ->andWhere($qb->expr()->gt('e.season_number', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)))
-            ->andWhere($qb->expr()->lt('s.created_at', 'e.air_date'))
             ->orderBy('e.series_id', 'ASC')
             ->addOrderBy('e.air_date', 'ASC')
             ->addOrderBy('e.season_number', 'ASC')
@@ -305,7 +305,11 @@ class EpisodeMapper extends QBMapper {
         $result = $qb->executeQuery();
         $rows = [];
         while ($row = $result->fetch()) {
-            $rows[] = $row;
+            // "Added before it aired" is checked here: created_at is a timestamp and
+            // air_date a string, and PostgreSQL refuses to compare the two.
+            if (substr((string)$row['series_created_at'], 0, 10) < (string)$row['air_date']) {
+                $rows[] = $row;
+            }
         }
         $result->closeCursor();
 
