@@ -71,7 +71,7 @@ find lib/ -name "*.php" -print0 | xargs -0 -n1 php -l   # PHP syntax
 npm run build
 ```
 
-CI runs all of these, plus the upgrade check on SQLite, MariaDB and PostgreSQL, on every pull request.
+CI runs all of these, plus the upgrade check on SQLite, MariaDB and PostgreSQL (Nextcloud 35, and 33 as the oldest supported version), on every pull request.
 
 ### Code Style
 

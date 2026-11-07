@@ -60,27 +60,37 @@ below.
 `tests/upgrade/check-upgrade.sh <from-ref|latest> <sqlite|mysql|pgsql>` does what
 an App Store user's update does, on a real database:
 
-1. Starts `nextcloud:35` with SQLite, MariaDB 10.11 or PostgreSQL 16.
+1. Starts `nextcloud:35` (or the image in `NC_IMAGE`, e.g. `NC_IMAGE=nextcloud:33`)
+   with SQLite, MariaDB 10.11 or PostgreSQL 16.
 2. Installs the old release `<from-ref>` (`latest` = the newest `v*` tag) and
    seeds a few rows.
 3. Swaps in the code of `HEAD` and runs `occ upgrade`, then
-   `occ db:schema:check`. It fails on any `moviedb` schema finding or lost rows.
+   `occ db:schema:check` (Nextcloud 35 and later; older versions don't have it).
+   It fails on any `moviedb` schema finding or lost rows.
 4. Calls the app's API as the admin: it adds watches with `POST /api/movies`,
-   then reads every dashboard stats endpoint and the list endpoints. It fails on
-   a non-2xx answer, wrong year counts, or a moviedb/SQL error in
-   `nextcloud.log`.
+   then reads every dashboard stats endpoint and the list endpoints.
+5. Runs the hourly `ReleaseNotificationJob`, a CalDAV `REPORT` on the
+   "MovieDB – Upcoming" calendar and the core upcoming-events API
+   (`/ocs/v2.php/apps/dav/api/v1/events/upcoming`), which guards the dual-mode
+   `UpcomingCalendar::search()`.
+
+It fails on a non-2xx answer, wrong year counts, or a moviedb/SQL error in
+`nextcloud.log`.
 
 ```bash
 tests/upgrade/check-upgrade.sh latest pgsql
 tests/upgrade/check-upgrade.sh v1.5.2 mysql
+NC_IMAGE=nextcloud:33 tests/upgrade/check-upgrade.sh latest sqlite
 ```
 
 It uses `git archive HEAD`, so **commit first**: uncommitted changes are not
 tested. It needs Docker, jq and the git tags (`git fetch --tags`).
 
 In CI, `upgrade-check.yml` runs it for `v1.5.2` and `latest` on all three
-databases. The six jobs are named `Upgrade from <ref> (<db>)`, and `main`
-requires them to pass.
+databases, plus `latest` on SQLite and PostgreSQL with Nextcloud 33, the oldest
+supported version. The eight jobs are named `Upgrade from <ref> (<db>)` and
+`Upgrade from latest (<db>) on Nextcloud 33`, and `main` requires them to pass
+(a renamed or added job must go into the "Protect main" ruleset as well).
 
 **When a release migrates existing data** (a backfill, a type change, a repair),
 extend the script in the same PR: add seed rows that hit every branch of the
@@ -105,6 +115,9 @@ SQLite is permissive; PostgreSQL is strict and catches bugs the other two pass:
   PostgreSQL, which has **no `LIKE` operator**. Cast with
   `$qb->expr()->castColumn('m.genre_ids', IQueryBuilder::PARAM_STR)` first.
 - **Booleans**: write `TRUE`/`FALSE` in raw SQL, not `1`/`0`.
+- **No comparing across types**: `created_at < air_date` (a `DATETIME` and a
+  `STRING` column) fails with `operator does not exist` on PostgreSQL. Compare
+  such values in PHP, as `ReleaseNotificationService` does.
 - **DDL in transactions**: PostgreSQL rolls back a failed migration cleanly;
   MySQL auto-commits DDL and can leave it half-applied.
 
@@ -229,7 +242,9 @@ instance with a few movies, shows and watchlist entries:
 | 4 | Watchlist | Movies and shows can be added, the type filter works, "Mark as Watched" moves a movie to the library and "Add to TV Shows" imports a show. The random picker opens. |
 | 5 | Quiz, libraries, import/export | A quiz round finishes and appears in the history. A shared library can be switched to. An export re-imports into an empty library. |
 | 6 | Theme and language | Text stays readable in dark mode, and a non-English language shows no English strings. |
-| 7 | Browser console | No JavaScript errors. |
+| 7 | Notifications and calendar | With an episode airing today, running the `ReleaseNotificationJob` (`occ background-job:execute <id> --force-execute`) notifies the owner and members once; the link opens the show in the right library. "MovieDB – Upcoming" shows in the Calendar app, read-only. Both switches in Settings work. |
+| 8 | Keyboard and screen width | New controls are reachable with Tab and named for screen readers; Settings and the TV show page fit 320 px without horizontal scrolling. |
+| 9 | Browser console | No JavaScript errors. |
 
 ---
 

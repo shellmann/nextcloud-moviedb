@@ -23,7 +23,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   every member of the library (the owner included) gets a Nextcloud notification (the
   bell, and a browser notification when you allow them). Several episodes
   of one show on one day arrive as one notification. A show you added after an episode
-  aired does not notify about it. On by default; each user can opt out in Settings. (#114)
+  aired does not notify about it. On by default; each user can opt out in Settings. A
+  notification that could not be delivered is retried every hour for two days, and one
+  is sent again when TMDB moves the date of an episode or title. Notifications go away
+  when the show or watchlist entry is deleted, or (within an hour) when you leave the
+  library. (#114)
 - Links in notifications and calendar events open the show or the watchlist entry
   (scrolled to and highlighted) in the right library, and announce a library switch.
 - Settings → "Notifications and calendar" with a switch for each.
@@ -33,6 +37,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Changed
 - A TV show or movie page opened from another one (for example from a notification
   while a show page is open) now loads the new title instead of keeping the old one.
+- When you switch libraries or pages quickly, lists and detail pages show the answer to
+  the last request, not a slower earlier one. Settings switches toggled in quick
+  succession are saved in order.
+- The daily watchlist release date check goes through all titles in turns instead of
+  asking TMDB about the same first 500 every day, and keeps correcting a date for a
+  week after the release.
 
 ### Fixed
 - Accessibility: icon buttons (show/hide API key, delete platform) and the select boxes
