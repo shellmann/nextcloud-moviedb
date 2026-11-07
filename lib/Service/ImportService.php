@@ -130,6 +130,10 @@ class ImportService {
                 $series->setDirector($row['director']);
                 $series->setIsFavorite($row['isFavorite']);
                 $series->setStoppedWatching($row['stoppedWatching']);
+                $series->setSeriesType($row['seriesType']);
+                $series->setNetworks($row['networks']);
+                $series->setTmdbRating($row['tmdbRating']);
+                $series->setTmdbVoteCount($row['tmdbVoteCount']);
                 $series->setCreatedAt($now);
                 $series = $this->seriesMapper->insert($series);
                 $imported['series']++;

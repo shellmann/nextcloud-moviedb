@@ -61,14 +61,16 @@
 								<NcSelect
 									v-model="selectedPlatform"
 									:options="platformOptions"
-									:placeholder="t('moviedb', 'Select platform')" />
+									:placeholder="t('moviedb', 'Select platform')"
+									:aria-label-combobox="t('moviedb', 'Select platform')" />
 							</div>
 							<div class="watch-meta-field">
 								<label>{{ t('moviedb', 'Language Watched') }}</label>
 								<NcSelect
 									v-model="selectedLanguage"
 									:options="languageOptions"
-									:placeholder="t('moviedb', 'Select language')" />
+									:placeholder="t('moviedb', 'Select language')"
+									:aria-label-combobox="t('moviedb', 'Select language')" />
 							</div>
 						</div>
 						<div class="watch-meta-row">
@@ -81,7 +83,8 @@
 								<NcSelect
 									v-model="selectedRating"
 									:options="ratingOptions"
-									:placeholder="t('moviedb', 'Select rating')" />
+									:placeholder="t('moviedb', 'Select rating')"
+									:aria-label-combobox="t('moviedb', 'Select rating')" />
 							</div>
 						</div>
 					</div>
@@ -232,6 +235,11 @@ export default {
 					status: details.status,
 					castData: details.cast,
 					director: details.director,
+					// '' (not null) when TMDB has no type: null means "not fetched yet" and is re-fetched daily
+					seriesType: details.type ?? '',
+					networks: (details.networks || []).map((n) => ({ name: n.name, logoPath: n.logo_path })),
+					tmdbRating: details.vote_count > 0 && Number.isFinite(details.vote_average) ? Math.round(details.vote_average * 10) : null,
+					tmdbVoteCount: details.vote_count ?? null,
 					// TMDB season list drives per-season episode fetch server-side.
 					seasons: details.seasons || [],
 				}

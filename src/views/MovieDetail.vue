@@ -71,15 +71,7 @@
 						<p>{{ latestWatch.review }}</p>
 					</div>
 
-					<div v-if="movie.castData && movie.castData.length" class="movie-cast">
-						<h3>{{ t('moviedb', 'Cast') }}</h3>
-						<div class="cast-list">
-							<div v-for="actor in movie.castData.slice(0, 6)" :key="actor.name" class="cast-item">
-								<strong>{{ actor.name }}</strong>
-								<span>{{ actor.character }}</span>
-							</div>
-						</div>
-					</div>
+					<CastList :cast="movie.castData || []" class="movie-cast" />
 
 					<!-- Watch history -->
 					<div class="watch-history">
@@ -97,18 +89,18 @@
 							<NcLoadingIcon :size="24" />
 						</div>
 
-						<div v-else-if="watchesStore.watches.length === 0" class="watches-empty">
+						<div v-else-if="watches.length === 0" class="watches-empty">
 							{{ t('moviedb', 'No watch history yet.') }}
 						</div>
 
 						<ul v-else class="watches-list">
-							<li v-for="watch in watchesStore.watches" :key="watch.id" class="watch-entry">
+							<li v-for="watch in watches" :key="watch.id" class="watch-entry">
 								<span class="watch-date">{{ watch.watchedAt ? formatDate(watch.watchedAt) : t('moviedb', 'Unknown date') }}</span>
 								<span v-if="watch.rating" class="watch-rating">★ {{ watch.rating }}/10</span>
 								<span v-if="watch.platformName || getPlatformName(watch.platformId)" class="watch-platform">{{ watch.platformName || getPlatformName(watch.platformId) }}</span>
 								<span v-if="watch.languageWatched" class="watch-language"><span aria-hidden="true">{{ getLanguageFlag(watch.languageWatched) }}</span> {{ getLanguageName(watch.languageWatched) }}</span>
 								<span v-if="watch.review" class="watch-review-indicator" :title="watch.review">💬</span>
-								<NcActions v-if="activeCanEdit && watchesStore.watches.length > 1">
+								<NcActions v-if="activeCanEdit && watches.length > 1">
 									<NcActionButton @click="deleteWatch(watch.id)">
 										<template #icon>
 											<Delete :size="20" />
@@ -187,6 +179,7 @@ import Delete from 'vue-material-design-icons/Delete.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
+import CastList from '../components/CastList.vue'
 import RatingStars from '../components/RatingStars.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getLanguageFlag, getLanguageName } from '../constants.js'
@@ -205,6 +198,7 @@ export default {
 		NcDialog,
 		NcActions,
 		NcActionButton,
+		CastList,
 		Pencil,
 		Delete,
 		ArrowLeft,
@@ -230,6 +224,7 @@ export default {
 
 	data() {
 		return {
+			gone: false,
 			showDeleteDialog: false,
 			showLogDialog: false,
 			logForm: {
@@ -241,8 +236,15 @@ export default {
 	},
 
 	computed: {
+		watches() {
+			// Only the history of the movie of this route (never the previous movie's).
+			return String(this.watchesStore.movieId) === String(this.id) ? this.watchesStore.watches : []
+		},
+
 		movie() {
-			return this.moviesStore.currentMovie
+			// Only the movie of this route, never the previous one while the next is loading.
+			const current = this.moviesStore.currentMovie
+			return current && String(current.id) === String(this.id) ? current : null
 		},
 
 		loading() {
@@ -255,7 +257,7 @@ export default {
 
 		latestWatch() {
 			// Store returns watches sorted by watched_at DESC, so the first is latest.
-			return this.watchesStore.watches[0] ?? null
+			return this.watches[0] ?? null
 		},
 
 		posterUrl() {
@@ -275,16 +277,37 @@ export default {
 		},
 	},
 
+	watch: {
+		// The router reuses this component when only the id changes. An open dialog belongs to
+		// the previous movie: close it, so confirming cannot act on the new one.
+		id() {
+			this.showDeleteDialog = false
+			this.showLogDialog = false
+			this.loadMovie()
+		},
+	},
+
 	created() {
 		this.loadMovie()
 	},
 
+	beforeUnmount() {
+		this.gone = true
+	},
+
 	methods: {
 		async loadMovie() {
+			// After every await: the page may be gone, or the route may have moved on to another
+			// movie. A stale continuation must not start new requests (the newest request token
+			// would let the old movie's history win).
+			const id = this.id
+			const stale = () => this.gone || id !== this.id
 			// Wait for libraries so the active library id is known before fetching.
 			await this.librariesStore.whenReady()
-			await this.moviesStore.fetchOne(this.id)
-			await this.watchesStore.fetchForMovie(this.id)
+			if (stale()) { return }
+			await this.moviesStore.fetchOne(id)
+			if (stale()) { return }
+			await this.watchesStore.fetchForMovie(id)
 		},
 
 		formatRuntime,
@@ -477,31 +500,6 @@ export default {
     p {
         margin: 0;
         white-space: pre-wrap;
-    }
-}
-
-.movie-cast {
-    h3 {
-        margin: 0 0 12px;
-        font-size: 1.1em;
-    }
-}
-
-.cast-list {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 12px;
-}
-
-.cast-item {
-    strong {
-        display: block;
-        font-size: 14px;
-    }
-
-    span {
-        font-size: 12px;
-        color: var(--color-text-lighter);
     }
 }
 

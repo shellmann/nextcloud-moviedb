@@ -4,6 +4,8 @@ import { defineStore } from 'pinia'
 import api from '../services/api.js'
 import { useLibrariesStore } from './libraries.js'
 
+let latestFetch = 0
+
 export const useWatchesStore = defineStore('watches', {
 	state: () => ({
 		/** @type {Array<object>} Watch history for the current movie */
@@ -16,17 +18,27 @@ export const useWatchesStore = defineStore('watches', {
 
 	actions: {
 		async fetchForMovie(movieId) {
+			const requestNo = ++latestFetch
 			this.loading = true
+			if (this.movieId !== movieId) {
+				// Never show the history of the previous movie while the next one loads.
+				this.watches = []
+			}
 			this.movieId = movieId
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const response = await api.getWatches(movieId, libraryId !== null ? libraryId : undefined)
-				this.watches = response.data.watches
+				// A slow answer for an earlier movie must not overwrite the newest request.
+				if (requestNo === latestFetch) {
+					this.watches = response.data.watches
+				}
 			} catch (error) {
 				console.error('Failed to fetch watch history:', error)
 				showError(t('moviedb', 'Failed to load watch history.'))
 			} finally {
-				this.loading = false
+				if (requestNo === latestFetch) {
+					this.loading = false
+				}
 			}
 		},
 

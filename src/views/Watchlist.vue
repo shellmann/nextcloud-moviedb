@@ -28,14 +28,14 @@
 				v-model="selectedType"
 				:options="typeOptions"
 				:placeholder="t('moviedb', 'Type')"
-				:aria-label="t('moviedb', 'Filter by type')"
+				:aria-label-combobox="t('moviedb', 'Filter by type')"
 				:clearable="false"
 				@update:modelValue="onTypeChange" />
 			<NcSelect
 				v-model="selectedSort"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
-				:aria-label="t('moviedb', 'Sort by')"
+				:aria-label-combobox="t('moviedb', 'Sort by')"
 				@update:modelValue="onSortChange" />
 		</div>
 
@@ -46,8 +46,11 @@
 		<div v-else-if="items.length" class="watchlist-grid">
 			<div
 				v-for="item in items"
+				:id="'watchlist-item-' + item.id"
 				:key="item.id"
-				class="watchlist-item">
+				tabindex="-1"
+				class="watchlist-item"
+				:class="{ 'watchlist-item--highlight': highlightedId === item.id }">
 				<div class="item-poster">
 					<img
 						v-if="item.posterPath"
@@ -158,14 +161,16 @@
 					<NcSelect
 						v-model="watchedData.platform"
 						:options="platformOptions"
-						:placeholder="t('moviedb', 'Select platform')" />
+						:placeholder="t('moviedb', 'Select platform')"
+						:aria-label-combobox="t('moviedb', 'Select platform')" />
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Language Watched') }}</label>
 					<NcSelect
 						v-model="watchedData.language"
 						:options="languageOptions"
-						:placeholder="t('moviedb', 'Select language')" />
+						:placeholder="t('moviedb', 'Select language')"
+						:aria-label-combobox="t('moviedb', 'Select language')" />
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Date Watched') }}</label>
@@ -176,7 +181,8 @@
 					<NcSelect
 						v-model="watchedData.rating"
 						:options="ratingOptions"
-						:placeholder="t('moviedb', 'Select rating')" />
+						:placeholder="t('moviedb', 'Select rating')"
+						:aria-label-combobox="t('moviedb', 'Select rating')" />
 				</div>
 				<div class="modal-actions">
 					<NcButton @click="showWatchedModal = false">
@@ -198,7 +204,8 @@
 					<NcSelect
 						v-model="editData.priority"
 						:options="priorityOptions"
-						:placeholder="t('moviedb', 'Select priority')" />
+						:placeholder="t('moviedb', 'Select priority')"
+						:aria-label-combobox="t('moviedb', 'Select priority')" />
 				</div>
 				<div class="form-group">
 					<label>{{ t('moviedb', 'Notes') }}</label>
@@ -284,6 +291,11 @@ export default {
 
 	data() {
 		return {
+			highlightedId: null,
+			highlightTimer: null,
+			revealToken: 0,
+			scanToken: 0,
+			scanStartPage: 1,
 			showWatchedModal: false,
 			showEditModal: false,
 			showRemoveDialog: false,
@@ -353,16 +365,111 @@ export default {
 		},
 	},
 
-	async created() {
-		this.selectedSort = this.sortOptions[0]
-		this.selectedType = this.typeOptions[0]
-		this.watchlistStore.resetFilters()
-		// Wait for libraries so the active library id is known before fetching.
-		await this.librariesStore.whenReady()
-		this.watchlistStore.fetchAll()
+	watch: {
+		// A link to an entry while the watchlist is already open (the router reuses this component,
+		// and a link into another library has switched the library underneath): reload, then reveal.
+		'$route.query.item': function(item) {
+			if (item) {
+				this.loadAndReveal()
+			} else {
+				// The link is gone (back to the plain watchlist): a running search ends. Its page
+				// request may still be the newest one and would show the scanned page, so the normal
+				// list is requested again (newest request wins in the store).
+				// Only a scan that is still the newest action owns the page it moved to. Any user action
+				// (filter, page, library) bumped the token and took over, so nothing is restored then.
+				const ownsPage = this.scanToken !== 0 && this.scanToken === this.revealToken
+				this.revealToken++
+				if (ownsPage) {
+					this.scanToken = 0
+					// Back to the page the user was on, not the one the scan had moved to.
+					this.watchlistStore.page = this.scanStartPage
+					this.watchlistStore.fetchAll()
+				}
+			}
+		},
+
+		// A library switch ends a running search for a linked entry. With a link still in the URL
+		// (a cold link: the libraries are still loading when the page opens) the search starts over
+		// in the library that is active now.
+		'librariesStore.activeLibraryId': function() {
+			this.revealToken++
+			if (this.$route.query.item) {
+				this.loadAndReveal()
+			}
+		},
+	},
+
+	created() {
+		this.loadAndReveal()
+	},
+
+	beforeUnmount() {
+		this.revealToken++
+		clearTimeout(this.highlightTimer)
 	},
 
 	methods: {
+		async loadAndReveal() {
+			const token = ++this.revealToken
+			this.selectedSort = this.sortOptions[0]
+			this.selectedType = this.typeOptions[0]
+			this.watchlistStore.resetFilters()
+			// Wait for libraries so the active library id is known before fetching.
+			await this.librariesStore.whenReady()
+			if (token !== this.revealToken) { return }
+			await this.watchlistStore.fetchAll()
+			if (token !== this.revealToken) { return }
+			this.revealLinkedItem()
+		},
+
+		/**
+		 * Opened from a notification or calendar event (`?item=<id>`): scrolls to the entry,
+		 * moves keyboard focus to it (so screen readers read it) and highlights it for a moment.
+		 */
+		async revealLinkedItem() {
+			const id = Number.parseInt(String(this.$route.query.item ?? ''), 10)
+			if (!Number.isInteger(id)) {
+				return
+			}
+			// Any newer action (another filter, page, library, link, leaving the page) cancels this
+			// search; it then neither changes pages any more nor restores an old one.
+			const token = ++this.revealToken
+			const stale = () => token !== this.revealToken
+			// The list is paged: look through the pages until the entry shows up. An entry that
+			// does not exist any more is skipped silently and the first page comes back.
+			const startPage = this.watchlistStore.page
+			this.scanStartPage = startPage
+			let found = this.items.some((i) => i.id === id)
+			this.scanToken = found ? 0 : token
+			for (let page = 1; !found && page <= this.watchlistStore.totalPages; page++) {
+				if (page === startPage) { continue }
+				this.watchlistStore.page = page
+				await this.watchlistStore.fetchAll()
+				if (stale()) { return }
+				found = this.items.some((i) => i.id === id)
+			}
+			this.scanToken = 0
+			if (!found) {
+				if (this.watchlistStore.page !== startPage) {
+					this.watchlistStore.page = startPage
+					await this.watchlistStore.fetchAll()
+				}
+				return
+			}
+			if (stale()) { return }
+			this.highlightedId = id
+			// Drop ?item= so a reload or a shared URL does not highlight the entry again.
+			const query = { ...this.$route.query }
+			delete query.item
+			this.$router.replace({ path: this.$route.path, query })
+			await this.$nextTick()
+			const el = this.$el.querySelector('#watchlist-item-' + id)
+			el?.scrollIntoView({ block: 'center' })
+			el?.focus({ preventScroll: true })
+			clearTimeout(this.highlightTimer)
+			this.highlightTimer = setTimeout(() => { this.highlightedId = null }, 4000)
+		},
+
 		formatDate,
 		getPosterUrl,
 		getPriorityLabel,
@@ -372,16 +479,19 @@ export default {
 		},
 
 		onSortChange(selected) {
+			this.revealToken++
 			if (selected) {
 				this.watchlistStore.setSort(selected.id, 'DESC')
 			}
 		},
 
 		onTypeChange(selected) {
+			this.revealToken++
 			this.watchlistStore.setTypeFilter(selected ? selected.id : 'all')
 		},
 
 		goToPage(page) {
+			this.revealToken++
 			this.watchlistStore.setPage(page)
 		},
 
@@ -520,6 +630,10 @@ export default {
     border-radius: 8px;
     padding: 16px;
     transition: box-shadow 0.3s, background-color 0.3s;
+
+    &.watchlist-item--highlight {
+        box-shadow: 0 0 0 3px var(--color-primary-element);
+    }
 
     @media (max-width: 600px) {
         flex-direction: column;

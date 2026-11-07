@@ -265,6 +265,42 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->assertNotNull($series->getTmdbRefreshedAt());
     }
 
+    public function testStoresTypeNetworksScoreAndFillsCast(): void {
+        $series = $this->series('Returning Series');
+        $this->episodeMapper->method('findBySeries')->willReturn([]);
+        $details = $this->details([1 => 0]) + [
+            'type' => 'Miniseries',
+            'networks' => [['id' => 1, 'name' => 'HBO', 'logo_path' => '/hbo.png']],
+            'vote_average' => 8.44,
+            'vote_count' => 1234,
+            'cast' => [['name' => 'A', 'character' => 'B', 'profilePath' => null]],
+            'director' => 'Jane Doe',
+        ];
+        $this->tmdb->method('getSeriesDetails')->willReturn($details);
+        $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => []]);
+
+        $this->service->refresh($series, 'alice', 'en-US');
+
+        $this->assertSame('Miniseries', $series->getSeriesType());
+        $this->assertSame([['name' => 'HBO', 'logoPath' => '/hbo.png']], $series->getNetworks());
+        $this->assertSame(84, $series->getTmdbRating());
+        $this->assertSame(1234, $series->getTmdbVoteCount());
+        $this->assertSame('A', $series->getCastData()[0]['name']);
+        $this->assertSame('Jane Doe', $series->getDirector());
+    }
+
+    public function testMissingTypeIsStoredAsEmptyStringSoTheBackfillDoesNotLoop(): void {
+        $series = $this->series('Ended');
+        $this->episodeMapper->method('findBySeries')->willReturn([]);
+        $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 0], 'Ended'));
+        $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => []]);
+
+        $this->service->refresh($series, 'alice', 'en-US');
+
+        $this->assertSame('', $series->getSeriesType());
+        $this->assertNull($series->getTmdbRating());
+    }
+
     public function testCallsTmdbBeforeOpeningTheTransaction(): void {
         $this->episodeMapper->method('findBySeries')->willReturn([]);
         $this->tmdb->method('getSeriesDetails')->willReturnCallback(function (): array {
@@ -352,5 +388,42 @@ class SeriesRefreshServiceTest extends TestCase {
     public function testRecognisesATooManyRequestsError(): void {
         $this->assertTrue(SeriesRefreshService::isRateLimited(new \RuntimeException('slow down', 429)));
         $this->assertFalse(SeriesRefreshService::isRateLimited(new \RuntimeException('gone', 404)));
+    }
+
+    public function testAMovedEpisodeThatWasAlreadyAnnouncedIsAnnouncedAgain(): void {
+        $announced = $this->stored(1, 1, '2030-01-01');
+        $announced->setNotifiedAt('2029-12-31 10:00:00');
+        $this->episodeMapper->method('findBySeries')->willReturn([$announced]);
+        $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1]));
+        $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => [$this->tmdbEp(1, 1, '2030-02-01')]]);
+
+        // its own statement, whatever stamp the in-memory entity holds
+        $this->episodeMapper->expects($this->once())->method('clearNotified')->with((int)$announced->getId());
+
+        $this->service->refresh($this->series(), 'alice', 'en-US');
+    }
+
+    public function testAnUnchangedAirDateKeepsTheAnnouncedStamp(): void {
+        $announced = $this->stored(1, 1, '2030-01-01');
+        $announced->setNotifiedAt('2029-12-31 10:00:00');
+        $this->episodeMapper->method('findBySeries')->willReturn([$announced]);
+        $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1]));
+        $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => [$this->tmdbEp(1, 1, '2030-01-01', 'Renamed')]]);
+
+        $this->episodeMapper->expects($this->never())->method('clearNotified');
+
+        $this->service->refresh($this->series(), 'alice', 'en-US');
+
+        $this->assertSame('2029-12-31 10:00:00', $announced->getNotifiedAt());
+    }
+
+    public function testMarkRefreshedLeavesTheMetadataBackfillWithTheNoTypeMarker(): void {
+        $stored = $this->series('Returning Series');
+        $stored->setSeriesType(null);
+        $this->seriesMapper->method('find')->willReturn($stored);
+
+        $this->service->markRefreshed($stored);
+
+        $this->assertSame('', $stored->getSeriesType(), 'a show that cannot be fetched must not stay in the backfill set');
     }
 }

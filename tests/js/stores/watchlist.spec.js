@@ -467,3 +467,41 @@ describe('Watchlist Store', () => {
 		})
 	})
 })
+
+describe('Watchlist store fetchAll ordering', () => {
+	it('keeps the newest request when an older answer arrives late', async () => {
+		setActivePinia(createPinia())
+		const store = useWatchlistStore()
+		let answerFirst
+		api.getWatchlist.mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve }))
+		api.getWatchlist.mockResolvedValueOnce({ data: { items: [{ id: 2 }], total: 1, totalUnfiltered: 1, page: 1, totalPages: 1 } })
+
+		const first = store.fetchAll()
+		await store.fetchAll()
+		answerFirst({ data: { items: [{ id: 1 }], total: 9, totalUnfiltered: 9, page: 3, totalPages: 3 } })
+		await first
+
+		expect(store.items).toEqual([{ id: 2 }])
+		expect(store.page).toBe(1)
+		expect(store.loading).toBe(false)
+	})
+
+	it('does not report the failure of a superseded request', async () => {
+		setActivePinia(createPinia())
+		const store = useWatchlistStore()
+		let failFirst
+		api.getWatchlist.mockImplementationOnce(() => new Promise((resolve, reject) => { failFirst = reject }))
+		api.getWatchlist.mockResolvedValueOnce({ data: { items: [{ id: 2 }], total: 1, totalUnfiltered: 1, page: 1, totalPages: 1 } })
+		const { showError } = await import('@nextcloud/dialogs')
+		showError.mockClear()
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+
+		const first = store.fetchAll()
+		await store.fetchAll()
+		failFirst(new Error('network'))
+		await first
+
+		expect(showError).not.toHaveBeenCalled()
+		expect(store.items).toEqual([{ id: 2 }])
+	})
+})

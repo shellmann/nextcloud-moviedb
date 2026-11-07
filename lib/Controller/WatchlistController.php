@@ -15,6 +15,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
+use OCA\MovieDB\Util\TmdbSeriesFields;
 use OCP\IDBConnection;
 use OCP\IRequest;
 use OCP\IUserSession;
@@ -424,6 +425,7 @@ class WatchlistController extends AuthenticatedController {
                 $seriesData['status'] = $details['status'] ?? null;
                 $seriesData['castData'] = $details['cast'] ?? null;
                 $seriesData['director'] = $details['director'] ?? null;
+                $seriesData = array_merge($seriesData, TmdbSeriesFields::fromDetails($details));
                 $seriesData['seasons'] = $details['seasons'] ?? [];
             } catch (\Exception $e) {
                 $this->logger->warning('Failed to fetch TMDB details for series ' . $item->getTmdbId(), [

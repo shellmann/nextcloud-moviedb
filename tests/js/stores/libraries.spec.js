@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useLibrariesStore } from '@/stores/libraries.js'
 
 // jsdom exposes localStorage on window but not globalThis; stub it so the store
@@ -29,12 +29,12 @@ vi.mock('@/services/api.js', () => ({
 	},
 }))
 
-import api from '@/services/api.js'
 import { showError, showSuccess } from '@nextcloud/dialogs'
+import api from '@/services/api.js'
 
 const personalLib = { id: 1, owner: 'alice', name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }
-const sharedLib   = { id: 2, owner: 'alice', name: 'Family', isPersonal: false, role: 'owner', permissionEdit: true }
-const memberLib   = { id: 7, owner: 'bob', name: 'SmokeTestLib', isPersonal: false, role: 'editor', permissionEdit: true }
+const sharedLib = { id: 2, owner: 'alice', name: 'Family', isPersonal: false, role: 'owner', permissionEdit: true }
+const memberLib = { id: 7, owner: 'bob', name: 'SmokeTestLib', isPersonal: false, role: 'editor', permissionEdit: true }
 
 describe('Libraries Store', () => {
 	let store
@@ -186,7 +186,7 @@ describe('Libraries Store', () => {
 
 			const result = await store.rename(2, 'Renamed Family')
 
-			expect(store.libraries.find(l => l.id === 2).name).toBe('Renamed Family')
+			expect(store.libraries.find((l) => l.id === 2).name).toBe('Renamed Family')
 			expect(result).toEqual(renamed)
 			expect(showSuccess).toHaveBeenCalledOnce()
 		})
@@ -225,7 +225,7 @@ describe('Libraries Store', () => {
 			const result = await store.leaveLibrary(7)
 
 			expect(result).toBe(true)
-			expect(store.libraries.find(l => l.id === 7)).toBeUndefined()
+			expect(store.libraries.find((l) => l.id === 7)).toBeUndefined()
 			expect(showSuccess).toHaveBeenCalledWith('You have left the library.')
 		})
 

@@ -13,6 +13,7 @@ use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Util\TmdbEpisode;
+use OCA\MovieDB\Util\TmdbSeriesFields;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
 
@@ -30,7 +31,8 @@ class SeriesService {
         MovieWatchMapper $watchMapper,
         PlatformMapper $platformMapper,
         TmdbService $tmdbService,
-        IDBConnection $db
+        IDBConnection $db,
+        private ?ReleaseNotificationService $notifications = null
     ) {
         $this->mapper = $mapper;
         $this->episodeMapper = $episodeMapper;
@@ -120,6 +122,10 @@ class SeriesService {
             $series->setCastData($data['castData'] ?? null);
             $series->setDirector($data['director'] ?? null);
             $series->setIsFavorite($data['isFavorite'] ?? false);
+            $series->setSeriesType(is_string($data['seriesType'] ?? null) ? mb_substr($data['seriesType'], 0, 32) : null);
+            $series->setNetworks(TmdbSeriesFields::sanitizeNetworks($data['networks'] ?? null));
+            $series->setTmdbRating(isset($data['tmdbRating']) ? max(0, min(100, (int)$data['tmdbRating'])) : null);
+            $series->setTmdbVoteCount(isset($data['tmdbVoteCount']) ? max(0, (int)$data['tmdbVoteCount']) : null);
             $series->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
 
             $series = $this->mapper->insert($series);
@@ -453,6 +459,10 @@ class SeriesService {
             $this->db->rollBack();
             throw $e;
         }
+
+        // After the commit: the notification tables are not part of this transaction, so a
+        // rollback must not leave the show with its notifications already gone.
+        $this->notifications?->dismissSeries($id);
     }
 
     private function extractYear(?string $date): ?int {

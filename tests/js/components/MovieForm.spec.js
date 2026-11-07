@@ -1,6 +1,6 @@
-import { describe, it, expect, vi } from 'vitest'
-import { h } from 'vue'
 import { mount } from '@vue/test-utils'
+import { describe, expect, it, vi } from 'vitest'
+import { h } from 'vue'
 import MovieForm from '@/components/MovieForm.vue'
 
 // The real @nextcloud/vue modules pull in CSS that Vitest can't load.
@@ -25,10 +25,12 @@ vi.mock('@/services/api.js', () => ({
 	default: { getTmdbMovieDetails: vi.fn() },
 }))
 
-const mountForm = (movie) => mount(MovieForm, {
-	props: { movie: { title: 'Inception', ...movie } },
-	global: { mocks: { t: (app, text) => text } },
-})
+function mountForm(movie) {
+	return mount(MovieForm, {
+		props: { movie: { title: 'Inception', ...movie } },
+		global: { mocks: { t: (app, text) => text } },
+	})
+}
 
 describe('MovieForm favorite switch', () => {
 	it('shows the stored favorite state', () => {

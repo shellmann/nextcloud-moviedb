@@ -69,6 +69,10 @@ function storeWatchStatus(value) {
  * Mirrors the movies store; mark-watched actions re-fetch the detail view so
  * derived progress (season/series aggregates) stays authoritative from the server.
  */
+// Only the newest fetchOne() may write the current item: a slow answer for an earlier id
+// (a quick 5 -> 6 -> 5 navigation) must not overwrite it.
+let latestFetchOne = 0
+
 export const useSeriesStore = defineStore('series', {
 	state: () => ({
 		/** @type {Array<object>} List of series for current page */
@@ -144,18 +148,23 @@ export const useSeriesStore = defineStore('series', {
 		 * @return {Promise<object | null>} The series object or null on error
 		 */
 		async fetchOne(id) {
+			const requestNo = ++latestFetchOne
 			this.loading = true
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const response = await api.getSeriesItem(id, libraryId !== null ? libraryId : undefined)
-				this.currentSeries = response.data.series
+				if (requestNo === latestFetchOne) {
+					this.currentSeries = response.data.series
+				}
 				return response.data.series
 			} catch (error) {
 				console.error('Failed to fetch series:', error)
 				showError(t('moviedb', 'Failed to load series details.'))
 				return null
 			} finally {
-				this.loading = false
+				if (requestNo === latestFetchOne) {
+					this.loading = false
+				}
 			}
 		},
 
@@ -238,6 +247,19 @@ export const useSeriesStore = defineStore('series', {
 		},
 
 		/**
+		 * Stores the answer of a mutation as the current series, unless the user has
+		 * navigated to another show meanwhile: a late answer for show 5 must not
+		 * replace the page of show 6.
+		 *
+		 * @param {object} series - Series returned by the API
+		 */
+		applyToCurrent(series) {
+			if (!this.currentSeries || this.currentSeries.id === series.id) {
+				this.currentSeries = series
+			}
+		},
+
+		/**
 		 * Toggles a single episode's watched flag; refreshes currentSeries with server progress.
 		 *
 		 * @param {number} id - Series ID
@@ -249,7 +271,7 @@ export const useSeriesStore = defineStore('series', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const response = await api.markEpisodeWatched(id, episodeId, watched, libraryId !== null ? libraryId : undefined)
-				this.currentSeries = response.data.series
+				this.applyToCurrent(response.data.series)
 				return response.data.series
 			} catch (error) {
 				console.error('Failed to mark episode watched:', error)
@@ -270,7 +292,7 @@ export const useSeriesStore = defineStore('series', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const response = await api.markSeasonWatched(id, seasonNumber, watched, libraryId !== null ? libraryId : undefined)
-				this.currentSeries = response.data.series
+				this.applyToCurrent(response.data.series)
 				showSuccess(watched
 					? t('moviedb', 'Season marked as watched.')
 					: t('moviedb', 'Season marked as unwatched.'))
@@ -293,7 +315,7 @@ export const useSeriesStore = defineStore('series', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const response = await api.markSeriesWatched(id, watched, libraryId !== null ? libraryId : undefined)
-				this.currentSeries = response.data.series
+				this.applyToCurrent(response.data.series)
 				showSuccess(watched
 					? t('moviedb', 'Series marked as watched.')
 					: t('moviedb', 'Series marked as unwatched.'))

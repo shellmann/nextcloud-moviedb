@@ -17,7 +17,7 @@ namespace OCP {
         public function getUploadedFile(string $key);
     }
     interface IDateTimeZone {
-        public function getTimeZone($timestamp = null): \DateTimeZone;
+        public function getTimeZone($timestamp = false, ?string $userId = null): \DateTimeZone;
     }
     interface IUser {
         public function getUID(): ?string;
@@ -41,6 +41,66 @@ namespace OCP {
     }
     interface IURLGenerator {
         public function imagePath(string $appName, string $file): string;
+        public function linkToRouteAbsolute(string $routeName, array $arguments = []): string;
+        public function getAbsoluteURL(string $url): string;
+    }
+    interface IL10N {
+        public function t(string $text, $parameters = []): string;
+        public function n(string $text_singular, string $text_plural, int $count, array $parameters = []): string;
+    }
+    class Constants {
+        public const PERMISSION_READ = 1;
+    }
+}
+
+namespace OCP\L10N {
+    interface IFactory {
+        public function get(string $app, ?string $lang = null): \OCP\IL10N;
+    }
+}
+
+namespace OCP\Calendar {
+    interface ICalendar {
+        public function getKey(): string;
+        public function getUri(): string;
+        public function getDisplayName(): ?string;
+        public function getDisplayColor(): ?string;
+        public function search(string $pattern, array $searchProperties = [], array $options = [], ?int $limit = null, ?int $offset = null): array;
+        public function getPermissions(): int;
+        public function isDeleted(): bool;
+    }
+    interface ICalendarProvider {
+        public function getCalendars(string $principalUri, array $calendarUris = []): array;
+    }
+}
+
+namespace OCP\Notification {
+    class UnknownNotificationException extends \InvalidArgumentException {}
+    interface INotification {
+        public function setApp(string $app): INotification;
+        public function setUser(string $user): INotification;
+        public function setDateTime(\DateTime $dateTime): INotification;
+        public function setObject(string $type, string $id): INotification;
+        public function setSubject(string $subject, array $parameters = []): INotification;
+        public function setParsedSubject(string $subject): INotification;
+        public function setLink(string $link): INotification;
+        public function setIcon(string $icon): INotification;
+        public function getApp(): string;
+        public function getUser(): string;
+        public function getObjectType(): string;
+        public function getObjectId(): string;
+        public function getSubject(): string;
+        public function getSubjectParameters(): array;
+    }
+    interface IManager {
+        public function createNotification(): INotification;
+        public function notify(INotification $notification): void;
+        public function markProcessed(INotification $notification): void;
+    }
+    interface INotifier {
+        public function getID(): string;
+        public function getName(): string;
+        public function prepare(INotification $notification, string $languageCode): INotification;
     }
 }
 
@@ -220,6 +280,7 @@ namespace OCP\DB\QueryBuilder {
         public const PARAM_STR = 2;
         public const PARAM_INT = 1;
         public const PARAM_BOOL = 5;
+        public const PARAM_NULL = 0;
         public const PARAM_STR_ARRAY = 102;
         public const PARAM_INT_ARRAY = 101;
         public function select(...$selects): static;
@@ -380,7 +441,10 @@ namespace OCP\AppFramework\Bootstrap {
         public function register(IRegistrationContext $context): void;
         public function boot(IBootContext $context): void;
     }
-    interface IRegistrationContext {}
+    interface IRegistrationContext {
+        public function registerCalendarProvider(string $class): void;
+        public function registerNotifierService(string $notifierClass): void;
+    }
     interface IBootContext {}
 }
 
@@ -410,6 +474,22 @@ namespace OCP\BackgroundJob {
     interface IJob {
         public const TIME_INSENSITIVE = 0;
         public const TIME_SENSITIVE = 1;
+    }
+
+    interface IJobList {
+        public function add($job, $argument = null): void;
+        public function remove($job, $argument = null): void;
+    }
+
+    abstract class QueuedJob implements IJob {
+        public function __construct(\OCP\AppFramework\Utility\ITimeFactory $time) {}
+
+        /** Run the job body directly. */
+        public function runNow($argument = null): void {
+            $this->run($argument);
+        }
+
+        abstract protected function run($argument);
     }
 
     abstract class TimedJob implements IJob {

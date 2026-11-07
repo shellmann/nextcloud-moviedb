@@ -29,6 +29,10 @@ function fromServer(data) {
 		showContinueWatching: data.showContinueWatching !== false,
 		/** @type {boolean} Whether the dashboard shows the "coming up" row (on unless switched off) */
 		showComingUp: data.showComingUp !== false,
+		/** @type {boolean} Whether new episodes and releases are announced as Nextcloud notifications (on unless switched off) */
+		notifyReleases: data.notifyReleases !== false,
+		/** @type {boolean} Whether the "MovieDB – Upcoming" calendar is shown in the Calendar app (on unless switched off) */
+		showCalendar: data.showCalendar !== false,
 	}
 }
 
@@ -36,6 +40,8 @@ function fromServer(data) {
  * Settings store - Manages user application settings.
  * Handles TMDB API key configuration and language preferences.
  */
+let writeQueue = Promise.resolve()
+
 export const useSettingsStore = defineStore('settings', {
 	// Starts from the settings sent with the page, so views know right away
 	// whether a TMDB key is set (no "key required" flash while loading).
@@ -76,8 +82,14 @@ export const useSettingsStore = defineStore('settings', {
 		 * @throws {Error} When the API request fails
 		 */
 		async update(data) {
-			await api.updateSettings(data)
-			await this.fetch()
+			// One write at a time, in the order the user made them: overlapping requests could
+			// finish out of order on the server and leave an old value behind.
+			const run = writeQueue.catch(() => {}).then(async () => {
+				await api.updateSettings(data)
+				await this.fetch()
+			})
+			writeQueue = run
+			return run
 		},
 	},
 })

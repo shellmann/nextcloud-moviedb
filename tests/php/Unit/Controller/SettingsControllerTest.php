@@ -161,6 +161,28 @@ class SettingsControllerTest extends TestCase {
         $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
     }
 
+    /**
+     * @dataProvider continueWatchingProvider
+     */
+    public function testSavesNotifyReleasesAndShowCalendarAsStrings(mixed $value, string $stored): void {
+        $this->request->method('getParams')->willReturn(['notifyReleases' => $value, 'showCalendar' => $value]);
+        $written = [];
+        $this->userConfig->method('setValueString')->willReturnCallback(function ($user, $app, $key, $v) use (&$written) {
+            $written[$key] = $v;
+            return true;
+        });
+
+        $this->assertSame(Http::STATUS_OK, $this->controller->update()->getStatus());
+        $this->assertSame(['notify_releases' => $stored, 'show_calendar' => $stored], $written);
+    }
+
+    public function testBadNotificationValueWritesNothing(): void {
+        $this->request->method('getParams')->willReturn(['defaultLanguage' => 'en-US', 'showCalendar' => 'maybe']);
+        $this->userConfig->expects($this->never())->method('setValueString');
+
+        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
+    }
+
     public function testSavesBothDashboardSwitchesTogether(): void {
         $this->request->method('getParams')->willReturn(['showContinueWatching' => false, 'showComingUp' => true]);
         $written = [];

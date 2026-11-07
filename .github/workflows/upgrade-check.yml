@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   upgrade:
-    name: Upgrade from ${{ matrix.from }} (${{ matrix.db }})
+    name: Upgrade from ${{ matrix.from }} (${{ matrix.db }})${{ matrix.nc && format(' on Nextcloud {0}', matrix.nc) || '' }}
     runs-on: ubuntu-latest
     timeout-minutes: 25
     strategy:
@@ -21,6 +21,16 @@ jobs:
         # "latest" is the newest v* tag (the normal upgrade path).
         from: [v1.5.2, latest]
         db: [sqlite, mysql, pgsql]
+        # The default image is the newest supported Nextcloud (35). The oldest
+        # supported release (33) gets its own jobs, so a core difference there
+        # (e.g. the calendar provider) is caught before a release.
+        include:
+          - from: latest
+            db: sqlite
+            nc: 33
+          - from: latest
+            db: pgsql
+            nc: 33
     steps:
       - uses: actions/checkout@v7
         with:
@@ -29,4 +39,5 @@ jobs:
         env:
           FROM_REF: ${{ matrix.from }}
           DB_KIND: ${{ matrix.db }}
+          NC_IMAGE: nextcloud:${{ matrix.nc || 35 }}
         run: tests/upgrade/check-upgrade.sh "$FROM_REF" "$DB_KIND"

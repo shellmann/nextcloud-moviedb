@@ -25,7 +25,7 @@
 					class="picker-genre"
 					:options="genreOptions"
 					:placeholder="t('moviedb', 'Genre')"
-					:aria-label="t('moviedb', 'Genre')"
+					:aria-label-combobox="t('moviedb', 'Genre')"
 					@update:modelValue="load" />
 				<NcCheckboxRadioSwitch v-model="highPriorityOnly" @update:modelValue="load">
 					{{ t('moviedb', 'High priority only') }}

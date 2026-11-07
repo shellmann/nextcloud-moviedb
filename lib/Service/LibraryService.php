@@ -17,6 +17,8 @@ use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Db\WatchlistMapper;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\DB\Exception;
+use OCA\MovieDB\BackgroundJob\DismissLibraryNotificationsJob;
+use OCP\BackgroundJob\IJobList;
 use OCP\IDBConnection;
 use OCP\IUserManager;
 
@@ -43,7 +45,9 @@ class LibraryService {
         EpisodeMapper $episodeMapper,
         QuizResultMapper $quizResultMapper,
         IUserManager $userManager,
-        IDBConnection $db
+        IDBConnection $db,
+        private ?ReleaseNotificationService $notifications = null,
+        private ?IJobList $jobList = null
     ) {
         $this->libraryMapper   = $libraryMapper;
         $this->memberMapper    = $memberMapper;
@@ -276,6 +280,8 @@ class LibraryService {
     public function purgeLibrary(int $id): void {
         $library = $this->libraryMapper->find($id);
 
+        // Before the rows go: the notifications are found through them.
+        $this->notifications?->dismissLibrary($id);
         $this->episodeMapper->deleteByLibrary($id);
         $this->watchMapper->deleteByLibrary($id);
         $this->watchlistMapper->deleteByLibrary($id);
@@ -402,11 +408,45 @@ class LibraryService {
 
         $membership = $this->memberMapper->findMembership($libraryId, $memberUserId);
         if ($membership === null) {
-            // Not a member — silently succeed (idempotent remove).
+            // Not a member. Only a cleanup that is still pending (an earlier removal whose
+            // cleanup failed) is run again; any other call has nothing to do and costs nothing.
+            if ($this->notifications?->isCleanupPending($libraryId, $memberUserId) === true) {
+                $this->cleanUpNotifications($libraryId, $memberUserId);
+            }
             return;
         }
 
+        // Written before the delete: a failure anywhere after it leaves the marker, so the
+        // removal can be repeated to finish the cleanup.
+        $this->notifications?->markCleanupPending($libraryId, $memberUserId);
         $this->memberMapper->delete($membership);
+        $this->cleanUpNotifications($libraryId, $memberUserId);
+    }
+
+    /**
+     * Removes the release notifications of a user who left a library. One markProcessed() per
+     * entry is too slow for the request in a big library, so it is queued (after the delete: the
+     * job checks that the user is really gone). If queueing fails it runs here instead, with the
+     * same rejoin check, and a failure there is thrown: the pending marker stays, so the caller
+     * repeats the removal, which runs the cleanup again.
+     */
+    private function cleanUpNotifications(int $libraryId, string $userId): void {
+        if ($this->jobList !== null) {
+            try {
+                // Stable arguments: Nextcloud adds a job with the same class and arguments only once,
+                // so repeated removals do not pile up cleanups. The time lives in the pending marker.
+                $this->jobList->add(DismissLibraryNotificationsJob::class, ['libraryId' => $libraryId, 'userId' => $userId]);
+                return;
+            } catch (\Throwable $e) {
+                // fall through to the inline cleanup
+            }
+        }
+        $this->notifications?->dismissLibrary(
+            $libraryId,
+            $userId,
+            true,
+            fn (): bool => $this->memberMapper->findMembership($libraryId, $userId) === null
+        );
     }
 
     /**

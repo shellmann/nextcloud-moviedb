@@ -139,4 +139,29 @@ class RefreshWatchlistReleaseDatesJobTest extends TestCase {
 
         $this->job()->runNow();
     }
+
+    public function testEveryLookedAtEntryGoesToTheBackOfTheQueue(): void {
+        $this->mapper->method('findDueForReleaseCheck')->willReturn([$this->item(1), $this->item(2), $this->item(3)]);
+        $this->libraryMapper->method('find')->willReturn($this->library('owner'));
+        $this->tmdb->method('hasApiKey')->willReturnOnConsecutiveCalls(true, true, false);
+        $this->releaseService->method('refresh')->willReturnOnConsecutiveCalls(true, $this->throwException(new \RuntimeException('gone')));
+        $marked = [];
+        $this->mapper->method('markReleaseChecked')->willReturnCallback(function (int $id) use (&$marked): void {
+            $marked[] = $id;
+        });
+
+        $this->job()->runNow();
+
+        $this->assertSame([1, 2, 3], $marked, 'changed, failed and key-less entries are all stamped, so none blocks the rotation');
+    }
+
+    public function testAnEntryThatIsRateLimitedEveryTimeDoesNotPinTheQueue(): void {
+        $this->mapper->method('findDueForReleaseCheck')->willReturn([$this->item(1), $this->item(2)]);
+        $this->libraryMapper->method('find')->willReturn($this->library('owner'));
+        $this->tmdb->method('hasApiKey')->willReturn(true);
+        $this->releaseService->method('refresh')->willThrowException(new \RuntimeException('HTTP 429 Too Many Requests', 429));
+        $this->mapper->expects($this->once())->method('markReleaseChecked')->with(1, $this->anything());
+
+        $this->job()->runNow();
+    }
 }

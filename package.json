@@ -1,6 +1,6 @@
 {
     "name": "nextcloud-moviedb",
-    "version": "1.10.2",
+    "version": "1.11.0",
     "description": "Personal movie database for Nextcloud",
     "main": "index.js",
     "engines": {
@@ -41,6 +41,7 @@
         "@vitest/coverage-v8": "^5.0.5",
         "@vue/compiler-sfc": "^3.4.0",
         "@vue/test-utils": "^2.5.1",
+        "axe-core": "^4.14.0",
         "eslint": "^10.13.0",
         "eslint-webpack-plugin": "^6.0.0",
         "jsdom": "^30.1.3",

@@ -251,6 +251,147 @@ class LibraryServiceTest extends TestCase {
         $this->service->removeMember(5, 'alice', 'bob');
     }
 
+    public function testRemovingAMemberQueuesTheNotificationCleanupInsteadOfDoingItInline(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->expects($this->once())->method('add')
+            ->with(\OCA\MovieDB\BackgroundJob\DismissLibraryNotificationsJob::class, ['libraryId' => 5, 'userId' => 'bob']); // stable arguments: Nextcloud adds the same job only once
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->expects($this->never())->method('dismissLibrary');
+        $service = new LibraryService(
+            $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
+            $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, $notifications, $jobs
+        );
+
+        $service->removeMember(5, 'alice', 'bob');
+    }
+
+    public function testTheCleanupRunsInlineWhenQueueingItFails(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
+        $order = [];
+        $this->memberMapper->method('delete')->willReturnCallback(function ($entity) use (&$order) {
+            $order[] = 'delete';
+            return $entity;
+        });
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->method('add')->willThrowException(new \RuntimeException('job list down'));
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->expects($this->once())->method('dismissLibrary')->with(5, 'bob', true)->willReturnCallback(function () use (&$order) {
+            $order[] = 'inline cleanup';
+        });
+        $service = new LibraryService(
+            $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
+            $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, $notifications, $jobs
+        );
+
+        $service->removeMember(5, 'alice', 'bob');
+
+        $this->assertSame(['delete', 'inline cleanup'], $order);
+    }
+
+    private function serviceWith(?\OCA\MovieDB\Service\ReleaseNotificationService $notifications, ?\OCP\BackgroundJob\IJobList $jobs): LibraryService {
+        return new LibraryService(
+            $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
+            $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, $notifications, $jobs
+        );
+    }
+
+    public function testARetryRunsTheCleanupAgainOnlyWhileACleanupIsPending(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn(null);
+        $this->memberMapper->expects($this->never())->method('delete');
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->method('isCleanupPending')->with(5, 'bob')->willReturn(true);
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->expects($this->once())->method('add')
+            ->with(\OCA\MovieDB\BackgroundJob\DismissLibraryNotificationsJob::class, ['libraryId' => 5, 'userId' => 'bob']); // stable arguments: Nextcloud adds the same job only once
+
+        $this->serviceWith($notifications, $jobs)->removeMember(5, 'alice', 'bob');
+    }
+
+    public function testRemovingANonMemberWithNothingPendingQueuesNothing(): void {
+        // Any authenticated user can call "leave" for any library: that must stay free.
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn(null);
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->method('isCleanupPending')->willReturn(false);
+        $notifications->expects($this->never())->method('dismissLibrary');
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->expects($this->never())->method('add');
+
+        $this->serviceWith($notifications, $jobs)->removeMember(5, 'alice', 'bob');
+    }
+
+    public function testTheCleanupIsMarkedPendingBeforeTheMembershipIsDeleted(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
+        $order = [];
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->method('markCleanupPending')->willReturnCallback(function () use (&$order) {
+            $order[] = 'mark';
+        });
+        $this->memberMapper->method('delete')->willReturnCallback(function ($e) use (&$order) {
+            $order[] = 'delete';
+            return $e;
+        });
+
+        $this->serviceWith($notifications, null)->removeMember(5, 'alice', 'bob');
+
+        $this->assertSame(['mark', 'delete'], array_slice($order, 0, 2));
+    }
+
+    public function testTheInlineCleanupCarriesTheRejoinCheck(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturnOnConsecutiveCalls($this->makeMembership(5, 'bob', false), null);
+        $this->memberMapper->method('delete')->willReturnArgument(0);
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->expects($this->once())->method('dismissLibrary')
+            ->with(5, 'bob', true, $this->isInstanceOf(\Closure::class));
+
+        $this->serviceWith($notifications, null)->removeMember(5, 'alice', 'bob');
+    }
+
+    public function testAFailedInlineCleanupIsThrownSoTheRemovalCanBeRepeated(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
+        $this->memberMapper->method('delete')->willReturnArgument(0);
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->method('add')->willThrowException(new \RuntimeException('job list down'));
+        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications->method('dismissLibrary')->willThrowException(new \RuntimeException('db timeout'));
+        $service = new LibraryService(
+            $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
+            $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, $notifications, $jobs
+        );
+
+        $this->expectException(\RuntimeException::class);
+        $service->removeMember(5, 'alice', 'bob');
+    }
+
+    public function testTheCleanupIsQueuedOnlyAfterTheMembershipIsDeleted(): void {
+        $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
+        $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
+        $order = [];
+        $this->memberMapper->method('delete')->willReturnCallback(function ($entity) use (&$order) {
+            $order[] = 'delete';
+            return $entity;
+        });
+        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs->method('add')->willReturnCallback(function () use (&$order) {
+            $order[] = 'queue';
+        });
+        $service = new LibraryService(
+            $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
+            $this->watchMapper, $this->episodeMapper, $this->quizResultMapper, $this->userManager, $this->db, null, $jobs
+        );
+
+        $service->removeMember(5, 'alice', 'bob');
+
+        $this->assertSame(['delete', 'queue'], $order);
+    }
+
     public function testMemberCanRemoveThemselves(): void {
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 

@@ -40,23 +40,29 @@ class WatchlistReleaseCheckQueryTest extends TestCase {
         return end($this->rec->executed) ?: '';
     }
 
-    public function testPicksItemsWithoutDateOrWithADateFromTodayOn(): void {
+    public function testPicksItemsWithoutDateOrWithADateWithinTheCorrectionWindow(): void {
         $sql = $this->sql();
 
         $this->assertStringContainsString('tmdb_id IS NOT NULL', $sql);
         $this->assertStringContainsString('release_date IS NULL', $sql);
         $this->assertStringContainsString('release_date >= :', $sql);
-        $this->assertContains('2026-10-29', $this->rec->params);
+        // today minus the 7-day correction window: a postponement shortly after the release is still noticed
+        $this->assertContains('2026-10-22', $this->rec->params);
     }
 
     public function testNeverPicksReleasedTitles(): void {
         $this->assertStringNotContainsString('release_date <', $this->sql());
     }
 
-    public function testIsLimitedAndOrderedById(): void {
+    public function testRotatesThroughAllEntriesInsteadOfAlwaysTakingTheLowestIds(): void {
         $sql = $this->sql();
 
-        $this->assertStringContainsString('ORDER BY id ASC', $sql);
+        // not looked at today yet ...
+        $this->assertStringContainsString('release_checked_at IS NULL', $sql);
+        $this->assertStringContainsString('release_checked_at <', $sql);
+        $this->assertContains('2026-10-29 00:00:00', $this->rec->params);
+        // ... never checked first, then the longest waiting, then by id
+        $this->assertStringContainsString('CASE WHEN release_checked_at IS NULL THEN 0 ELSE 1 END ASC, release_checked_at ASC, id ASC', $sql);
         $this->assertStringContainsString('LIMIT 500', $sql);
     }
 }

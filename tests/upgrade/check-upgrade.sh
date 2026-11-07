@@ -157,9 +157,14 @@ CHECK_RC=$?
 set -e
 echo "$CHECK"
 if echo "$CHECK" | grep -qi "not defined"; then
-	fail "occ db:schema:check is not available on $NC_IMAGE"
-fi
-if echo "$CHECK" | grep -i "moviedb"; then
+	# db:schema:check only exists since Nextcloud 35; older majors (the CI
+	# compatibility jobs) still get the upgrade, data and API checks below.
+	NC_MAJOR=$(echo "${NC_IMAGE##*:}" | grep -oE '^[0-9]+' || echo 35)
+	if [ "$NC_MAJOR" -ge 35 ]; then
+		fail "occ db:schema:check is not available on $NC_IMAGE"
+	fi
+	echo "== Skipping db:schema:check (not available before Nextcloud 35)"
+elif echo "$CHECK" | grep -i "moviedb"; then
 	fail "occ db:schema:check reports differences for moviedb tables (see above), exit code $CHECK_RC"
 fi
 
@@ -220,6 +225,24 @@ api GET /api/series/upcoming
 api GET /api/watchlist
 api GET /api/quiz/meta
 api GET /api/libraries
+
+# v1.11: the release notification job and the "MovieDB - Upcoming" calendar run cross-library
+# queries (episodes joined to series, watchlist dates). Like the list endpoints above, they
+# fail on PostgreSQL at planning time even when the tables are empty.
+JOB_ID=$(occ background-job:list 2>/dev/null | grep 'ReleaseNotificationJob' | grep -oE '[0-9]{6,}' | head -n1 || true)
+[ -n "$JOB_ID" ] || fail "The ReleaseNotificationJob is not registered after the upgrade"
+echo "occ background-job:execute $JOB_ID (ReleaseNotificationJob)"
+occ background-job:execute "$JOB_ID" --force-execute >/dev/null 2>&1 || fail "The ReleaseNotificationJob failed"
+CAL_CODE=$(docker exec "$NC" curl -sS -o /dev/null -w '%{http_code}' -X REPORT -u "admin:$ADMIN_PASSWORD" \
+	-H 'Depth: 1' -H 'Content-Type: application/xml' \
+	--data '<c:calendar-query xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav"><d:prop><d:getetag/></d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT"/></c:comp-filter></c:filter></c:calendar-query>' \
+	"http://localhost/remote.php/dav/calendars/admin/app-generated--dav-wrapper--moviedb-upcoming/")
+echo "REPORT moviedb-upcoming -> $CAL_CODE"
+[ "$CAL_CODE" = "207" ] || fail "The MovieDB calendar answered HTTP $CAL_CODE instead of 207"
+UPCOMING_CODE=$(docker exec "$NC" curl -sS -o /dev/null -w '%{http_code}' -u "admin:$ADMIN_PASSWORD" -H 'OCS-APIRequest: true' \
+	"http://localhost/ocs/v2.php/apps/dav/api/v1/events/upcoming")
+echo "GET /ocs/v2.php/apps/dav/api/v1/events/upcoming -> $UPCOMING_CODE"
+[ "$UPCOMING_CODE" = "200" ] || fail "The upcoming-events API answered HTTP $UPCOMING_CODE (the calendar provider breaks it)"
 
 echo "/api/stats/years: $YEARS"
 echo "$YEARS" | jq -e '.years["2024"] == 2 and .years["2025"] == 1' >/dev/null \

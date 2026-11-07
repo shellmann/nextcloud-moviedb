@@ -1,9 +1,9 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import SeriesList from '@/views/SeriesList.vue'
 import { useLibrariesStore } from '@/stores/libraries.js'
 import { useSeriesStore } from '@/stores/series.js'
-import SeriesList from '@/views/SeriesList.vue'
 
 vi.mock('@nextcloud/vue', () => ({
 	NcButton: { emits: ['click'], template: '<button class="nc-button" @click="$emit(\'click\')"><slot /></button>' },
@@ -12,9 +12,9 @@ vi.mock('@nextcloud/vue', () => ({
 	NcTextField: { template: '<input />' },
 	// Renders the options so a test can pick one, like a user would.
 	NcSelect: {
-		props: ['modelValue', 'options', 'ariaLabel'],
+		props: ['modelValue', 'options', 'ariaLabelCombobox'],
 		emits: ['update:modelValue'],
-		template: '<div class="nc-select" :data-label="ariaLabel"><button v-for="o in options" :key="String(o.id)" class="option" @click="$emit(\'update:modelValue\', o)">{{ o.label }}</button><span class="selected">{{ modelValue?.label }}</span></div>',
+		template: '<div class="nc-select" :data-label="ariaLabelCombobox"><button v-for="o in options" :key="String(o.id)" class="option" @click="$emit(\'update:modelValue\', o)">{{ o.label }}</button><span class="selected">{{ modelValue?.label }}</span></div>',
 	},
 }))
 
@@ -25,7 +25,11 @@ function mountList() {
 		global: {
 			stubs: {
 				SeriesCard: { props: ['series'], template: '<div class="series-card-stub" />' },
-				Heart: IconStub, Plus: IconStub, SortAscending: IconStub, SortDescending: IconStub, Television: IconStub,
+				Heart: IconStub,
+				Plus: IconStub,
+				SortAscending: IconStub,
+				SortDescending: IconStub,
+				Television: IconStub,
 			},
 			mocks: { t: (app, text) => text, $router: { push: vi.fn() } },
 		},

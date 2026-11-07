@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useMoviesStore } from '@/stores/movies.js'
 
 // Mock API module
@@ -98,12 +98,10 @@ describe('Movies Store', () => {
 			store.filters.year = 2024
 			await store.fetchAll()
 
-			expect(api.getMovies).toHaveBeenCalledWith(
-				expect.objectContaining({
-					genre: 28,
-					year: 2024,
-				}),
-			)
+			expect(api.getMovies).toHaveBeenCalledWith(expect.objectContaining({
+				genre: 28,
+				year: 2024,
+			}))
 		})
 
 		it('should include favorite filter when set to true', async () => {
@@ -114,11 +112,9 @@ describe('Movies Store', () => {
 			store.filters.favorite = true
 			await store.fetchAll()
 
-			expect(api.getMovies).toHaveBeenCalledWith(
-				expect.objectContaining({
-					favorite: 1,
-				}),
-			)
+			expect(api.getMovies).toHaveBeenCalledWith(expect.objectContaining({
+				favorite: 1,
+			}))
 		})
 
 		it('should not include favorite param when set to false', async () => {
@@ -281,5 +277,22 @@ describe('Movies Store', () => {
 
 			expect(api.getMovies).not.toHaveBeenCalled()
 		})
+	})
+})
+
+describe('Movies store fetchOne ordering', () => {
+	it('keeps the newest request when an older answer arrives late', async () => {
+		setActivePinia(createPinia())
+		const store = useMoviesStore()
+		let answerFirst
+		api.getMovie.mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve }))
+		api.getMovie.mockResolvedValueOnce({ data: { movie: { id: 6, title: 'Newer' } } })
+
+		const first = store.fetchOne(5)
+		await store.fetchOne(6)
+		answerFirst({ data: { movie: { id: 5, title: 'Older' } } })
+		await first
+
+		expect(store.currentMovie.id).toBe(6)
 	})
 })

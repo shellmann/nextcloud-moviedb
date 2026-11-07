@@ -169,24 +169,157 @@ class WatchlistMapper extends QBMapper {
     }
 
     /**
-     * Items whose release date can still change at TMDB: no date yet, or one
-     * that is today or later. Released titles are never asked again.
+     * Items of a library releasing in [$from, $until] (both inclusive, "Y-m-d"), at most
+     * EpisodeMapper::CALENDAR_MAX_ROWS (the nearest dates win).
+     *
+     * @return WatchlistItem[]
+     */
+    public function releasingBetween(int $libraryId, string $from, string $until): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->isNotNull('release_date'))
+            ->andWhere($qb->expr()->gte('release_date', $qb->createNamedParameter($from)))
+            ->andWhere($qb->expr()->lte('release_date', $qb->createNamedParameter($until)))
+            ->orderBy('release_date', 'ASC')
+            ->addOrderBy('id', 'ASC')
+            ->setMaxResults(EpisodeMapper::CALENDAR_MAX_ROWS);
+
+        return $this->findEntities($qb);
+    }
+
+    /**
+     * Items released in [$from, $today] that were not notified about yet. Only
+     * items added before their release date count, so adding an already
+     * released title does not notify.
+     *
+     * @return WatchlistItem[]
+     */
+    public function findToNotify(string $from, string $today): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('*')
+            ->from($this->getTableName())
+            ->where($qb->expr()->isNull('release_notified_at'))
+            ->andWhere($qb->expr()->isNotNull('release_date'))
+            ->andWhere($qb->expr()->gte('release_date', $qb->createNamedParameter($from)))
+            ->andWhere($qb->expr()->lte('release_date', $qb->createNamedParameter($today)))
+            ->orderBy('id', 'ASC')
+            ->setMaxResults(EpisodeMapper::NOTIFY_BATCH);
+
+        // "Added before its release date" is checked here: added_at is a timestamp and
+        // release_date a string, and PostgreSQL refuses to compare the two.
+        $eligible = [];
+        $skipped = [];
+        foreach ($this->findEntities($qb) as $item) {
+            if (substr((string)$item->getAddedAt(), 0, 10) < (string)$item->getReleaseDate()) {
+                $eligible[] = $item;
+            } else {
+                $skipped[(int)$item->getId()] = (string)$item->getReleaseDate();
+            }
+        }
+        // Added after the release: never announced. Mark as handled so these rows do not fill the
+        // batch every hour; a moved release date clears the stamp again (WatchlistReleaseService).
+        $this->markReleaseNotified($skipped, (new \DateTime())->format('Y-m-d H:i:s'));
+
+        return $eligible;
+    }
+
+    /**
+     * Stamps items as announced while they still have the release date they were selected with
+     * (see EpisodeMapper::markNotified).
+     *
+     * @param array<int, string> $releaseDates item id => release date at selection time
+     */
+    public function markReleaseNotified(array $releaseDates, string $now): void {
+        $byDate = [];
+        foreach ($releaseDates as $id => $date) {
+            $byDate[(string)$date][] = (int)$id;
+        }
+        foreach ($byDate as $date => $ids) {
+            foreach (array_chunk($ids, 500) as $chunk) {
+                $qb = $this->db->getQueryBuilder();
+                $qb->update($this->getTableName())
+                    ->set('release_notified_at', $qb->createNamedParameter($now))
+                    ->where($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+                    ->andWhere($qb->expr()->eq('release_date', $qb->createNamedParameter((string)$date)))
+                    ->andWhere($qb->expr()->isNull('release_notified_at'));
+                $qb->executeStatement();
+            }
+        }
+    }
+
+    /** Days after the release date during which a title is still asked about a postponement. */
+    public const RELEASE_CORRECTION_DAYS = 7;
+
+    /**
+     * Items whose release date can still change at TMDB: no date yet, one that is today or
+     * later, or one that passed within the last RELEASE_CORRECTION_DAYS days (a release that
+     * was announced and then postponed is noticed and announced again). Titles that have been
+     * out for longer are not asked again.
      *
      * @return WatchlistItem[]
      */
     public function findDueForReleaseCheck(int $limit, string $today): array {
         $qb = $this->db->getQueryBuilder();
+        $since = (new \DateTime($today))->modify('-' . self::RELEASE_CORRECTION_DAYS . ' days')->format('Y-m-d');
 
         $qb->select('*')
             ->from($this->getTableName())
             ->where($qb->expr()->isNotNull('tmdb_id'))
             ->andWhere($qb->expr()->orX(
                 $qb->expr()->isNull('release_date'),
-                $qb->expr()->gte('release_date', $qb->createNamedParameter($today))
+                $qb->expr()->gte('release_date', $qb->createNamedParameter($since))
             ))
-            ->orderBy('id', 'ASC')
+            // Not looked at today yet: every entry gets its turn, however many there are.
+            ->andWhere($qb->expr()->orX(
+                $qb->expr()->isNull('release_checked_at'),
+                $qb->expr()->lt('release_checked_at', $qb->createNamedParameter($today . ' 00:00:00'))
+            ))
+            // Never checked first, then the longest waiting (NULL first on every database).
+            ->orderBy($qb->createFunction('CASE WHEN release_checked_at IS NULL THEN 0 ELSE 1 END'), 'ASC')
+            ->addOrderBy('release_checked_at', 'ASC')
+            ->addOrderBy('id', 'ASC')
             ->setMaxResults($limit);
 
         return $this->findEntities($qb);
+    }
+
+    /** Records that the release date check looked at an entry (changed or not, key or not). */
+    public function markReleaseChecked(int $id, string $now): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->update($this->getTableName())
+            ->set('release_checked_at', $qb->createNamedParameter($now))
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+        $qb->executeStatement();
+    }
+
+    /**
+     * Moves a release date in ONE statement together with the "new date" marker and the
+     * forgotten "announced" stamp: nothing can slip in between (a notification run stamping the
+     * entry, a failure after the date was saved but before the stamp was cleared).
+     */
+    public function updateReleaseDate(int $id, string $date, string $now): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->update($this->getTableName())
+            ->set('release_date', $qb->createNamedParameter($date))
+            ->set('release_date_changed_at', $qb->createNamedParameter($now))
+            ->set('release_notified_at', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+        $qb->executeStatement();
+    }
+
+    /**
+     * Forgets that a release was announced (its date moved): own statement, so it does not
+     * depend on what an in-memory entity happened to hold when a notification run stamped it.
+     */
+    public function clearReleaseNotified(int $id): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->update($this->getTableName())
+            ->set('release_notified_at', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+        $qb->executeStatement();
     }
 }

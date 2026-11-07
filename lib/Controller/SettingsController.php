@@ -84,7 +84,7 @@ class SettingsController extends AuthenticatedController {
 
         // On/off switches, stored as '1'/'0'
         $switches = [];
-        foreach (['showContinueWatching' => 'show_continue_watching', 'showComingUp' => 'show_coming_up'] as $field => $configKey) {
+        foreach (['showContinueWatching' => 'show_continue_watching', 'showComingUp' => 'show_coming_up', 'notifyReleases' => 'notify_releases', 'showCalendar' => 'show_calendar'] as $field => $configKey) {
             if (!array_key_exists($field, $data)) {
                 continue;
             }

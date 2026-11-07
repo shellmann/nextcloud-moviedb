@@ -4,14 +4,16 @@ import ComingUpCard from '@/components/ComingUpCard.vue'
 
 const IconStub = { template: '<span />' }
 
-const show = (episode = {}, extra = {}) => ({
-	id: 9,
-	title: 'The Terminal List',
-	posterPath: '/p.jpg',
-	sameDayCount: 1,
-	upcomingEpisode: { id: 90, seasonNumber: 2, episodeNumber: 1, name: 'Return', airDate: '2026-10-21', ...episode },
-	...extra,
-})
+function show(episode = {}, extra = {}) {
+	return {
+		id: 9,
+		title: 'The Terminal List',
+		posterPath: '/p.jpg',
+		sameDayCount: 1,
+		upcomingEpisode: { id: 90, seasonNumber: 2, episodeNumber: 1, name: 'Return', airDate: '2026-10-21', ...episode },
+		...extra,
+	}
+}
 
 function mountCard(series = show()) {
 	return mount(ComingUpCard, {

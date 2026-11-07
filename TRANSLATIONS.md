@@ -9,6 +9,9 @@ back to the raw English source string, which looks broken in non-English UIs.
 - Frontend strings are wrapped with `t('moviedb', 'Some string')`
   (from `@nextcloud/l10n`). Placeholders use `{name}` syntax, e.g.
   `t('moviedb', 'Page {page} of {total}', { page, total })`.
+- Backend strings (notifications, the calendar name and event titles in `lib/`)
+  use `IL10N` with `%1$s` placeholders: `$l->t('New episode of %1$s: %2$s', [$title, $code])` or `$l->n('…', '…', $count)`.
+  They read the same `l10n/*.json` files.
 - The **source of truth** is the per-locale JSON files in `l10n/`:
   `de.json`, `es.json`, `fr.json`, `it.json`, `nl.json`.
   Each has a `{ "translations": { "English source": "Translated" } }` object.
@@ -25,7 +28,8 @@ If you add a new locale, create `l10n/<code>.json` with the same keys.
 
 ## Workflow when adding/changing strings
 
-1. Add or edit the `t('moviedb', '...')` call in `src/`.
+1. Add or edit the `t('moviedb', '...')` call in `src/` (or the `->t('...')` /
+   `->n('...', '...')` call in `lib/`).
 2. Add the exact same source string as a key to **every** file in `l10n/*.json`
    with a proper translation for that language (do not leave English fallbacks).
 3. Run `npm run l10n` to regenerate the `.js` files.
@@ -42,5 +46,6 @@ exits non-zero if anything is missing, and **CI runs it on every PR** (see
 or leaves untranslated keys will fail CI.
 
 > Note: the audit uses a simple regex and only detects single-quoted
-> `t('moviedb', '...')` calls (the convention used throughout this codebase).
+> `t('moviedb', '...')` calls in `src/` and literal `->t('...')` / `->n('...', '...')`
+> calls in `lib/` (the convention used throughout this codebase).
 > If you introduce double-quoted calls or dynamic keys, verify them manually.

@@ -28,19 +28,21 @@
 				v-model="selectedPlatform"
 				:options="platformOptions"
 				:placeholder="t('moviedb', 'All platforms')"
+				:aria-label-combobox="t('moviedb', 'All platforms')"
 				:clearable="true"
 				@update:modelValue="applyFilters" />
 			<NcSelect
 				v-model="selectedGenre"
 				:options="genreOptions"
 				:placeholder="t('moviedb', 'All genres')"
+				:aria-label-combobox="t('moviedb', 'All genres')"
 				:clearable="true"
 				@update:modelValue="applyFilters" />
 			<NcSelect
 				v-model="sortBy"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
-				:aria-label="t('moviedb', 'Sort by')"
+				:aria-label-combobox="t('moviedb', 'Sort by')"
 				@update:modelValue="applyFilters" />
 			<NcButton
 				:aria-label="t('moviedb', 'Toggle sort direction')"

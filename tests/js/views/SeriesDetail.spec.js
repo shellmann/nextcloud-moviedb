@@ -1,9 +1,10 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import SeriesDetail from '@/views/SeriesDetail.vue'
+import { expectNoAxeViolations } from '../a11y.js'
 import { useLibrariesStore } from '@/stores/libraries.js'
 import { useSeriesStore } from '@/stores/series.js'
-import SeriesDetail from '@/views/SeriesDetail.vue'
 
 vi.mock('@nextcloud/vue', () => ({
 	NcButton: { emits: ['click'], template: '<button class="nc-button" @click="$emit(\'click\')"><slot /></button>' },
@@ -16,18 +17,20 @@ vi.mock('@nextcloud/vue', () => ({
 
 const IconStub = { template: '<span />' }
 
-const show = (extra = {}) => ({
-	id: 3,
-	title: 'Fleabag',
-	seasons: [],
-	watchedEpisodeCount: 0,
-	airedEpisodeCount: 0,
-	progress: 0,
-	caughtUp: false,
-	nextEpisode: null,
-	watchStatus: 'in_progress',
-	...extra,
-})
+function show(extra = {}) {
+	return {
+		id: 3,
+		title: 'Fleabag',
+		seasons: [],
+		watchedEpisodeCount: 0,
+		airedEpisodeCount: 0,
+		progress: 0,
+		caughtUp: false,
+		nextEpisode: null,
+		watchStatus: 'in_progress',
+		...extra,
+	}
+}
 
 async function mountDetail(series) {
 	const store = useSeriesStore()
@@ -38,8 +41,17 @@ async function mountDetail(series) {
 		props: { id: '3' },
 		global: {
 			stubs: {
-				ArrowLeft: IconStub, Check: IconStub, CheckAll: IconStub, ChevronDown: IconStub, ChevronRight: IconStub,
-				Delete: IconStub, EyeOff: IconStub, Pencil: IconStub, PlayCircleOutline: IconStub, Refresh: IconStub, Television: IconStub,
+				ArrowLeft: IconStub,
+				Check: IconStub,
+				CheckAll: IconStub,
+				ChevronDown: IconStub,
+				ChevronRight: IconStub,
+				Delete: IconStub,
+				EyeOff: IconStub,
+				Pencil: IconStub,
+				PlayCircleOutline: IconStub,
+				Refresh: IconStub,
+				Television: IconStub,
 			},
 			mocks: { t: (app, text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (_, k) => vars[k]) : text), $router: { push: vi.fn() } },
 		},
@@ -107,23 +119,25 @@ describe('SeriesDetail watch summary', () => {
 	})
 })
 
-const withSeasons = (extra = {}) => show({
-	tmdbId: 1399,
-	createdAt: '2026-10-01 10:00:00',
-	watchedEpisodeCount: 1,
-	airedEpisodeCount: 2,
-	progress: 50,
-	seasons: [
-		{ seasonNumber: 1, watchedCount: 1, airedCount: 2, progress: 50, episodes: [
-			{ id: 11, seasonNumber: 1, episodeNumber: 1, name: 'Pilot', watched: true, aired: true },
-			{ id: 12, seasonNumber: 1, episodeNumber: 2, name: '', watched: false, aired: true },
-		] },
-		{ seasonNumber: 2, watchedCount: 0, airedCount: 0, progress: 0, episodes: [
-			{ id: 21, seasonNumber: 2, episodeNumber: 1, name: 'Return', watched: false, aired: false },
-		] },
-	],
-	...extra,
-})
+function withSeasons(extra = {}) {
+	return show({
+		tmdbId: 1399,
+		createdAt: '2026-10-01 10:00:00',
+		watchedEpisodeCount: 1,
+		airedEpisodeCount: 2,
+		progress: 50,
+		seasons: [
+			{ seasonNumber: 1, watchedCount: 1, airedCount: 2, progress: 50, episodes: [
+				{ id: 11, seasonNumber: 1, episodeNumber: 1, name: 'Pilot', watched: true, aired: true },
+				{ id: 12, seasonNumber: 1, episodeNumber: 2, name: '', watched: false, aired: true },
+			] },
+			{ seasonNumber: 2, watchedCount: 0, airedCount: 0, progress: 0, episodes: [
+				{ id: 21, seasonNumber: 2, episodeNumber: 1, name: 'Return', watched: false, aired: false },
+			] },
+		],
+		...extra,
+	})
+}
 
 describe('SeriesDetail update from TMDB', () => {
 	beforeEach(() => {
@@ -246,5 +260,104 @@ describe('SeriesDetail seasons and episodes for assistive technology', () => {
 		const labels = wrapper.findAll('.episode-check .nc-switch').map((l) => l.attributes('data-aria-label'))
 
 		expect(labels).toEqual(['S01E01 Pilot watched', 'S01E02 Episode 2 watched', 'S02E01 Return watched'])
+	})
+})
+
+describe('SeriesDetail TMDB details', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+	})
+
+	it('shows type, network and score with readable labels, vote count included as text', async () => {
+		const { wrapper } = await mountDetail(show({
+			firstAirYear: 2019,
+			status: 'Ended',
+			seriesType: 'Miniseries',
+			networks: [{ name: 'HBO', logoPath: null }, { name: 'Sky', logoPath: null }],
+			tmdbRating: 84,
+			tmdbVoteCount: 1234,
+			director: 'Jane Doe',
+		}))
+
+		const meta = wrapper.find('dl.series-meta')
+		expect(meta.exists()).toBe(true)
+		expect(meta.text()).toContain('Miniseries')
+		expect(meta.text()).toContain('HBO · Sky')
+		expect(meta.text()).toContain('TMDB user score')
+		expect(meta.text()).toContain('84 % (1234 votes)')
+		expect(meta.text()).toContain('Jane Doe')
+	})
+
+	it('hides the score when nobody voted and omits unknown fields', async () => {
+		const { wrapper } = await mountDetail(show({ tmdbRating: null, tmdbVoteCount: 0, seriesType: '' }))
+
+		expect(wrapper.find('.series-meta').text()).not.toContain('TMDB user score')
+		expect(wrapper.find('.series-meta').text()).not.toContain('Type')
+	})
+
+	it('shows the cast between overview and seasons', async () => {
+		const { wrapper } = await mountDetail(show({
+			overview: 'Plot',
+			castData: [{ name: 'Phoebe', character: 'Fleabag' }],
+		}))
+
+		expect(wrapper.find('.series-cast li').text()).toContain('Phoebe')
+	})
+
+	it('has no axe violations', async () => {
+		const { wrapper } = await mountDetail(show({
+			firstAirYear: 2019,
+			status: 'Ended',
+			seriesType: 'Scripted',
+			networks: [{ name: 'BBC', logoPath: null }],
+			tmdbRating: 90,
+			tmdbVoteCount: 10,
+			castData: [{ name: 'A', character: 'B' }],
+		}))
+		await expectNoAxeViolations(wrapper)
+	})
+})
+
+describe('SeriesDetail route changes', () => {
+	it('does not show or act on the previous show while another id is loading', async () => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		const { wrapper, store } = await mountDetail(show({ id: 3, title: 'Andor' }))
+		expect(wrapper.find('h2').exists()).toBe(true)
+
+		let finish
+		store.fetchOne.mockImplementation(() => new Promise((resolve) => { finish = resolve }))
+		await wrapper.setProps({ id: '6' })
+
+		expect(wrapper.text()).not.toContain('Andor')
+		expect(wrapper.find('.series-titles').exists()).toBe(false)
+		finish()
+	})
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+	})
+
+	it('loads the other show when only the id changes (notification to notification)', async () => {
+		const { wrapper, store } = await mountDetail(show({ id: 3, title: 'Andor' }))
+		expect(store.fetchOne).toHaveBeenLastCalledWith('3')
+
+		store.fetchOne.mockImplementation(async () => { store.currentSeries = show({ id: 6, title: 'Severance' }) })
+		await wrapper.setProps({ id: '6' })
+		await flushPromises()
+
+		expect(store.fetchOne).toHaveBeenLastCalledWith('6')
+		expect(wrapper.find('h2').text()).toContain('Severance')
 	})
 })

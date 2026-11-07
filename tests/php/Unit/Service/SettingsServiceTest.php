@@ -103,6 +103,24 @@ class SettingsServiceTest extends TestCase {
         $this->assertTrue($settings['showContinueWatching']);
     }
 
+    public function testNotificationsAndCalendarAreOnByDefault(): void {
+        $this->givenUserKey('');
+
+        $settings = $this->service->getUserSettings('alice');
+        $this->assertTrue($settings['notifyReleases']);
+        $this->assertTrue($settings['showCalendar']);
+    }
+
+    public function testNotificationsAndCalendarCanBeSwitchedOffIndependently(): void {
+        $this->userConfig->method('getValueString')->willReturnCallback(
+            fn (string $userId, string $app, string $key, string $default) => $key === 'notify_releases' ? '0' : $default
+        );
+
+        $settings = $this->service->getUserSettings('alice');
+        $this->assertFalse($settings['notifyReleases']);
+        $this->assertTrue($settings['showCalendar']);
+    }
+
     public function testIsAdmin(): void {
         $this->givenUserKey('');
         $this->groupManager->method('isAdmin')->with('alice')->willReturn(true);

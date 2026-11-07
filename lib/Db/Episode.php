@@ -34,6 +34,8 @@ use OCP\AppFramework\Db\Entity;
  * @method void setCreatedAt(string $createdAt)
  * @method string|null getUpdatedAt()
  * @method void setUpdatedAt(?string $updatedAt)
+ * @method ?string getNotifiedAt()
+ * @method void setNotifiedAt(?string $notifiedAt)
  */
 class Episode extends Entity implements JsonSerializable {
     protected int $seriesId = 0;
@@ -48,6 +50,7 @@ class Episode extends Entity implements JsonSerializable {
     protected bool $watched = false;
     protected string $createdAt = '';
     protected ?string $updatedAt = null;
+    protected ?string $notifiedAt = null;
 
     public function __construct() {
         $this->addType('id', 'integer');

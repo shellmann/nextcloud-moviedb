@@ -128,6 +128,10 @@ class ExportService {
                 'director' => $s->getDirector(),
                 'isFavorite' => (bool)$s->getIsFavorite(),
                 'stoppedWatching' => (bool)$s->getStoppedWatching(),
+                'seriesType' => $s->getSeriesType(),
+                'networks' => $s->getNetworks(),
+                'tmdbRating' => $s->getTmdbRating(),
+                'tmdbVoteCount' => $s->getTmdbVoteCount(),
                 'watch' => $watchBySeries[$s->getId()] ?? null,
                 'episodes' => $episodesBySeries[$s->getId()] ?? [],
             ];

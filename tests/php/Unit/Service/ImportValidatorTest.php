@@ -261,6 +261,22 @@ class ImportValidatorTest extends TestCase {
         $this->assertNull($r['movies'][3]['genreIds']);
     }
 
+    public function testNewSeriesFieldsAreKeptSanitizedAndDefaultToNull(): void {
+        $r = $this->validator->validate($this->file(['series' => [
+            ['title' => 'New', 'seriesType' => 'Scripted', 'tmdbRating' => 84, 'tmdbVoteCount' => 10,
+                'networks' => [['name' => 'HBO', 'logoPath' => '/hbo.png', 'x' => 1], ['name' => 'Bad', 'logoPath' => '../x'], ['logoPath' => '/a.png'], 'junk']],
+            ['title' => 'Old export'],
+            ['title' => 'Out of range', 'tmdbRating' => 500, 'networks' => 'nope'],
+        ]]));
+        $this->assertSame('Scripted', $r['series'][0]['seriesType']);
+        $this->assertSame([['name' => 'HBO', 'logoPath' => '/hbo.png'], ['name' => 'Bad', 'logoPath' => null]], $r['series'][0]['networks']);
+        $this->assertSame(84, $r['series'][0]['tmdbRating']);
+        $this->assertNull($r['series'][1]['seriesType']);
+        $this->assertNull($r['series'][1]['networks']);
+        $this->assertNull($r['series'][2]['tmdbRating']);
+        $this->assertNull($r['series'][2]['networks']);
+    }
+
     public function testCastKeepsValidActorsOnlyAndIsCapped(): void {
         $actors = [
             ['name' => 'Keanu Reeves', 'character' => 'Neo', 'profilePath' => '/abc.jpg', 'extra' => 'dropped'],
@@ -301,5 +317,10 @@ class ImportValidatorTest extends TestCase {
         $this->assertSame('ab', $r['movies'][0]['watches'][0]['review']);
         $this->assertSame('Netflix', $r['movies'][0]['watches'][0]['platform']);
         $this->assertSame(1, $r['invalid']['movies']);
+    }
+
+    public function testTheNoTypeMarkerSurvivesAnImport(): void {
+        $r = $this->validator->validate($this->file(['series' => [['title' => 'Typeless', 'seriesType' => '']]]));
+        $this->assertSame('', $r['series'][0]['seriesType']);
     }
 }

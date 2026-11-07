@@ -11,6 +11,7 @@ use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
+use OCA\MovieDB\Service\ReleaseNotificationService;
 use OCA\MovieDB\Service\SeriesService;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Tests\Unit\TestCase;
@@ -425,6 +426,38 @@ class SeriesServiceTest extends TestCase {
         $this->db->expects($this->once())->method('commit');
 
         $this->service->delete($seriesId, self::LIBRARY_ID);
+    }
+
+    public function testDeleteDismissesNotificationsOnlyAfterTheCommit(): void {
+        $series = $this->makeSeries(1);
+        $this->mapper->method('find')->willReturn($series);
+        $order = [];
+        $this->db->method('commit')->willReturnCallback(function () use (&$order) {
+            $order[] = 'commit';
+        });
+        $notifications = $this->createMock(ReleaseNotificationService::class);
+        $notifications->method('dismissSeries')->willReturnCallback(function () use (&$order) {
+            $order[] = 'dismiss';
+        });
+        $service = new SeriesService($this->mapper, $this->episodeMapper, $this->watchMapper, $this->platformMapper, $this->tmdbService, $this->db, $notifications);
+
+        $service->delete(1, self::LIBRARY_ID);
+
+        $this->assertSame(['commit', 'dismiss'], $order);
+    }
+
+    public function testDeleteKeepsNotificationsWhenTheTransactionRollsBack(): void {
+        $series = $this->makeSeries(1);
+        $this->mapper->method('find')->willReturn($series);
+        $this->mapper->method('delete')->willThrowException(new \RuntimeException('db down'));
+        $notifications = $this->createMock(ReleaseNotificationService::class);
+        $notifications->expects($this->never())->method('dismissSeries');
+        $service = new SeriesService($this->mapper, $this->episodeMapper, $this->watchMapper, $this->platformMapper, $this->tmdbService, $this->db, $notifications);
+
+        $this->db->expects($this->once())->method('rollBack');
+        $this->expectException(\RuntimeException::class);
+
+        $service->delete(1, self::LIBRARY_ID);
     }
 
     // ---- createFromTmdb: eager episode fetch + optional series metadata ----

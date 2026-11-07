@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useSettingsStore } from '@/stores/settings.js'
 
 vi.mock('@/services/api.js', () => ({
@@ -9,9 +9,9 @@ vi.mock('@/services/api.js', () => ({
 	},
 }))
 
-import api from '@/services/api.js'
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { loadState } from '@nextcloud/initial-state'
+import api from '@/services/api.js'
 
 describe('Settings Store', () => {
 	let store
@@ -65,11 +65,51 @@ describe('Settings Store', () => {
 			expect(store.showContinueWatching).toBe(true)
 		})
 
+		it('should have notifications and the calendar on by default and keep them off once switched off', () => {
+			expect(useSettingsStore().notifyReleases).toBe(true)
+			expect(useSettingsStore().showCalendar).toBe(true)
+			loadState.mockReturnValueOnce({ notifyReleases: false, showCalendar: false })
+			setActivePinia(createPinia())
+			const store = useSettingsStore()
+			expect(store.notifyReleases).toBe(false)
+			expect(store.showCalendar).toBe(false)
+		})
+
 		it('should keep continue watching off once the user switched it off', () => {
 			loadState.mockReturnValueOnce({ showContinueWatching: false })
 			setActivePinia(createPinia())
 
 			expect(useSettingsStore().showContinueWatching).toBe(false)
+		})
+	})
+
+	describe('update ordering', () => {
+		it('sends the writes one after the other, in the order they were made', async () => {
+			const order = []
+			let releaseFirst
+			api.updateSettings.mockImplementationOnce(() => new Promise((resolve) => { releaseFirst = () => { order.push('first done'); resolve() } }))
+			api.updateSettings.mockImplementationOnce(async () => { order.push('second sent') })
+			api.getSettings.mockResolvedValue({ data: {} })
+
+			const first = store.update({ notifyReleases: false })
+			const second = store.update({ notifyReleases: true })
+			await new Promise((resolve) => setTimeout(resolve, 0))
+			expect(api.updateSettings).toHaveBeenCalledTimes(1)
+			releaseFirst()
+			await Promise.all([first, second])
+
+			expect(order).toEqual(['first done', 'second sent'])
+		})
+
+		it('a failed write does not block the next one', async () => {
+			api.updateSettings.mockRejectedValueOnce(new Error('nope'))
+			api.updateSettings.mockResolvedValueOnce()
+			api.getSettings.mockResolvedValue({ data: {} })
+
+			await expect(store.update({ showCalendar: false })).rejects.toThrow('nope')
+			await store.update({ showCalendar: true })
+
+			expect(api.updateSettings).toHaveBeenCalledTimes(2)
 		})
 	})
 

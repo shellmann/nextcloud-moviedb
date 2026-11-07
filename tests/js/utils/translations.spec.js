@@ -4,8 +4,7 @@ const { translate, translatePlural } = vi.hoisted(() => ({
 	translate: vi.fn((appName, text, vars) => vars
 		? text.replace(/\{([^{}]+)\}/g, (_, key) => vars[key])
 		: text),
-	translatePlural: vi.fn((appName, singular, plural, count, vars) =>
-		(count === 1 ? singular : plural).replace(/\{([^{}]+)\}/g, (_, key) => vars[key])),
+	translatePlural: vi.fn((appName, singular, plural, count, vars) => (count === 1 ? singular : plural).replace(/\{([^{}]+)\}/g, (_, key) => vars[key])),
 }))
 
 vi.mock('@nextcloud/l10n', () => ({ translate, translatePlural }))

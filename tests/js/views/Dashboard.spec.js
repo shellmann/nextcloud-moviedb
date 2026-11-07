@@ -2,11 +2,11 @@ import { showUndo } from '@nextcloud/dialogs'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import Dashboard from '@/views/Dashboard.vue'
 import api from '@/services/api.js'
 import { useLibrariesStore } from '@/stores/libraries.js'
 import { useSeriesStore } from '@/stores/series.js'
 import { useSettingsStore } from '@/stores/settings.js'
-import Dashboard from '@/views/Dashboard.vue'
 
 vi.mock('@nextcloud/vue', () => ({
 	NcNoteCard: { template: '<div><slot /></div>' },

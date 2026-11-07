@@ -1,9 +1,9 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { mount, flushPromises } from '@vue/test-utils'
+import { flushPromises, mount } from '@vue/test-utils'
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import QuizAccuracyList from '@/components/quiz/QuizAccuracyList.vue'
 import QuizQuestion from '@/components/quiz/QuizQuestion.vue'
 import QuizStart from '@/components/quiz/QuizStart.vue'
 import QuizSummary from '@/components/quiz/QuizSummary.vue'
-import QuizAccuracyList from '@/components/quiz/QuizAccuracyList.vue'
 
 vi.mock('@nextcloud/vue', () => ({
 	NcButton: { props: ['disabled'], emits: ['click'], template: '<button :disabled="disabled" @click="$emit(\'click\')"><slot /></button>' },
@@ -17,13 +17,18 @@ let wrapper
 afterEach(() => wrapper?.unmount())
 
 const subject = { id: 1, mediaType: 'movie', title: 'Echo Valley', posterPath: null, year: 2001 }
-const choiceQ = () => ({
-	type: 'director', mode: 'choice', subject, answer: '2',
-	options: [{ key: '0', label: 'A1' }, { key: '1', label: 'B1' }, { key: '2', label: 'C1' }, { key: '3', label: 'D1' }],
-})
+function choiceQ() {
+	return {
+		type: 'director',
+		mode: 'choice',
+		subject,
+		answer: '2',
+		options: [{ key: '0', label: 'A1' }, { key: '1', label: 'B1' }, { key: '2', label: 'C1' }, { key: '3', label: 'D1' }],
+	}
+}
 const yearQ = () => ({ type: 'release_year', mode: 'year', subject, answer: 2000, min: 1990, max: 2010 })
 
-const mountQuestion = (question, answer = null, props = {}) => {
+function mountQuestion(question, answer = null, props = {}) {
 	wrapper = mount(QuizQuestion, {
 		props: { question, index: 1, total: 5, answer, ...props },
 		global: { mocks: { t }, stubs },

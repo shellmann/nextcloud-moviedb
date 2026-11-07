@@ -28,19 +28,20 @@
 				v-model="selectedStatus"
 				:options="statusOptions"
 				:clearable="false"
-				:aria-label="t('moviedb', 'Watch status')"
+				:aria-label-combobox="t('moviedb', 'Watch status')"
 				@update:modelValue="applyFilters" />
 			<NcSelect
 				v-model="selectedGenre"
 				:options="genreOptions"
 				:placeholder="t('moviedb', 'All genres')"
+				:aria-label-combobox="t('moviedb', 'All genres')"
 				:clearable="true"
 				@update:modelValue="applyFilters" />
 			<NcSelect
 				v-model="sortBy"
 				:options="sortOptions"
 				:placeholder="t('moviedb', 'Sort by')"
-				:aria-label="t('moviedb', 'Sort by')"
+				:aria-label-combobox="t('moviedb', 'Sort by')"
 				@update:modelValue="applyFilters" />
 			<NcButton
 				:aria-label="t('moviedb', 'Toggle sort direction')"

@@ -13,7 +13,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 class WatchlistService {
     private WatchlistMapper $mapper;
 
-    public function __construct(WatchlistMapper $mapper) {
+    public function __construct(WatchlistMapper $mapper, private ?ReleaseNotificationService $notifications = null) {
         $this->mapper = $mapper;
     }
 
@@ -166,6 +166,7 @@ class WatchlistService {
     public function delete(int $id, int $libraryId): void {
         $item = $this->mapper->find($id, $libraryId);
         $this->mapper->delete($item);
+        $this->notifications?->dismissWatchlistItem($id);
     }
 
     public function existsByTmdbId(int $libraryId, int $tmdbId, ?string $mediaType = null): bool {

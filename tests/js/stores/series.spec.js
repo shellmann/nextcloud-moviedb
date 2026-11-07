@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { setActivePinia, createPinia } from 'pinia'
 import { showError, showSuccess } from '@nextcloud/dialogs'
+import { createPinia, setActivePinia } from 'pinia'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { refreshMessage, useSeriesStore } from '@/stores/series.js'
 
 vi.mock('@/services/api.js', () => ({
@@ -80,9 +80,7 @@ describe('Series Store', () => {
 
 			store.filters.favorite = true
 			await store.fetchAll()
-			expect(api.getSeries).toHaveBeenCalledWith(
-				expect.objectContaining({ favorite: 1 }),
-			)
+			expect(api.getSeries).toHaveBeenCalledWith(expect.objectContaining({ favorite: 1 }))
 		})
 
 		it('should handle errors gracefully', async () => {
@@ -143,6 +141,20 @@ describe('Series Store', () => {
 			const result = await store.fetchOne(9)
 			expect(result).toBeNull()
 		})
+
+		it('keeps the newest request when an older answer arrives late', async () => {
+			let answerFirst
+			api.getSeriesItem.mockImplementationOnce(() => new Promise((resolve) => { answerFirst = resolve }))
+			api.getSeriesItem.mockResolvedValueOnce({ data: { series: { id: 6, title: 'Newer' } } })
+
+			const first = store.fetchOne(5)
+			await store.fetchOne(6)
+			answerFirst({ data: { series: { id: 5, title: 'Older' } } })
+			await first
+
+			expect(store.currentSeries.id).toBe(6)
+			expect(store.loading).toBe(false)
+		})
 	})
 
 	describe('delete action', () => {
@@ -176,6 +188,18 @@ describe('Series Store', () => {
 			expect(api.markEpisodeWatched).toHaveBeenCalledWith(5, 101, true, undefined)
 			expect(store.currentSeries).toEqual(refreshed)
 			expect(result).toEqual(refreshed)
+		})
+
+		it('a late mutation answer for another show does not replace the current show', async () => {
+			store.currentSeries = { id: 6, title: 'Now showing' }
+			let answer
+			api.markEpisodeWatched.mockImplementation(() => new Promise((resolve) => { answer = resolve }))
+
+			const pending = store.markEpisodeWatched(5, 101, true)
+			answer({ data: { series: { id: 5, title: 'Earlier show' } } })
+			await pending
+
+			expect(store.currentSeries.id).toBe(6)
 		})
 
 		it('markEpisodeWatched forwards a false flag to untick', async () => {

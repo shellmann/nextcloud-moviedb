@@ -19,6 +19,17 @@ for (const f of files) {
 		keys.add(m[1].replace(/\\'/g, "'").replace(/\\\\/g, '\\'));
 	}
 }
+// PHP strings (lib/) share the same l10n files: literal ->t('...') and ->n('...', '...') calls.
+const phpFiles = execSync("grep -rlE -e \"->(t|n)\\(\" lib/ || true", { encoding: 'utf8' }).trim().split('\n').filter(Boolean);
+const phpT = /->t\(\s*'((?:[^'\\]|\\.)*)'/g;
+const phpN = /->n\(\s*'((?:[^'\\]|\\.)*)'\s*,\s*'((?:[^'\\]|\\.)*)'/g;
+for (const f of phpFiles) {
+	const content = fs.readFileSync(f, 'utf8');
+	const unescape = (k) => k.replace(/\\'/g, "'").replace(/\\\\/g, '\\');
+	let m;
+	while ((m = phpT.exec(content)) !== null) keys.add(unescape(m[1]));
+	while ((m = phpN.exec(content)) !== null) { keys.add(unescape(m[1])); keys.add(unescape(m[2])); }
+}
 const allKeys = [...keys].sort();
 console.log(`Total unique source strings: ${allKeys.length}\n`);
 

@@ -10,6 +10,7 @@ use OCA\MovieDB\Db\EpisodeMapper;
 use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Util\TmdbEpisode;
+use OCA\MovieDB\Util\TmdbSeriesFields;
 use OCP\IDBConnection;
 
 /**
@@ -106,10 +107,17 @@ class SeriesRefreshService {
                         continue;
                     }
 
+                    $airDateBefore = $episode->getAirDate();
                     TmdbEpisode::apply($episode, $ep, $seasonNumber);
                     if ($episode->getUpdatedFields() !== []) {
                         $this->episodeMapper->update($episode);
                         $result['updatedEpisodes']++;
+                        // TMDB moved an episode that may already be announced: announce it again on the
+                        // new date. A statement of its own, because update() writes only the changed
+                        // fields and the in-memory stamp can be stale (a notification run may have set it).
+                        if ($episode->getAirDate() !== $airDateBefore) {
+                            $this->episodeMapper->clearNotified((int)$episode->getId());
+                        }
                     }
                 }
                 if ($added > 0 && !isset($knownSeasons[$seasonNumber])) {
@@ -138,6 +146,12 @@ class SeriesRefreshService {
         // status and counts from the rolled-back write, which must not be saved now.
         $fresh = $this->seriesMapper->find($series->getId());
         $fresh->setTmdbRefreshedAt((new DateTime())->format('Y-m-d H:i:s'));
+        // "Looked at, nothing to add": '' leaves the metadata backfill set (series_type IS NULL), so a
+        // show that cannot be fetched (no key, removed at TMDB) does not fill every run's batch.
+        // A later successful refresh writes the real type.
+        if ($fresh->getSeriesType() === null) {
+            $fresh->setSeriesType('');
+        }
         $this->seriesMapper->update($fresh);
     }
 
@@ -150,6 +164,18 @@ class SeriesRefreshService {
         }
         if (isset($details['number_of_episodes'])) {
             $series->setNumberOfEpisodes((int)$details['number_of_episodes']);
+        }
+        $fields = TmdbSeriesFields::fromDetails($details);
+        $series->setSeriesType($fields['seriesType']);
+        $series->setNetworks($fields['networks']);
+        $series->setTmdbRating($fields['tmdbRating']);
+        $series->setTmdbVoteCount($fields['tmdbVoteCount']);
+        // Shows added before the cast was kept up to date: fill gaps, never blank existing data.
+        if (is_array($details['cast'] ?? null) && $details['cast'] !== []) {
+            $series->setCastData($details['cast']);
+        }
+        if (is_string($details['director'] ?? null) && $details['director'] !== '') {
+            $series->setDirector($details['director']);
         }
         $series->setTmdbRefreshedAt($now);
     }

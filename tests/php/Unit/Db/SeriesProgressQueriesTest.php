@@ -225,6 +225,7 @@ class SeriesProgressQueriesTest extends TestCase {
 
         $this->assertStringContainsString('tmdb_id IS NOT NULL', $sql);
         $this->assertStringContainsString('tmdb_refreshed_at IS NULL', $sql);
+        $this->assertStringContainsString('series_type IS NULL', $sql);
         $this->assertSame('2026-10-20 01:00:00', $this->paramFor($sql, 'tmdb_refreshed_at', '<'));
         $this->assertContains('2026-09-20 12:00:00', $this->rec->params);
         $this->assertContains(['Ended', 'Canceled'], $this->rec->params);

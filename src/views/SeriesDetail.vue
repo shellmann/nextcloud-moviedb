@@ -64,11 +64,36 @@
 						</div>
 					</div>
 
-					<div class="series-meta">
-						<span v-if="series.firstAirYear">{{ series.firstAirYear }}</span>
-						<span v-if="series.status">{{ series.status }}</span>
-						<span v-if="series.director">{{ t('moviedb', 'Creator') }}: {{ series.director }}</span>
-					</div>
+					<dl class="series-meta">
+						<div v-if="series.firstAirYear" class="meta-item">
+							<dt class="hidden-visually">
+								{{ t('moviedb', 'First aired') }}
+							</dt>
+							<dd>{{ series.firstAirYear }}</dd>
+						</div>
+						<div v-if="series.status" class="meta-item">
+							<dt class="hidden-visually">
+								{{ t('moviedb', 'Status') }}
+							</dt>
+							<dd>{{ statusText }}</dd>
+						</div>
+						<div v-if="series.seriesType" class="meta-item">
+							<dt>{{ t('moviedb', 'Type') }}</dt>
+							<dd>{{ typeText }}</dd>
+						</div>
+						<div v-if="networkNames" class="meta-item">
+							<dt>{{ t('moviedb', 'Network') }}</dt>
+							<dd>{{ networkNames }}</dd>
+						</div>
+						<div v-if="series.director" class="meta-item">
+							<dt>{{ t('moviedb', 'Creator') }}</dt>
+							<dd>{{ series.director }}</dd>
+						</div>
+						<div v-if="scoreText" class="meta-item">
+							<dt>{{ t('moviedb', 'TMDB user score') }}</dt>
+							<dd>{{ scoreText }}</dd>
+						</div>
+					</dl>
 					<p v-if="series.tmdbId && refreshedOn" class="refreshed-note">
 						{{ t('moviedb', 'Episodes last updated from TMDB: {date}', { date: refreshedOn }) }}
 					</p>
@@ -161,6 +186,8 @@
 					<p v-if="series.overview" class="series-overview">
 						{{ series.overview }}
 					</p>
+
+					<CastList :cast="series.castData || []" class="series-cast" />
 
 					<!-- Seasons -->
 					<div class="seasons">
@@ -256,12 +283,14 @@ import Pencil from 'vue-material-design-icons/Pencil.vue'
 import PlayCircleOutline from 'vue-material-design-icons/PlayCircleOutline.vue'
 import Refresh from 'vue-material-design-icons/Refresh.vue'
 import Television from 'vue-material-design-icons/Television.vue'
+import CastList from '../components/CastList.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { getLanguageFlag, LANGUAGE_OPTIONS } from '../constants.js'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { useSeriesStore } from '../stores/series.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { episodeCode, formatDate, formatRuntime } from '../utils/formatters.js'
+import { statusLabel, typeLabel } from '../utils/tmdbLabels.js'
 
 export default {
 	name: 'SeriesDetail',
@@ -272,6 +301,7 @@ export default {
 		NcDialog,
 		NcProgressBar,
 		NcCheckboxRadioSwitch,
+		CastList,
 		Pencil,
 		Delete,
 		ArrowLeft,
@@ -301,6 +331,7 @@ export default {
 
 	data() {
 		return {
+			gone: false,
 			showDeleteDialog: false,
 			marking: false,
 			refreshing: false,
@@ -310,7 +341,30 @@ export default {
 
 	computed: {
 		series() {
-			return this.seriesStore.currentSeries
+			// Only the show of this route: while another id is loading, the previous show must not
+			// be shown (and its Delete / Mark buttons must not act on the new id).
+			const current = this.seriesStore.currentSeries
+			return current && String(current.id) === String(this.id) ? current : null
+		},
+
+		statusText() {
+			return statusLabel(this.series?.status)
+		},
+
+		typeText() {
+			return typeLabel(this.series?.seriesType)
+		},
+
+		networkNames() {
+			return (this.series?.networks || []).map((n) => n.name).filter(Boolean).join(' · ')
+		},
+
+		scoreText() {
+			const s = this.series
+			if (!s || !s.tmdbVoteCount || s.tmdbRating === null || s.tmdbRating === undefined) {
+				return ''
+			}
+			return this.t('moviedb', '{score} % ({count} votes)', { score: s.tmdbRating, count: s.tmdbVoteCount })
 		},
 
 		loading() {
@@ -357,19 +411,38 @@ export default {
 		},
 	},
 
-	async created() {
-		// Wait for libraries so the active library id is known before fetching.
-		await this.librariesStore.whenReady()
-		await this.seriesStore.fetchOne(this.id)
-		// Expand the first non-special season by default.
-		const first = this.series?.seasons?.find((s) => s.seasonNumber !== 0)
-			?? this.series?.seasons?.[0]
-		if (first) {
-			this.expandedSeasons = [first.seasonNumber]
-		}
+	watch: {
+		// Vue Router reuses this component when only the id changes (e.g. from one
+		// notification to the next), so load the new show instead of keeping the old one.
+		id() {
+			// An open dialog belongs to the previous show: confirming must not delete the new one.
+			this.showDeleteDialog = false
+			this.loadSeries()
+		},
+	},
+
+	created() {
+		this.loadSeries()
+	},
+
+	beforeUnmount() {
+		this.gone = true
 	},
 
 	methods: {
+		async loadSeries() {
+			const id = this.id
+			// Wait for libraries so the active library id is known before fetching.
+			await this.librariesStore.whenReady()
+			if (this.gone || id !== this.id) { return }
+			await this.seriesStore.fetchOne(id)
+			if (this.gone || id !== this.id) { return }
+			// Expand the first non-special season by default.
+			const first = this.series?.seasons?.find((s) => s.seasonNumber !== 0)
+				?? this.series?.seasons?.[0]
+			this.expandedSeasons = first ? [first.seasonNumber] : []
+		},
+
 		getLanguageFlag,
 		formatDate,
 		formatRuntime,
@@ -518,6 +591,12 @@ export default {
 .series-info {
     flex: 1;
     min-width: 0;
+
+    // In the stacked layout the column is centred, so the width would follow the widest
+    // unbreakable content and run off a 320px screen (WCAG reflow).
+    @media (max-width: 768px) {
+        width: 100%;
+    }
 }
 
 .series-header {
@@ -564,10 +643,34 @@ export default {
 
 .series-meta {
     display: flex;
-    gap: 16px;
-    color: var(--color-text-lighter);
-    margin-bottom: 16px;
+    gap: 4px 16px;
+    color: var(--color-text-maxcontrast);
+    margin: 0 0 16px;
     flex-wrap: wrap;
+
+    .meta-item {
+        display: flex;
+        gap: 4px;
+    }
+
+    // Nextcloud core gives <dt> a fixed, right-aligned column; here the labels sit inline
+    dt:not(.hidden-visually) {
+        width: auto;
+        min-width: 0;
+        text-align: start;
+    }
+
+    dt::after {
+        content: ':';
+    }
+
+    dd {
+        margin: 0;
+    }
+}
+
+.series-cast {
+    margin-bottom: 24px;
 }
 
 .series-watch-summary {

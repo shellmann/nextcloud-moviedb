@@ -13,6 +13,11 @@ use OCP\IDBConnection;
  * @extends QBMapper<Episode>
  */
 class EpisodeMapper extends QBMapper {
+    /** Hard cap for the calendar query: the nearest dates win (ordered by air date). */
+    public const CALENDAR_MAX_ROWS = 2000;
+
+    /** Rows one hourly notification run looks at; the rest follows in the next run. */
+    public const NOTIFY_BATCH = 5000;
 
     public function __construct(IDBConnection $db) {
         parent::__construct($db, 'moviedb_episodes', Episode::class);
@@ -228,6 +233,136 @@ class EpisodeMapper extends QBMapper {
             ->addOrderBy('e.episode_number', 'ASC');
 
         return $this->findEntities($qb);
+    }
+
+    /**
+     * Episodes airing in [$from, $until] (both inclusive, "Y-m-d") of a library's
+     * shows, season 0 excluded, with the show's data the calendar needs. Plain
+     * rows, not entities: they join two tables.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function airingBetween(int $libraryId, string $from, string $until): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('e.id', 'e.series_id', 'e.season_number', 'e.episode_number', 'e.name', 'e.air_date', 'e.created_at')
+            ->selectAlias('s.title', 'series_title')
+            ->selectAlias('s.tmdb_id', 'series_tmdb_id')
+            ->selectAlias('s.tmdb_refreshed_at', 'series_refreshed_at')
+            ->selectAlias('s.created_at', 'series_created_at')
+            ->from($this->getTableName(), 'e')
+            ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
+            ->where($qb->expr()->eq('s.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->orX(
+                $qb->expr()->isNull('s.stopped_watching'),
+                $qb->expr()->eq('s.stopped_watching', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL))
+            ))
+            ->andWhere($qb->expr()->isNotNull('e.air_date'))
+            ->andWhere($qb->expr()->gte('e.air_date', $qb->createNamedParameter($from)))
+            ->andWhere($qb->expr()->lte('e.air_date', $qb->createNamedParameter($until)))
+            ->andWhere($qb->expr()->gt('e.season_number', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)))
+            ->orderBy('e.air_date', 'ASC')
+            ->addOrderBy('e.series_id', 'ASC')
+            ->addOrderBy('e.season_number', 'ASC')
+            ->addOrderBy('e.episode_number', 'ASC')
+            ->setMaxResults(self::CALENDAR_MAX_ROWS);
+
+        $result = $qb->executeQuery();
+        $rows = [];
+        while ($row = $result->fetch()) {
+            $rows[] = $row;
+        }
+        $result->closeCursor();
+
+        return $rows;
+    }
+
+    /**
+     * Episodes that aired in [$from, $today] and were not notified about yet,
+     * across all libraries. Only shows that were added before the episode
+     * aired count (no backlog for a show added late) and stopped shows are left
+     * out. Plain rows with the show's title and library.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function findToNotify(string $from, string $today): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('e.id', 'e.series_id', 'e.season_number', 'e.episode_number', 'e.air_date')
+            ->selectAlias('s.title', 'series_title')
+            ->selectAlias('s.library_id', 'library_id')
+            ->selectAlias('s.created_at', 'series_created_at')
+            ->from($this->getTableName(), 'e')
+            ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
+            ->where($qb->expr()->isNull('e.notified_at'))
+            ->andWhere($qb->expr()->isNotNull('s.library_id'))
+            ->andWhere($qb->expr()->orX(
+                $qb->expr()->isNull('s.stopped_watching'),
+                $qb->expr()->eq('s.stopped_watching', $qb->createNamedParameter(false, IQueryBuilder::PARAM_BOOL))
+            ))
+            ->andWhere($qb->expr()->gte('e.air_date', $qb->createNamedParameter($from)))
+            ->andWhere($qb->expr()->lte('e.air_date', $qb->createNamedParameter($today)))
+            ->andWhere($qb->expr()->gt('e.season_number', $qb->createNamedParameter(0, IQueryBuilder::PARAM_INT)))
+            ->orderBy('e.series_id', 'ASC')
+            ->addOrderBy('e.air_date', 'ASC')
+            ->addOrderBy('e.season_number', 'ASC')
+            ->addOrderBy('e.episode_number', 'ASC')
+            ->setMaxResults(self::NOTIFY_BATCH);
+
+        $result = $qb->executeQuery();
+        $rows = [];
+        $skipped = [];
+        while ($row = $result->fetch()) {
+            // "Added before it aired" is checked here: created_at is a timestamp and
+            // air_date a string, and PostgreSQL refuses to compare the two.
+            if (substr((string)$row['series_created_at'], 0, 10) < (string)$row['air_date']) {
+                $rows[] = $row;
+            } else {
+                $skipped[(int)$row['id']] = (string)$row['air_date'];
+            }
+        }
+        $result->closeCursor();
+
+        // A show added after the episode aired never gets a notification for it. Mark those rows
+        // as handled, so they neither fill the batch every hour nor hide eligible rows behind
+        // them. A moved air date clears the stamp again (SeriesRefreshService).
+        $this->markNotified($skipped, (new \DateTime())->format('Y-m-d H:i:s'));
+
+        return $rows;
+    }
+
+    /** Forgets that an episode was announced (its air date moved); a statement of its own, see WatchlistMapper::clearReleaseNotified(). */
+    public function clearNotified(int $id): void {
+        $qb = $this->db->getQueryBuilder();
+        $qb->update($this->getTableName())
+            ->set('notified_at', $qb->createNamedParameter(null, IQueryBuilder::PARAM_NULL))
+            ->where($qb->expr()->eq('id', $qb->createNamedParameter($id, IQueryBuilder::PARAM_INT)));
+        $qb->executeStatement();
+    }
+
+    /**
+     * Stamps episodes as announced, but only while they still have the air date they were
+     * selected with: a refresh that moved the date in the meantime must keep its new
+     * (cleared) stamp, so the new date is announced.
+     *
+     * @param array<int, string> $airDates episode id => air date at selection time
+     */
+    public function markNotified(array $airDates, string $now): void {
+        $byDate = [];
+        foreach ($airDates as $id => $date) {
+            $byDate[(string)$date][] = (int)$id;
+        }
+        foreach ($byDate as $date => $ids) {
+            foreach (array_chunk($ids, 500) as $chunk) {
+                $qb = $this->db->getQueryBuilder();
+                $qb->update($this->getTableName())
+                    ->set('notified_at', $qb->createNamedParameter($now))
+                    ->where($qb->expr()->in('id', $qb->createNamedParameter($chunk, IQueryBuilder::PARAM_INT_ARRAY)))
+                    ->andWhere($qb->expr()->eq('air_date', $qb->createNamedParameter((string)$date)))
+                    ->andWhere($qb->expr()->isNull('notified_at'));
+                $qb->executeStatement();
+            }
+        }
     }
 
     /**
