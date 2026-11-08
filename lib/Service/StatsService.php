@@ -8,10 +8,14 @@ use OCA\MovieDB\Db\EpisodeMapper;
 use OCA\MovieDB\Db\MovieMapper;
 use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Db\PlatformMapper;
+use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Db\WatchlistMapper;
 
 class StatsService {
+    /** Shows scanned for "Recently Watched": every show of any realistic library. */
+    private const RECENT_SCAN_LIMIT = 2000;
+
     private MovieMapper $movieMapper;
     private MovieWatchMapper $watchMapper;
     private WatchlistMapper $watchlistMapper;
@@ -101,10 +105,15 @@ class StatsService {
     }
 
     /**
-     * Series with at least one watched episode, most-recently-watched first.
-     * findAll left-joins the latest episode watch per series, so series that
-     * have never been watched surface a null lastWatchedAt — filter those out
-     * so the dashboard "recently watched" row only shows shows actually seen.
+     * Shows to list under "Recently Watched", most recently watched first.
+     *
+     * A show's last activity is the later of its own watch row (the date set
+     * when adding or editing it) and the newest change to one of its watched
+     * episodes. Episodes are a plain watched flag with no watch row of their
+     * own, so ticking one off only moves `episodes.updated_at`. Shows with
+     * neither a watch date nor a watched episode are left out. The returned
+     * `lastWatchedAt` is the date of that activity (Y-m-d), the same format as
+     * a movie's, so the dashboard can merge both lists.
      *
      * @return Series[]
      */
@@ -112,11 +121,25 @@ class StatsService {
         $series = $this->seriesMapper->findAll($libraryId, [
             'sort' => 'date_watched',
             'dir' => 'DESC'
-        ], $limit * 4, 0);
+        ], self::RECENT_SCAN_LIMIT, 0);
+        $progress = $this->episodeMapper->progressByLibrary($libraryId, (new \DateTime())->format('Y-m-d'));
 
-        $watched = array_filter($series, static fn ($s) => $s->getLastWatchedAt() !== null);
+        $ranked = [];
+        foreach ($series as $s) {
+            $row = $s->getLastWatchedAt();
+            $episode = ($progress[$s->getId()]['watched'] ?? 0) > 0 ? ($progress[$s->getId()]['lastWatchedAt'] ?? null) : null;
+            // Y-m-d and Y-m-d H:i:s compare correctly as strings; on the same day the episode wins.
+            $last = max((string)$row, (string)$episode);
+            if ($last === '') {
+                continue;
+            }
+            $s->setLastWatchedAt(substr($last, 0, 10));
+            $ranked[] = [$last, $s];
+        }
 
-        return array_slice(array_values($watched), 0, $limit);
+        usort($ranked, static fn (array $a, array $b): int => [$b[0], $b[1]->getId()] <=> [$a[0], $a[1]->getId()]);
+
+        return array_slice(array_map(static fn (array $r): Series => $r[1], $ranked), 0, $limit);
     }
 
     public function getTopRated(string $userId, int $libraryId, int $limit = 5): array {

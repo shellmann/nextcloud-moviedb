@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **"Recently Watched" on the dashboard now follows the episodes you watch.** Ticking off
+  an episode never moved its show, and shows added without a watch date were missing
+  altogether. A show now counts as watched on the day of its latest watched episode. (#122)
+
 ## [1.11.0] - 2026-11-06
 
 ### Added

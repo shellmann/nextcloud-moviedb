@@ -203,6 +203,73 @@ class StatsServiceTest extends TestCase {
         return $platform;
     }
 
+    /**
+     * @param array<int, array{watched: int, aired: int, lastWatchedAt: ?string}> $progress
+     */
+    private function recentSeries(array $series, array $progress, int $limit = 5): array {
+        $this->seriesMapper->method('findAll')->willReturn($series);
+        $this->episodeMapper->method('progressByLibrary')->willReturn($progress);
+
+        return $this->service->getRecentSeries('testuser', self::LIBRARY_ID, $limit);
+    }
+
+    private function seriesWatchedOn(int $id, ?string $watchRowDate): Series {
+        $series = new Series();
+        $series->setId($id);
+        $series->setLastWatchedAt($watchRowDate);
+        return $series;
+    }
+
+    public function testGetRecentSeriesRanksByNewestEpisodeActivity(): void {
+        // #122: ticking off an episode only moves episodes.updated_at, never the show's own watch row.
+        $result = $this->recentSeries(
+            [$this->seriesWatchedOn(1, '2026-11-06'), $this->seriesWatchedOn(2, '2026-11-01')],
+            [2 => ['watched' => 3, 'aired' => 8, 'lastWatchedAt' => '2026-11-08 12:00:00']],
+        );
+
+        $this->assertSame([2, 1], array_map(static fn (Series $s) => $s->getId(), $result));
+        $this->assertSame('2026-11-08', $result[0]->getLastWatchedAt());
+        $this->assertSame('2026-11-06', $result[1]->getLastWatchedAt());
+    }
+
+    public function testGetRecentSeriesIncludesShowsWithoutWatchRow(): void {
+        $result = $this->recentSeries(
+            [$this->seriesWatchedOn(1, null)],
+            [1 => ['watched' => 1, 'aired' => 8, 'lastWatchedAt' => '2026-11-08 09:30:00']],
+        );
+
+        $this->assertSame([1], array_map(static fn (Series $s) => $s->getId(), $result));
+        $this->assertSame('2026-11-08', $result[0]->getLastWatchedAt());
+    }
+
+    public function testGetRecentSeriesDropsShowsNeverWatched(): void {
+        $result = $this->recentSeries(
+            [$this->seriesWatchedOn(1, null), $this->seriesWatchedOn(2, null)],
+            [2 => ['watched' => 0, 'aired' => 8, 'lastWatchedAt' => null]],
+        );
+
+        $this->assertSame([], $result);
+    }
+
+    public function testGetRecentSeriesKeepsWatchRowWhenEpisodesAreOlder(): void {
+        $result = $this->recentSeries(
+            [$this->seriesWatchedOn(1, '2026-11-07')],
+            [1 => ['watched' => 2, 'aired' => 8, 'lastWatchedAt' => '2026-10-01 20:00:00']],
+        );
+
+        $this->assertSame('2026-11-07', $result[0]->getLastWatchedAt());
+    }
+
+    public function testGetRecentSeriesSlicesToLimit(): void {
+        $result = $this->recentSeries(
+            [$this->seriesWatchedOn(1, '2026-11-01'), $this->seriesWatchedOn(2, '2026-11-02'), $this->seriesWatchedOn(3, '2026-11-03')],
+            [],
+            2,
+        );
+
+        $this->assertSame([3, 2], array_map(static fn (Series $s) => $s->getId(), $result));
+    }
+
     private function makeSeries(int $id, ?int $lastRating): Series {
         $series = new Series();
         $series->setId($id);
