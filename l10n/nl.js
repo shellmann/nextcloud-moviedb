@@ -541,6 +541,7 @@ OC.L10N.register(
         "Never miss an episode: you get a notification when an episode airs or a watchlist title comes out. You can turn it off in Settings.": "Mis geen aflevering: je krijgt een melding wanneer een aflevering uitkomt of een titel op je kijklijst verschijnt. In de instellingen kun je dit uitzetten.",
         "A new calendar \"MovieDB – Upcoming\" in the Calendar app and on your synced devices shows upcoming episodes and releases.": "Een nieuwe agenda \"MovieDB – Upcoming\" in de Agenda-app en op je gesynchroniseerde apparaten toont komende afleveringen en releases.",
         "The TV show page shows more from TMDB: the type of show, the network, the TMDB score and the cast.": "De serie-pagina toont meer van TMDB: het type serie, de zender, de TMDB-score en de cast.",
-        "Better for screen readers and keyboard use, and Settings fits narrow screens.": "Beter voor schermlezers en toetsenbordgebruik, en de instellingen passen op smalle schermen."
+        "Better for screen readers and keyboard use, and Settings fits narrow screens.": "Beter voor schermlezers en toetsenbordgebruik, en de instellingen passen op smalle schermen.",
+        "\"Recently Watched\" on the dashboard now follows the episodes you watch, and shows without a watch date show up too.": "‘Recent bekeken’ op het dashboard volgt nu de afleveringen die je kijkt, en series zonder kijkdatum verschijnen ook."
     },
 "nplurals=2; plural=(n != 1);");
