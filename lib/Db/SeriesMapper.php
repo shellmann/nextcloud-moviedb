@@ -264,6 +264,29 @@ class SeriesMapper extends QBMapper {
     }
 
     /**
+     * When each show of a library was added: a light id/date read, for callers
+     * that rank every show and then load only a few.
+     *
+     * @return array<int, string> series id => created_at
+     */
+    public function createdAtByLibrary(int $libraryId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('id', 'created_at')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
+
+        $added = [];
+        $result = $qb->executeQuery();
+        while ($row = $result->fetch()) {
+            $added[(int)$row['id']] = (string)$row['created_at'];
+        }
+        $result->closeCursor();
+
+        return $added;
+    }
+
+    /**
      * The date on each show's own watch row (set when adding or editing it), for
      * the shows of a library that have one.
      *

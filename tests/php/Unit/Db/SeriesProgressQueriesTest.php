@@ -53,6 +53,17 @@ class SeriesProgressQueriesTest extends TestCase {
         $this->assertSame([1 => '2026-11-08 09:00:00', 2 => null], $activity);
     }
 
+    public function testCreatedAtReadsOnlyIdAndDateOfTheLibrary(): void {
+        $this->rec->resultSets = [[['id' => '1', 'created_at' => '2026-10-01 10:00:00']]];
+
+        $added = (new SeriesMapper($this->db))->createdAtByLibrary(7);
+
+        $sql = $this->rec->executed[0];
+        $this->assertStringContainsString('SELECT id, created_at FROM', $sql);
+        $this->assertSame(7, $this->paramFor($sql, 'library_id', '='));
+        $this->assertSame([1 => '2026-10-01 10:00:00'], $added);
+    }
+
     public function testLastWatchDatesComeFromTheShowsOwnWatchRows(): void {
         $this->rec->resultSets = [[
             ['series_id' => '1', 'watched_at' => '2026-11-06'],

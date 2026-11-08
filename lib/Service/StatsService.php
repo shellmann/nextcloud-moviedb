@@ -119,11 +119,11 @@ class StatsService {
         $rowDates = $this->seriesMapper->lastWatchDatesByLibrary($libraryId);
         $episodeActivity = $this->episodeMapper->lastWatchActivityByLibrary($libraryId);
 
-        // Rank all shows of the library, so a show can never be cut off by a scan limit.
+        // Rank all shows of the library from light id/date reads, so none is cut off by a scan limit
+        // and no full row (overview, cast) is loaded for the losers.
         $ranked = [];
-        foreach ($this->seriesMapper->findAllByLibrary($libraryId) as $s) {
-            $id = $s->getId();
-            $fromEpisodes = array_key_exists($id, $episodeActivity) ? ($episodeActivity[$id] ?? $s->getCreatedAt()) : null;
+        foreach ($this->seriesMapper->createdAtByLibrary($libraryId) as $id => $createdAt) {
+            $fromEpisodes = array_key_exists($id, $episodeActivity) ? ($episodeActivity[$id] ?? $createdAt) : null;
             // Y-m-d and Y-m-d H:i:s compare correctly as strings; on the same day the episode wins.
             $last = max((string)($rowDates[$id] ?? ''), (string)$fromEpisodes);
             if ($last !== '') {

@@ -211,7 +211,7 @@ class StatsServiceTest extends TestCase {
     private function recentSeries(array $ids, array $rowDates, array $episodeActivity, int $limit = 5): array {
         $this->seriesMapper->method('lastWatchDatesByLibrary')->willReturn($rowDates);
         $this->episodeMapper->method('lastWatchActivityByLibrary')->willReturn($episodeActivity);
-        $this->seriesMapper->method('findAllByLibrary')->willReturn(array_map(fn (int $id) => $this->seriesAddedOn($id, '2026-10-01 10:00:00'), $ids));
+        $this->seriesMapper->method('createdAtByLibrary')->willReturn(array_fill_keys($ids, '2026-10-01 10:00:00'));
         $this->seriesMapper->method('findAll')->willReturnCallback(
             fn (int $library, array $filters) => array_map(fn (int $id) => $this->seriesAddedOn($id, '2026-10-01 10:00:00'), array_reverse($filters['ids']))
         );
