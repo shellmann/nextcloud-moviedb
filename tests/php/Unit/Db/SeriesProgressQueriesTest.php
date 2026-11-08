@@ -33,6 +33,41 @@ class SeriesProgressQueriesTest extends TestCase {
         return $this->rec->params[$m[1]];
     }
 
+    // ---- Recently Watched (#122) ----
+
+    public function testLastWatchActivityCountsEveryWatchedEpisodeOfTheLibrary(): void {
+        $this->rec->resultSets = [[
+            ['series_id' => '1', 'last_watched_at' => '2026-11-08 09:00:00'],
+            ['series_id' => '2', 'last_watched_at' => null],
+        ]];
+
+        $activity = (new EpisodeMapper($this->db))->lastWatchActivityByLibrary(7);
+
+        $sql = $this->rec->executed[0];
+        $this->assertSame(7, $this->paramFor($sql, 's.library_id', '='));
+        $this->assertTrue($this->paramFor($sql, 'e.watched', '='));
+        $this->assertStringContainsString('GROUP BY e.series_id', $sql);
+        // Activity, not progress: specials and unaired episodes count too.
+        $this->assertStringNotContainsString('e.season_number', $sql);
+        $this->assertStringNotContainsString('e.air_date', $sql);
+        $this->assertSame([1 => '2026-11-08 09:00:00', 2 => null], $activity);
+    }
+
+    public function testLastWatchDatesComeFromTheShowsOwnWatchRows(): void {
+        $this->rec->resultSets = [[
+            ['series_id' => '1', 'watched_at' => '2026-11-06'],
+            ['series_id' => '2', 'watched_at' => null],
+        ]];
+
+        $dates = (new SeriesMapper($this->db))->lastWatchDatesByLibrary(7);
+
+        $sql = $this->rec->executed[0];
+        $this->assertSame(7, $this->paramFor($sql, 'w.library_id', '='));
+        $this->assertStringContainsString('w.series_id IS NOT NULL', $sql);
+        $this->assertStringContainsString('GROUP BY w.series_id', $sql);
+        $this->assertSame([1 => '2026-11-06'], $dates);
+    }
+
     // ---- EpisodeMapper::progressByLibrary ----
 
     public function testProgressCountsAiredRegularEpisodesOfTheLibrary(): void {

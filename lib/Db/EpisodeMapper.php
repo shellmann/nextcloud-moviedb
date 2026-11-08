@@ -158,6 +158,35 @@ class EpisodeMapper extends QBMapper {
     }
 
     /**
+     * Shows of a library with at least one watched episode, and the latest
+     * change to one of them (null when no episode carries a timestamp, as after
+     * an import). Unlike progressByLibrary this counts every watched episode,
+     * specials and not yet aired ones included: it is about activity, not progress.
+     *
+     * @return array<int, ?string> series id => 'Y-m-d H:i:s' or null
+     */
+    public function lastWatchActivityByLibrary(int $libraryId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('e.series_id')
+            ->selectAlias($qb->func()->max('e.updated_at'), 'last_watched_at')
+            ->from($this->getTableName(), 'e')
+            ->innerJoin('e', 'moviedb_series', 's', $qb->expr()->eq('e.series_id', 's.id'))
+            ->where($qb->expr()->eq('s.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->eq('e.watched', $qb->createNamedParameter(true, IQueryBuilder::PARAM_BOOL)))
+            ->groupBy('e.series_id');
+
+        $activity = [];
+        $result = $qb->executeQuery();
+        while ($row = $result->fetch()) {
+            $activity[(int)$row['series_id']] = $row['last_watched_at'] !== null ? (string)$row['last_watched_at'] : null;
+        }
+        $result->closeCursor();
+
+        return $activity;
+    }
+
+    /**
      * @param int[]|null $seriesIds
      */
     private function progressQuery(int $libraryId, string $today, bool $watchedOnly, ?array $seriesIds): IQueryBuilder {
