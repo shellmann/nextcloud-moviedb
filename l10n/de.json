@@ -540,7 +540,8 @@
 		"Never miss an episode: you get a notification when an episode airs or a watchlist title comes out. You can turn it off in Settings.": "Keine Folge verpassen: Du bekommst eine Benachrichtigung, wenn eine Folge erscheint oder ein Titel deiner Merkliste herauskommt. In den Einstellungen kannst du sie ausschalten.",
 		"A new calendar \"MovieDB – Upcoming\" in the Calendar app and on your synced devices shows upcoming episodes and releases.": "Ein neuer Kalender „MovieDB – Upcoming“ in der Kalender-App und auf deinen synchronisierten Geräten zeigt kommende Folgen und Erscheinungstermine.",
 		"The TV show page shows more from TMDB: the type of show, the network, the TMDB score and the cast.": "Die Serienseite zeigt mehr von TMDB: die Art der Serie, den Sender, die TMDB-Bewertung und die Besetzung.",
-		"Better for screen readers and keyboard use, and Settings fits narrow screens.": "Besser für Screenreader und Tastaturbedienung, und die Einstellungen passen auf schmale Bildschirme."
+		"Better for screen readers and keyboard use, and Settings fits narrow screens.": "Besser für Screenreader und Tastaturbedienung, und die Einstellungen passen auf schmale Bildschirme.",
+		"\"Recently Watched\" on the dashboard now follows the episodes you watch, and shows without a watch date show up too.": "„Zuletzt gesehen“ auf dem Dashboard folgt jetzt den Episoden, die du schaust, und Serien ohne Sehdatum erscheinen ebenfalls."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

@@ -18,6 +18,13 @@ import { translate as t } from '@nextcloud/l10n'
 export function releaseNotes() {
 	return [
 		{
+			version: '1.11.1',
+			rateInAppStore: true,
+			items: [
+				t('moviedb', '"Recently Watched" on the dashboard now follows the episodes you watch, and shows without a watch date show up too.'),
+			],
+		},
+		{
 			version: '1.11.0',
 			rateInAppStore: true,
 			items: [

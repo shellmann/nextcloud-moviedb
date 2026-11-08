@@ -8,6 +8,7 @@ use OCA\MovieDB\Db\EpisodeMapper;
 use OCA\MovieDB\Db\MovieMapper;
 use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Db\PlatformMapper;
+use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Db\WatchlistMapper;
 
@@ -101,22 +102,48 @@ class StatsService {
     }
 
     /**
-     * Series with at least one watched episode, most-recently-watched first.
-     * findAll left-joins the latest episode watch per series, so series that
-     * have never been watched surface a null lastWatchedAt — filter those out
-     * so the dashboard "recently watched" row only shows shows actually seen.
+     * Shows to list under "Recently Watched", most recently watched first.
+     *
+     * A show's last activity is the later of its own watch row (the date set
+     * when adding or editing it) and the newest change to one of its watched
+     * episodes, specials included. Episodes are a plain watched flag with no
+     * watch row of their own, so ticking one off only moves `episodes.updated_at`.
+     * Watched episodes without a timestamp (an imported show) count from the day
+     * the show was added. Shows with neither a watch date nor a watched episode
+     * are left out. The returned `lastWatchedAt` is the date of that activity
+     * (Y-m-d), the same format as a movie's, so the dashboard can merge both lists.
      *
      * @return Series[]
      */
     public function getRecentSeries(string $userId, int $libraryId, int $limit = 5): array {
-        $series = $this->seriesMapper->findAll($libraryId, [
-            'sort' => 'date_watched',
-            'dir' => 'DESC'
-        ], $limit * 4, 0);
+        $rowDates = $this->seriesMapper->lastWatchDatesByLibrary($libraryId);
+        $episodeActivity = $this->episodeMapper->lastWatchActivityByLibrary($libraryId);
 
-        $watched = array_filter($series, static fn ($s) => $s->getLastWatchedAt() !== null);
+        // Rank all shows of the library from light id/date reads, so none is cut off by a scan limit
+        // and no full row (overview, cast) is loaded for the losers.
+        $ranked = [];
+        foreach ($this->seriesMapper->createdAtByLibrary($libraryId) as $id => $createdAt) {
+            $fromEpisodes = array_key_exists($id, $episodeActivity) ? ($episodeActivity[$id] ?? $createdAt) : null;
+            // Y-m-d and Y-m-d H:i:s compare correctly as strings; on the same day the episode wins.
+            $last = max((string)($rowDates[$id] ?? ''), (string)$fromEpisodes);
+            if ($last !== '') {
+                $ranked[$id] = $last;
+            }
+        }
+        arsort($ranked, SORT_STRING);
+        $topIds = array_slice(array_keys($ranked), 0, $limit);
+        if ($topIds === []) {
+            return [];
+        }
 
-        return array_slice(array_values($watched), 0, $limit);
+        // Load only the winners, with the rating and language the cards show.
+        $byId = [];
+        foreach ($this->seriesMapper->findAll($libraryId, ['ids' => $topIds], count($topIds), 0) as $s) {
+            $s->setLastWatchedAt(substr($ranked[$s->getId()], 0, 10));
+            $byId[$s->getId()] = $s;
+        }
+
+        return array_values(array_filter(array_map(static fn (int $id): ?Series => $byId[$id] ?? null, $topIds)));
     }
 
     public function getTopRated(string $userId, int $libraryId, int $limit = 5): array {

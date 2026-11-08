@@ -143,6 +143,9 @@ class SeriesMapper extends QBMapper {
                 )
             );
         }
+        if (isset($filters['ids'])) {
+            $qb->andWhere($qb->expr()->in('m.id', $qb->createNamedParameter(array_values(array_map('intval', $filters['ids'])), IQueryBuilder::PARAM_INT_ARRAY)));
+        }
         if (!empty($filters['year'])) {
             $qb->andWhere($qb->expr()->eq('m.first_air_year',
                 $qb->createNamedParameter((int)$filters['year'], IQueryBuilder::PARAM_INT)));
@@ -258,6 +261,57 @@ class SeriesMapper extends QBMapper {
             ->orderBy('id', 'ASC');
 
         return $this->findEntities($qb);
+    }
+
+    /**
+     * When each show of a library was added: a light id/date read, for callers
+     * that rank every show and then load only a few.
+     *
+     * @return array<int, string> series id => created_at
+     */
+    public function createdAtByLibrary(int $libraryId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('id', 'created_at')
+            ->from($this->getTableName())
+            ->where($qb->expr()->eq('library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)));
+
+        $added = [];
+        $result = $qb->executeQuery();
+        while ($row = $result->fetch()) {
+            $added[(int)$row['id']] = (string)$row['created_at'];
+        }
+        $result->closeCursor();
+
+        return $added;
+    }
+
+    /**
+     * The date on each show's own watch row (set when adding or editing it), for
+     * the shows of a library that have one.
+     *
+     * @return array<int, string> series id => Y-m-d
+     */
+    public function lastWatchDatesByLibrary(int $libraryId): array {
+        $qb = $this->db->getQueryBuilder();
+
+        $qb->select('w.series_id')
+            ->selectAlias($qb->func()->max('w.watched_at'), 'watched_at')
+            ->from('moviedb_movie_watches', 'w')
+            ->where($qb->expr()->eq('w.library_id', $qb->createNamedParameter($libraryId, IQueryBuilder::PARAM_INT)))
+            ->andWhere($qb->expr()->isNotNull('w.series_id'))
+            ->groupBy('w.series_id');
+
+        $dates = [];
+        $result = $qb->executeQuery();
+        while ($row = $result->fetch()) {
+            if ($row['watched_at'] !== null) {
+                $dates[(int)$row['series_id']] = (string)$row['watched_at'];
+            }
+        }
+        $result->closeCursor();
+
+        return $dates;
     }
 
     /**

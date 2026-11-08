@@ -540,7 +540,8 @@
 		"Never miss an episode: you get a notification when an episode airs or a watchlist title comes out. You can turn it off in Settings.": "Ne manquez aucun épisode : vous recevez une notification lorsqu'un épisode sort ou qu'un titre de votre liste à voir est disponible. Vous pouvez la désactiver dans les paramètres.",
 		"A new calendar \"MovieDB – Upcoming\" in the Calendar app and on your synced devices shows upcoming episodes and releases.": "Un nouveau calendrier « MovieDB – Upcoming » dans l'application Agenda et sur vos appareils synchronisés affiche les épisodes et sorties à venir.",
 		"The TV show page shows more from TMDB: the type of show, the network, the TMDB score and the cast.": "La page de la série affiche plus de données de TMDB : le type de série, la chaîne, la note TMDB et la distribution.",
-		"Better for screen readers and keyboard use, and Settings fits narrow screens.": "Mieux adapté aux lecteurs d'écran et au clavier, et les paramètres tiennent sur les écrans étroits."
+		"Better for screen readers and keyboard use, and Settings fits narrow screens.": "Mieux adapté aux lecteurs d'écran et au clavier, et les paramètres tiennent sur les écrans étroits.",
+		"\"Recently Watched\" on the dashboard now follows the episodes you watch, and shows without a watch date show up too.": "« Vus récemment » sur le tableau de bord suit désormais les épisodes que vous regardez, et les séries sans date de visionnage s’affichent aussi."
 	},
 	"pluralForm": "nplurals=2; plural=(n > 1);"
 }
