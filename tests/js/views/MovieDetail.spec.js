@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import api from '@/services/api.js'
 import MovieDetail from '@/views/MovieDetail.vue'
 import { useLibrariesStore } from '@/stores/libraries.js'
 import { useMoviesStore } from '@/stores/movies.js'
@@ -17,15 +18,16 @@ vi.mock('@nextcloud/vue', () => ({
 
 const IconStub = { template: '<span />' }
 
-async function mountDetail(watches) {
+async function mountDetail(watches, extras = { trailer: null, watch: null }, movie = {}) {
+	vi.spyOn(api, 'getTmdbExtras').mockResolvedValue({ data: extras })
 	const movies = useMoviesStore()
-	movies.fetchOne = vi.fn(async () => { movies.currentMovie = { id: 5, title: 'Amélie' } })
+	movies.fetchOne = vi.fn(async () => { movies.currentMovie = { id: 5, title: 'Amélie', tmdbId: 194, ...movie } })
 	const watchesStore = useWatchesStore()
 	watchesStore.fetchForMovie = vi.fn(async (id) => { watchesStore.movieId = id; watchesStore.watches = watches })
 	const wrapper = mount(MovieDetail, {
 		props: { id: '5' },
 		global: {
-			stubs: { ArrowLeft: IconStub, Delete: IconStub, Movie: IconStub, Pencil: IconStub, Plus: IconStub, RatingStars: IconStub },
+			stubs: { ArrowLeft: IconStub, Delete: IconStub, Movie: IconStub, Pencil: IconStub, Play: IconStub, Plus: IconStub, RatingStars: IconStub },
 			mocks: { t: (app, text) => text, $router: { push: vi.fn() } },
 		},
 	})
@@ -55,6 +57,52 @@ describe('MovieDetail watch history', () => {
 	})
 })
 
+describe('MovieDetail trailer and where to watch', () => {
+	const extras = {
+		trailer: { site: 'YouTube', key: 'abc123', name: 'Trailer', url: 'https://www.youtube.com/watch?v=abc123' },
+		watch: {
+			region: 'DE',
+			link: 'https://www.themoviedb.org/movie/194/watch?locale=DE',
+			stream: [{ id: 8, name: 'Netflix', logoPath: '/n.jpg' }],
+			free: [],
+			rent: [],
+			buy: [],
+		},
+	}
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'viewer', permissionEdit: false }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+	})
+
+	it('offers the trailer as an external link and lists where to watch', async () => {
+		const wrapper = await mountDetail([], extras)
+
+		const trailer = wrapper.find('.trailer-button')
+		expect(trailer.attributes('href')).toBe('https://www.youtube.com/watch?v=abc123')
+		expect(trailer.attributes('target')).toBe('_blank')
+		expect(trailer.text()).toContain('Play trailer')
+		expect(wrapper.find('.where-to-watch img').attributes('alt')).toBe('Netflix')
+		expect(api.getTmdbExtras).toHaveBeenCalledWith('movie', '194', 'de-DE')
+	})
+
+	it('shows neither when TMDB has nothing or no key is set', async () => {
+		const wrapper = await mountDetail([])
+
+		expect(wrapper.find('.trailer-button').exists()).toBe(false)
+		expect(wrapper.find('.where-to-watch').exists()).toBe(false)
+	})
+
+	it('asks TMDB nothing for a movie without a TMDB id', async () => {
+		await mountDetail([], extras, { tmdbId: null })
+
+		expect(api.getTmdbExtras).not.toHaveBeenCalled()
+	})
+})
+
 describe('MovieDetail route changes', () => {
 	it('loads the other movie when only the id changes', async () => {
 		setActivePinia(createPinia())
@@ -67,7 +115,7 @@ describe('MovieDetail route changes', () => {
 		const wrapper = mount(MovieDetail, {
 			props: { id: '5' },
 			global: {
-				stubs: { ArrowLeft: IconStub, Delete: IconStub, Movie: IconStub, Pencil: IconStub, Plus: IconStub, RatingStars: IconStub },
+				stubs: { ArrowLeft: IconStub, Delete: IconStub, Movie: IconStub, Pencil: IconStub, Play: IconStub, Plus: IconStub, RatingStars: IconStub },
 				mocks: { t: (app, text) => text, $router: { push: vi.fn() } },
 			},
 		})
@@ -95,7 +143,7 @@ describe('MovieDetail dialogs and stale loads', () => {
 		const wrapper = mount(MovieDetail, {
 			props: { id: '5' },
 			global: {
-				stubs: { ArrowLeft: IconStub, Delete: IconStub, Movie: IconStub, Pencil: IconStub, Plus: IconStub, RatingStars: IconStub },
+				stubs: { ArrowLeft: IconStub, Delete: IconStub, Movie: IconStub, Pencil: IconStub, Play: IconStub, Plus: IconStub, RatingStars: IconStub },
 				mocks: { t: (app, text) => text, $router: { push: vi.fn() } },
 			},
 		})

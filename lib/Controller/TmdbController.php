@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
+use OCA\MovieDB\Service\TmdbExtrasService;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Util\TmdbPath;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\Attribute\NoCSRFRequired;
+use OCP\AppFramework\Http\Attribute\UserRateLimit;
 use OCP\AppFramework\Http\DataDownloadResponse;
 use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
@@ -24,7 +26,8 @@ class TmdbController extends AuthenticatedController {
         IRequest $request,
         TmdbService $service,
         IUserSession $userSession,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        private TmdbExtrasService $extras
     ) {
         parent::__construct(Application::APP_ID, $request, $userSession);
         $this->service = $service;
@@ -184,6 +187,43 @@ class TmdbController extends AuthenticatedController {
             return new JSONResponse(
                 ['error' => 'Failed to load season details. Please try again.'],
                 Http::STATUS_BAD_REQUEST
+            );
+        }
+    }
+
+    /**
+     * Trailer and streaming offers ("where to watch") of a movie or show.
+     * Quietly empty without a TMDB key, so the detail pages simply hide them.
+     */
+    #[NoAdminRequired]
+    #[UserRateLimit(limit: 120, period: 600)]
+    public function extras(string $type, int $tmdbId): JSONResponse {
+        if ($error = $this->requireAuth()) {
+            return $error;
+        }
+        if (!in_array($type, ['movie', 'tv'], true)) {
+            return new JSONResponse(['error' => 'Unsupported media type'], Http::STATUS_BAD_REQUEST);
+        }
+        if (!$this->extras->hasApiKey($this->userId)) {
+            return new JSONResponse(['trailer' => null, 'watch' => null, 'reason' => 'no_api_key']);
+        }
+
+        $language = (string)$this->request->getParam('language', 'en-US');
+        if (preg_match('/^[a-z]{2}(-[A-Z]{2})?$/', $language) !== 1) {
+            $language = 'en-US';
+        }
+
+        try {
+            return new JSONResponse($this->extras->get($type, $tmdbId, $this->userId, $language));
+        } catch (\Exception $e) {
+            $this->logger->error('Failed to get TMDB trailer and providers', [
+                'exception' => $e,
+                'userId' => $this->userId,
+                'tmdbId' => $tmdbId,
+            ]);
+            return new JSONResponse(
+                ['trailer' => null, 'watch' => null, 'reason' => 'tmdb_error'],
+                Http::STATUS_BAD_GATEWAY
             );
         }
     }

@@ -33,6 +33,17 @@
 							</p>
 						</div>
 						<div class="series-actions">
+							<NcButton
+								v-if="trailer"
+								class="trailer-button"
+								:href="trailer.url"
+								target="_blank">
+								<template #icon>
+									<Play :size="20" />
+								</template>
+								{{ t('moviedb', 'Play trailer') }}
+								<span class="hidden-visually">{{ t('moviedb', '(opens {site} in a new tab)', { site: trailer.site }) }}</span>
+							</NcButton>
 							<!-- aria-disabled instead of disabled: a disabled button drops keyboard focus mid-update. -->
 							<NcButton
 								v-if="activeCanEdit && series.tmdbId"
@@ -81,9 +92,17 @@
 							<dt>{{ t('moviedb', 'Type') }}</dt>
 							<dd>{{ typeText }}</dd>
 						</div>
-						<div v-if="networkNames" class="meta-item">
+						<div v-if="networks.length" class="meta-item">
 							<dt>{{ t('moviedb', 'Network') }}</dt>
-							<dd>{{ networkNames }}</dd>
+							<dd class="networks">
+								<template v-for="network in networks" :key="network.name">
+									<!-- TMDB logos are often dark on transparent: a light chip keeps them readable in dark mode. -->
+									<span v-if="network.logoPath" class="network-logo">
+										<img :src="networkLogoUrl(network)" :alt="network.name" height="20">
+									</span>
+									<span v-else>{{ network.name }}</span>
+								</template>
+							</dd>
 						</div>
 						<div v-if="series.director" class="meta-item">
 							<dt>{{ t('moviedb', 'Creator') }}</dt>
@@ -94,9 +113,6 @@
 							<dd>{{ scoreText }}</dd>
 						</div>
 					</dl>
-					<p v-if="series.tmdbId && refreshedOn" class="refreshed-note">
-						{{ t('moviedb', 'Episodes last updated from TMDB: {date}', { date: refreshedOn }) }}
-					</p>
 
 					<!-- Series-level watch metadata (the show owns rating/platform/
 						 language/date, just like a movie). -->
@@ -187,6 +203,8 @@
 						{{ series.overview }}
 					</p>
 
+					<WhereToWatch :watch="extras?.watch || null" />
+
 					<CastList :cast="series.castData || []" class="series-cast" />
 
 					<!-- Seasons -->
@@ -242,6 +260,10 @@
 							</ul>
 						</div>
 					</div>
+
+					<p v-if="series.tmdbId && refreshedOn" class="refreshed-note">
+						{{ t('moviedb', 'Last synced with TMDB: {date}', { date: refreshedOn }) }}
+					</p>
 				</div>
 			</div>
 		</template>
@@ -280,11 +302,14 @@ import ChevronRight from 'vue-material-design-icons/ChevronRight.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
 import EyeOff from 'vue-material-design-icons/EyeOff.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
+import Play from 'vue-material-design-icons/Play.vue'
 import PlayCircleOutline from 'vue-material-design-icons/PlayCircleOutline.vue'
 import Refresh from 'vue-material-design-icons/Refresh.vue'
 import Television from 'vue-material-design-icons/Television.vue'
 import CastList from '../components/CastList.vue'
+import WhereToWatch from '../components/WhereToWatch.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
+import { useTmdbExtras } from '../composables/useTmdbExtras.js'
 import { getLanguageFlag, LANGUAGE_OPTIONS } from '../constants.js'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { useSeriesStore } from '../stores/series.js'
@@ -302,6 +327,8 @@ export default {
 		NcProgressBar,
 		NcCheckboxRadioSwitch,
 		CastList,
+		WhereToWatch,
+		Play,
 		Pencil,
 		Delete,
 		ArrowLeft,
@@ -322,11 +349,21 @@ export default {
 		},
 	},
 
-	setup() {
+	setup(props) {
 		const seriesStore = useSeriesStore()
 		const librariesStore = useLibrariesStore()
 		const settingsStore = useSettingsStore()
-		return { seriesStore, librariesStore, settingsStore }
+		// Trailer and streaming offers of the show of this route (never of the previous one).
+		const { extras } = useTmdbExtras(
+			() => {
+				const current = seriesStore.currentSeries
+				return current && String(current.id) === String(props.id) && current.tmdbId
+					? { type: 'tv', tmdbId: current.tmdbId }
+					: null
+			},
+			() => settingsStore.defaultLanguage || 'en-US',
+		)
+		return { seriesStore, librariesStore, settingsStore, extras }
 	},
 
 	data() {
@@ -355,8 +392,12 @@ export default {
 			return typeLabel(this.series?.seriesType)
 		},
 
-		networkNames() {
-			return (this.series?.networks || []).map((n) => n.name).filter(Boolean).join(' · ')
+		networks() {
+			return (this.series?.networks || []).filter((n) => n && n.name)
+		},
+
+		trailer() {
+			return this.extras?.trailer || null
 		},
 
 		scoreText() {
@@ -389,7 +430,7 @@ export default {
 					|| this.series.languageWatched || this.series.watchedAt))
 		},
 
-		/** When the episodes were last compared with TMDB: the last refresh, else when the show was added. */
+		/** When the show was last synced with TMDB: the last refresh, else when it was added. */
 		refreshedOn() {
 			return formatDate((this.series?.tmdbRefreshedAt || this.series?.createdAt || '').slice(0, 10))
 		},
@@ -430,6 +471,10 @@ export default {
 	},
 
 	methods: {
+		networkLogoUrl(network) {
+			return getPosterUrl(network.logoPath, 'w92')
+		},
+
 		async loadSeries() {
 			const id = this.id
 			// Wait for libraries so the active library id is known before fetching.
@@ -667,6 +712,29 @@ export default {
     dd {
         margin: 0;
     }
+
+    .networks {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 4px 8px;
+    }
+}
+
+// TMDB network logos are often dark on transparent, so they sit on a light chip in both themes
+.network-logo {
+    display: inline-flex;
+    padding: 3px 8px;
+    background: #fff;
+    border-radius: var(--border-radius-small, 6px);
+
+    img {
+        display: block;
+        height: 20px;
+        width: auto;
+        max-width: 96px;
+        object-fit: contain;
+    }
 }
 
 .series-cast {
@@ -830,7 +898,7 @@ export default {
 }
 
 .refreshed-note {
-    margin: 4px 0 0;
+    margin: 24px 0 0;
     font-size: 13px;
     color: var(--color-text-maxcontrast);
 }

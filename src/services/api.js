@@ -131,6 +131,14 @@ export default {
 		}
 		return axios.get(`${baseUrl}/tmdb/series/${tmdbId}/season/${seasonNumber}`, { params })
 	},
+	// Trailer and streaming offers of a movie (type "movie") or show (type "tv"), cached by the server
+	getTmdbExtras(type, tmdbId, language = null) {
+		const params = {}
+		if (language) {
+			params.language = language
+		}
+		return axios.get(`${baseUrl}/tmdb/${type}/${tmdbId}/extras`, { params })
+	},
 	checkTmdbApiKey() {
 		return axios.get(`${baseUrl}/tmdb/check`)
 	},

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MovieDB\Service;
 
 use OCA\MovieDB\AppInfo\Application;
+use OCA\MovieDB\Util\TmdbExtras;
 use OCP\Config\IUserConfig;
 use OCP\Http\Client\IClientService;
 use OCP\IAppConfig;
@@ -119,6 +120,48 @@ class TmdbService {
         ]);
 
         return json_decode($response->getBody(), true);
+    }
+
+    /**
+     * Trailer and streaming offers of a movie or show, from one TMDB call.
+     * Nothing is stored; TmdbExtrasService caches the result.
+     *
+     * @param string $type "movie" or "tv"
+     * @return array{trailer:?array,watch:array}
+     * @throws \Exception
+     */
+    public function getExtras(string $type, int $tmdbId, ?string $userId, string $language, string $region): array {
+        if (!in_array($type, ['movie', 'tv'], true)) {
+            throw new \InvalidArgumentException('Unsupported media type');
+        }
+        $apiKey = $this->getApiKey($userId);
+        if (empty($apiKey)) {
+            throw new \Exception('TMDB API key not configured. Please set your API key in settings.');
+        }
+
+        $response = $this->clientService->newClient()->get(self::BASE_URL . '/' . $type . '/' . $tmdbId, [
+            'headers' => [
+                'Authorization' => 'Bearer ' . $apiKey,
+                'Accept' => 'application/json',
+            ],
+            'query' => [
+                'append_to_response' => 'videos,watch/providers',
+                'include_video_language' => strtolower(substr($language, 0, 2)) . ',en,null',
+                'language' => $language,
+            ],
+        ]);
+
+        $data = json_decode($response->getBody(), true);
+        if (!is_array($data)) {
+            throw new \RuntimeException('Unexpected TMDB response');
+        }
+        $videos = $data['videos']['results'] ?? [];
+        $providers = $data['watch/providers']['results'] ?? [];
+
+        return [
+            'trailer' => TmdbExtras::pickTrailer(is_array($videos) ? $videos : [], $language),
+            'watch' => TmdbExtras::mapProviders(is_array($providers) ? $providers : [], $region),
+        ];
     }
 
     /**

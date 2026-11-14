@@ -56,6 +56,17 @@ namespace OCP {
 namespace OCP\L10N {
     interface IFactory {
         public function get(string $app, ?string $lang = null): \OCP\IL10N;
+        public function findLocale(?string $lang = null): string;
+    }
+}
+
+namespace OCP {
+    interface ICache {
+        public function get($key);
+        public function set($key, $value, $ttl = 0);
+    }
+    interface ICacheFactory {
+        public function createDistributed(string $prefix = ''): ICache;
     }
 }
 

@@ -26,7 +26,8 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Release dates stay current**: Watchlist titles without a release date (or with one still ahead) get it from TMDB by themselves, and a "New date" badge shows when a date was set or moved
 - **Coming up & always up to date**: The dashboard lists the shows you are up to date on whose next episode airs soon; new seasons and episodes come in from TMDB by themselves, or with "Update from TMDB" on the show page
 - **Never miss an episode**: Nextcloud notifications when an episode airs or a watchlist title comes out, and a read-only "MovieDB – Upcoming" calendar in the Calendar app and on synced devices; both can be switched off per user
-- **More show details**: Type, network, TMDB score and cast on the TV show page
+- **More show details**: Type, network (with its logo), TMDB score and cast on the TV show page, and when it was last synced with TMDB
+- **Trailer and where to watch**: A "Play trailer" link and the streaming services that offer the title in your country (taken from your TMDB language, or your Nextcloud language) on the movie and TV show pages; fetched from TMDB when you open a page and kept for 12 hours
 - **Rewatch Support**: Log multiple viewings with separate ratings, platforms, and dates
 - **TMDB Integration**: Automatically fetch movie and TV posters, cast, plot, and episode data
 - **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews
@@ -183,7 +184,7 @@ The web interface talks to a JSON API under `/apps/moviedb/api/`. Every request 
 | Statistics | `GET /api/stats`, `GET /api/stats/years`, `/platforms`, `/genres`, `/recent`, `/top-rated` |
 | Libraries | `GET/POST /api/libraries`, `GET/POST /api/libraries/{id}/members` |
 | Quiz | `GET /api/quiz`, `GET /api/quiz/meta`, `GET/POST/DELETE /api/quiz/results` |
-| TMDB proxy | `GET /api/tmdb/search`, `GET /api/tmdb/series/search`, `GET /api/tmdb/movie/{tmdbId}` |
+| TMDB proxy | `GET /api/tmdb/search`, `GET /api/tmdb/series/search`, `GET /api/tmdb/movie/{tmdbId}`, `GET /api/tmdb/{movie|tv}/{tmdbId}/extras` |
 | Settings | `GET/PUT /api/settings` (per user), `PUT /api/admin/settings` (admin) |
 | Import / export | `GET /api/export`, `POST /api/import` (multipart field `file`) |
 
@@ -211,5 +212,6 @@ AGPL-3.0-or-later
 
 - Movie and TV show data provided by [The Movie Database (TMDB)](https://www.themoviedb.org/).
   This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
+- Streaming availability ("Where to watch") is provided by [JustWatch](https://www.justwatch.com/), via TMDB.
 - The app icon is based on the Nextcloud logo, a trademark of Nextcloud GmbH, and is used with their permission (see [NOTICE](NOTICE)).
 - Built with [Vue 3](https://vuejs.org/), [Pinia](https://pinia.vuejs.org/), and [Nextcloud Vue](https://github.com/nextcloud/nextcloud-vue)

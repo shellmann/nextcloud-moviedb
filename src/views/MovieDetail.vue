@@ -33,6 +33,17 @@
 							</p>
 						</div>
 						<div class="movie-actions">
+							<NcButton
+								v-if="trailer"
+								class="trailer-button"
+								:href="trailer.url"
+								target="_blank">
+								<template #icon>
+									<Play :size="20" />
+								</template>
+								{{ t('moviedb', 'Play trailer') }}
+								<span class="hidden-visually">{{ t('moviedb', '(opens {site} in a new tab)', { site: trailer.site }) }}</span>
+							</NcButton>
 							<NcButton v-if="activeCanEdit" @click="editMovie">
 								<template #icon>
 									<Pencil :size="20" />
@@ -70,6 +81,8 @@
 						<h3>{{ t('moviedb', 'Review') }}</h3>
 						<p>{{ latestWatch.review }}</p>
 					</div>
+
+					<WhereToWatch :watch="extras?.watch || null" />
 
 					<CastList :cast="movie.castData || []" class="movie-cast" />
 
@@ -178,14 +191,18 @@ import ArrowLeft from 'vue-material-design-icons/ArrowLeft.vue'
 import Delete from 'vue-material-design-icons/Delete.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
 import Pencil from 'vue-material-design-icons/Pencil.vue'
+import Play from 'vue-material-design-icons/Play.vue'
 import Plus from 'vue-material-design-icons/Plus.vue'
 import CastList from '../components/CastList.vue'
 import RatingStars from '../components/RatingStars.vue'
+import WhereToWatch from '../components/WhereToWatch.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
+import { useTmdbExtras } from '../composables/useTmdbExtras.js'
 import { getLanguageFlag, getLanguageName } from '../constants.js'
 import { useLibrariesStore } from '../stores/libraries.js'
 import { useMoviesStore } from '../stores/movies.js'
 import { usePlatformsStore } from '../stores/platforms.js'
+import { useSettingsStore } from '../stores/settings.js'
 import { useWatchesStore } from '../stores/watches.js'
 import { formatDate, formatRuntime, todayLocal } from '../utils/formatters.js'
 
@@ -199,6 +216,8 @@ export default {
 		NcActions,
 		NcActionButton,
 		CastList,
+		WhereToWatch,
+		Play,
 		Pencil,
 		Delete,
 		ArrowLeft,
@@ -214,12 +233,23 @@ export default {
 		},
 	},
 
-	setup() {
+	setup(props) {
 		const moviesStore = useMoviesStore()
 		const platformsStore = usePlatformsStore()
 		const watchesStore = useWatchesStore()
 		const librariesStore = useLibrariesStore()
-		return { moviesStore, platformsStore, watchesStore, librariesStore }
+		const settingsStore = useSettingsStore()
+		// Trailer and streaming offers of the movie of this route (never of the previous one).
+		const { extras } = useTmdbExtras(
+			() => {
+				const current = moviesStore.currentMovie
+				return current && String(current.id) === String(props.id) && current.tmdbId
+					? { type: 'movie', tmdbId: current.tmdbId }
+					: null
+			},
+			() => settingsStore.defaultLanguage || 'en-US',
+		)
+		return { moviesStore, platformsStore, watchesStore, librariesStore, extras }
 	},
 
 	data() {
@@ -249,6 +279,10 @@ export default {
 
 		loading() {
 			return this.moviesStore.loading
+		},
+
+		trailer() {
+			return this.extras?.trailer || null
 		},
 
 		platforms() {
@@ -449,6 +483,7 @@ export default {
 
     .movie-actions {
         display: flex;
+        flex-wrap: wrap;
         gap: 8px;
         flex-shrink: 0;
     }
