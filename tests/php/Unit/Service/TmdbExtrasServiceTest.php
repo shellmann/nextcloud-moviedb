@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace OCA\MovieDB\Tests\Unit\Service;
 
 use OCA\MovieDB\Service\TmdbExtrasService;
+use OCA\MovieDB\Service\TmdbExtrasUnavailableException;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\ICache;
@@ -86,7 +87,7 @@ class TmdbExtrasServiceTest extends TestCase {
         $this->tmdb->expects($this->never())->method('getExtras');
         $this->cache->method('get')->willReturn(['failed' => true]);
 
-        $this->expectException(\RuntimeException::class);
+        $this->expectException(TmdbExtrasUnavailableException::class);
         $this->service()->get('movie', 1, 'alice', 'en-US');
     }
 }

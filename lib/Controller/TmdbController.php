@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Controller;
 
 use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\TmdbExtrasService;
+use OCA\MovieDB\Service\TmdbExtrasUnavailableException;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Util\TmdbPath;
 use OCP\AppFramework\Http;
@@ -215,17 +216,20 @@ class TmdbController extends AuthenticatedController {
 
         try {
             return new JSONResponse($this->extras->get($type, $tmdbId, $this->userId, $language));
+        } catch (TmdbExtrasUnavailableException) {
+            // The failure behind it was logged when it happened; don't log it on every page open.
         } catch (\Exception $e) {
             $this->logger->error('Failed to get TMDB trailer and providers', [
                 'exception' => $e,
                 'userId' => $this->userId,
                 'tmdbId' => $tmdbId,
             ]);
-            return new JSONResponse(
-                ['trailer' => null, 'watch' => null, 'reason' => 'tmdb_error'],
-                Http::STATUS_BAD_GATEWAY
-            );
         }
+
+        return new JSONResponse(
+            ['trailer' => null, 'watch' => null, 'reason' => 'tmdb_error'],
+            Http::STATUS_BAD_GATEWAY
+        );
     }
 
     #[NoAdminRequired]

@@ -36,7 +36,8 @@ class TmdbExtrasService {
     /**
      * @param string $type "movie" or "tv"
      * @return array{trailer:?array,watch:array}
-     * @throws \Exception
+     * @throws TmdbExtrasUnavailableException while an earlier failure is remembered
+     * @throws \Exception when TMDB fails now
      */
     public function get(string $type, int $tmdbId, ?string $userId, string $language): array {
         $region = WatchRegion::resolve($language, $this->l10nFactory->findLocale());
@@ -44,7 +45,7 @@ class TmdbExtrasService {
 
         $cached = $this->cache()->get($key);
         if ($cached === self::FAILED) {
-            throw new \RuntimeException('TMDB failed for this title a few minutes ago');
+            throw new TmdbExtrasUnavailableException('TMDB failed for this title a few minutes ago');
         }
         if (is_array($cached) && array_key_exists('trailer', $cached) && array_key_exists('watch', $cached)) {
             return $cached;

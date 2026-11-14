@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Tests\Unit\Controller;
 
 use OCA\MovieDB\Controller\TmdbController;
 use OCA\MovieDB\Service\TmdbExtrasService;
+use OCA\MovieDB\Service\TmdbExtrasUnavailableException;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Http;
@@ -18,6 +19,7 @@ class TmdbControllerExtrasTest extends TestCase {
     private IRequest $request;
     private TmdbExtrasService $extras;
     private IUserSession $userSession;
+    private LoggerInterface $logger;
     private ?TmdbController $controller = null;
 
     protected function setUp(): void {
@@ -25,6 +27,7 @@ class TmdbControllerExtrasTest extends TestCase {
         $this->request = $this->createStub(IRequest::class);
         $this->extras = $this->createStub(TmdbExtrasService::class);
         $this->userSession = $this->createStub(IUserSession::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
         $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('alice');
         $this->userSession->method('getUser')->willReturn($user);
@@ -35,7 +38,7 @@ class TmdbControllerExtrasTest extends TestCase {
             $this->request,
             $this->createStub(TmdbService::class),
             $this->userSession,
-            $this->createStub(LoggerInterface::class),
+            $this->logger,
             $this->extras,
         );
     }
@@ -82,10 +85,25 @@ class TmdbControllerExtrasTest extends TestCase {
         $this->controller()->extras('movie', 1);
     }
 
-    public function testTmdbErrorIsBadGateway(): void {
+    public function testTmdbErrorIsBadGatewayAndLogged(): void {
         $this->language('en-US');
         $this->extras->method('hasApiKey')->willReturn(true);
         $this->extras->method('get')->willThrowException(new \RuntimeException('boom'));
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger->expects($this->once())->method('error');
+
+        $response = $this->controller()->extras('movie', 1);
+
+        $this->assertSame(Http::STATUS_BAD_GATEWAY, $response->getStatus());
+        $this->assertSame('tmdb_error', $response->getData()['reason']);
+    }
+
+    public function testRememberedFailureIsBadGatewayWithoutLogging(): void {
+        $this->language('en-US');
+        $this->extras->method('hasApiKey')->willReturn(true);
+        $this->extras->method('get')->willThrowException(new TmdbExtrasUnavailableException('earlier'));
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger->expects($this->never())->method('error');
 
         $response = $this->controller()->extras('movie', 1);
 
