@@ -29,21 +29,23 @@ class StatsServiceTest extends TestCase {
     private PlatformMapper $platformMapper;
     private SeriesMapper $seriesMapper;
     private EpisodeMapper $episodeMapper;
-    private StatsService $service;
+    private ?StatsService $service = null;
 
     private const LIBRARY_ID = 1;
 
     protected function setUp(): void {
         parent::setUp();
 
-        $this->movieMapper = $this->createMock(MovieMapper::class);
-        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
-        $this->watchlistMapper = $this->createMock(WatchlistMapper::class);
-        $this->platformMapper = $this->createMock(PlatformMapper::class);
-        $this->seriesMapper = $this->createMock(SeriesMapper::class);
-        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->movieMapper = $this->createStub(MovieMapper::class);
+        $this->watchMapper = $this->createStub(MovieWatchMapper::class);
+        $this->watchlistMapper = $this->createStub(WatchlistMapper::class);
+        $this->platformMapper = $this->createStub(PlatformMapper::class);
+        $this->seriesMapper = $this->createStub(SeriesMapper::class);
+        $this->episodeMapper = $this->createStub(EpisodeMapper::class);
+    }
 
-        $this->service = new StatsService(
+    private function service(): StatsService {
+        return $this->service ??= new StatsService(
             $this->movieMapper,
             $this->watchMapper,
             $this->watchlistMapper,
@@ -54,6 +56,7 @@ class StatsServiceTest extends TestCase {
     }
 
     public function testGetTopRatedSeriesSortsByRatingDescending(): void {
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
         $this->seriesMapper->expects($this->once())
             ->method('findAll')
             ->with(self::LIBRARY_ID, ['sort' => 'rating', 'dir' => 'DESC'], 20, 0)
@@ -62,7 +65,7 @@ class StatsServiceTest extends TestCase {
                 $this->makeSeries(2, 7),
             ]);
 
-        $result = $this->service->getTopRatedSeries('testuser', self::LIBRARY_ID, 5);
+        $result = $this->service()->getTopRatedSeries('testuser', self::LIBRARY_ID, 5);
 
         $this->assertCount(2, $result);
         $this->assertSame(1, $result[0]->getId());
@@ -78,7 +81,7 @@ class StatsServiceTest extends TestCase {
             $this->makeSeries(3, 6),
         ]);
 
-        $result = $this->service->getTopRatedSeries('testuser', self::LIBRARY_ID, 5);
+        $result = $this->service()->getTopRatedSeries('testuser', self::LIBRARY_ID, 5);
 
         $this->assertCount(2, $result);
         $ids = array_map(static fn (Series $s) => $s->getId(), $result);
@@ -92,19 +95,20 @@ class StatsServiceTest extends TestCase {
             $this->makeSeries(3, 8),
         ]);
 
-        $result = $this->service->getTopRatedSeries('testuser', self::LIBRARY_ID, 2);
+        $result = $this->service()->getTopRatedSeries('testuser', self::LIBRARY_ID, 2);
 
         $this->assertCount(2, $result);
         $this->assertSame([1, 2], array_map(static fn (Series $s) => $s->getId(), $result));
     }
 
     public function testGetTopRatedSeriesOverFetchesFourTimesTheLimit(): void {
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
         $this->seriesMapper->expects($this->once())
             ->method('findAll')
             ->with(self::LIBRARY_ID, ['sort' => 'rating', 'dir' => 'DESC'], 12, 0)
             ->willReturn([]);
 
-        $this->assertSame([], $this->service->getTopRatedSeries('testuser', self::LIBRARY_ID, 3));
+        $this->assertSame([], $this->service()->getTopRatedSeries('testuser', self::LIBRARY_ID, 3));
     }
 
     public function testGetOverviewPassesThroughCombinedAverageRating(): void {
@@ -118,53 +122,59 @@ class StatsServiceTest extends TestCase {
         $this->seriesMapper->method('countAll')->willReturn(0);
         $this->watchMapper->method('getAverageRating')->willReturn(7.5);
 
-        $overview = $this->service->getOverview('testuser', self::LIBRARY_ID);
+        $overview = $this->service()->getOverview('testuser', self::LIBRARY_ID);
 
         $this->assertSame(7.5, $overview['averageRating']);
     }
 
     public function testGetStatsByYearForwardsNullMediaTypeByDefault(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
         $this->watchMapper->expects($this->once())
             ->method('getCountByYear')
             ->with(self::LIBRARY_ID, null)
             ->willReturn(['2024' => 3]);
 
-        $result = $this->service->getStatsByYear('testuser', self::LIBRARY_ID);
+        $result = $this->service()->getStatsByYear('testuser', self::LIBRARY_ID);
 
         $this->assertSame(['2024' => 3], $result);
     }
 
     public function testGetStatsByYearForwardsMediaTypeFilter(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
         $this->watchMapper->expects($this->once())
             ->method('getCountByYear')
             ->with(self::LIBRARY_ID, 'series')
             ->willReturn(['2022' => 1]);
 
-        $result = $this->service->getStatsByYear('testuser', self::LIBRARY_ID, 'series');
+        $result = $this->service()->getStatsByYear('testuser', self::LIBRARY_ID, 'series');
 
         $this->assertSame(['2022' => 1], $result);
     }
 
     public function testGetStatsByPlatformForwardsNullMediaTypeByDefault(): void {
+        $this->platformMapper = $this->createMock(PlatformMapper::class);
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
         $this->watchMapper->expects($this->once())
             ->method('getCountByPlatform')
             ->with(self::LIBRARY_ID, null)
             ->willReturn([1 => 5]);
         $this->platformMapper->method('find')->with(1)->willReturn($this->makePlatform(1, 'Netflix'));
 
-        $result = $this->service->getStatsByPlatform('testuser', self::LIBRARY_ID);
+        $result = $this->service()->getStatsByPlatform('testuser', self::LIBRARY_ID);
 
         $this->assertSame([['id' => 1, 'name' => 'Netflix', 'icon' => null, 'count' => 5]], $result);
     }
 
     public function testGetStatsByPlatformForwardsMediaTypeFilter(): void {
+        $this->platformMapper = $this->createMock(PlatformMapper::class);
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
         $this->watchMapper->expects($this->once())
             ->method('getCountByPlatform')
             ->with(self::LIBRARY_ID, 'movie')
             ->willReturn([2 => 3]);
         $this->platformMapper->method('find')->with(2)->willReturn($this->makePlatform(2, 'HBO Max'));
 
-        $result = $this->service->getStatsByPlatform('testuser', self::LIBRARY_ID, 'movie');
+        $result = $this->service()->getStatsByPlatform('testuser', self::LIBRARY_ID, 'movie');
 
         $this->assertSame([['id' => 2, 'name' => 'HBO Max', 'icon' => null, 'count' => 3]], $result);
     }
@@ -176,7 +186,7 @@ class StatsServiceTest extends TestCase {
             fn (int $id) => $this->makePlatform($id, $names[$id])
         );
 
-        $result = $this->service->getStatsByPlatform('testuser', self::LIBRARY_ID);
+        $result = $this->service()->getStatsByPlatform('testuser', self::LIBRARY_ID);
 
         $this->assertSame(['HBO Max', 'Cinema', 'Netflix'], array_column($result, 'name'));
     }
@@ -190,7 +200,7 @@ class StatsServiceTest extends TestCase {
             return $this->makePlatform($id, 'Netflix');
         });
 
-        $result = $this->service->getStatsByPlatform('testuser', self::LIBRARY_ID);
+        $result = $this->service()->getStatsByPlatform('testuser', self::LIBRARY_ID);
 
         $this->assertCount(1, $result);
         $this->assertSame('Netflix', $result[0]['name']);
@@ -216,7 +226,7 @@ class StatsServiceTest extends TestCase {
             fn (int $library, array $filters) => array_map(fn (int $id) => $this->seriesAddedOn($id, '2026-10-01 10:00:00'), array_reverse($filters['ids']))
         );
 
-        return $this->service->getRecentSeries('testuser', self::LIBRARY_ID, $limit);
+        return $this->service()->getRecentSeries('testuser', self::LIBRARY_ID, $limit);
     }
 
     private function seriesAddedOn(int $id, string $createdAt): Series {

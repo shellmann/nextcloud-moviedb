@@ -13,25 +13,29 @@ use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Service\QuizService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
 
 class QuizServiceTest extends TestCase {
 
-    private MovieMapper&MockObject $movieMapper;
-    private SeriesMapper&MockObject $seriesMapper;
-    private MovieWatchMapper&MockObject $watchMapper;
-    private QuizService $service;
+    private MovieMapper&Stub $movieMapper;
+    private SeriesMapper&Stub $seriesMapper;
+    private MovieWatchMapper&Stub $watchMapper;
+    private ?QuizService $service = null;
 
     private const LIB = 3;
     private const USER = 'alice';
 
     protected function setUp(): void {
         parent::setUp();
-        $this->movieMapper = $this->createMock(MovieMapper::class);
-        $this->seriesMapper = $this->createMock(SeriesMapper::class);
-        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
-        $this->service = new QuizService($this->movieMapper, $this->seriesMapper, $this->watchMapper);
+        $this->movieMapper = $this->createStub(MovieMapper::class);
+        $this->seriesMapper = $this->createStub(SeriesMapper::class);
+        $this->watchMapper = $this->createStub(MovieWatchMapper::class);
+    }
+
+    private function service(): QuizService {
+        return $this->service ??= new QuizService($this->movieMapper, $this->seriesMapper, $this->watchMapper);
     }
 
     private function rng(int $seed = 42): Randomizer {
@@ -86,16 +90,22 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testEmptyLibraryHasNoQuestions(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load([]);
 
-        $this->assertSame(['maxQuestions' => 0, 'titleCount' => 0], $this->service->meta(self::LIB, self::USER));
-        $this->assertSame([], $this->service->generate(self::LIB, self::USER, 5, $this->rng()));
+        $this->assertSame(['maxQuestions' => 0, 'titleCount' => 0], $this->service()->meta(self::LIB, self::USER));
+        $this->assertSame([], $this->service()->generate(self::LIB, self::USER, 5, $this->rng()));
     }
 
     public function testCountIsClampedToMaxQuestionsAndEveryTitleIsUsedOnce(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load($this->tenMovies());
 
-        $questions = $this->service->generate(self::LIB, self::USER, 999, $this->rng());
+        $questions = $this->service()->generate(self::LIB, self::USER, 999, $this->rng());
 
         $this->assertCount(10, $questions);
         $ids = array_map(fn ($q) => $q['subject']['id'], $questions);
@@ -103,37 +113,52 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testCountBelowOneIsRaisedToOne(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load($this->tenMovies());
 
-        $this->assertCount(1, $this->service->generate(self::LIB, self::USER, 0, $this->rng()));
+        $this->assertCount(1, $this->service()->generate(self::LIB, self::USER, 0, $this->rng()));
     }
 
     public function testRequestedCountIsHonouredWhenSmallerThanMax(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load($this->tenMovies());
 
-        $this->assertCount(4, $this->service->generate(self::LIB, self::USER, 4, $this->rng()));
+        $this->assertCount(4, $this->service()->generate(self::LIB, self::USER, 4, $this->rng()));
     }
 
     public function testTitlesWithoutAnyUsableDataDoNotCount(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load([$this->movie(1, 'Good'), $this->bareMovie(2, 'Bare'), $this->bareMovie(3, 'Empty')]);
 
-        $meta = $this->service->meta(self::LIB, self::USER);
+        $meta = $this->service()->meta(self::LIB, self::USER);
 
         $this->assertSame(3, $meta['titleCount']);
         $this->assertSame(1, $meta['maxQuestions']);
     }
 
     public function testMaxQuestionsIsCappedAtOneHundred(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load(array_map(fn (int $i) => $this->movie($i, "Movie $i"), range(1, 120)));
 
-        $this->assertSame(100, $this->service->meta(self::LIB, self::USER)['maxQuestions']);
-        $this->assertCount(100, $this->service->generate(self::LIB, self::USER, 500, $this->rng()));
+        $this->assertSame(100, $this->service()->meta(self::LIB, self::USER)['maxQuestions']);
+        $this->assertCount(100, $this->service()->generate(self::LIB, self::USER, 500, $this->rng()));
     }
 
     public function testChoiceQuestionsHaveFourUniqueOptionsIncludingTheAnswer(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load($this->tenMovies());
 
-        $questions = $this->service->generate(self::LIB, self::USER, 10, $this->rng());
+        $questions = $this->service()->generate(self::LIB, self::USER, 10, $this->rng());
 
         $choice = array_filter($questions, fn ($q) => $q['mode'] === 'choice');
         $this->assertNotEmpty($choice);
@@ -148,9 +173,12 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testYearQuestionsCarryARangeThatContainsTheAnswer(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load($this->tenMovies());
 
-        $questions = $this->service->generate(self::LIB, self::USER, 10, $this->rng());
+        $questions = $this->service()->generate(self::LIB, self::USER, 10, $this->rng());
 
         $years = array_filter($questions, fn ($q) => $q['mode'] === 'year');
         $this->assertNotEmpty($years);
@@ -162,9 +190,12 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testRoundIsVariedAcrossTypes(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load($this->tenMovies());
 
-        $questions = $this->service->generate(self::LIB, self::USER, 8, $this->rng());
+        $questions = $this->service()->generate(self::LIB, self::USER, 8, $this->rng());
 
         // release_year, director, actor and poster are eligible: 8 questions
         // spread by "least used first" means two of each.
@@ -174,15 +205,21 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testSameSeedGivesSameRound(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load($this->tenMovies());
 
         $this->assertEquals(
-            $this->service->generate(self::LIB, self::USER, 6, $this->rng(7)),
-            $this->service->generate(self::LIB, self::USER, 6, $this->rng(7))
+            $this->service()->generate(self::LIB, self::USER, 6, $this->rng(7)),
+            $this->service()->generate(self::LIB, self::USER, 6, $this->rng(7))
         );
     }
 
     public function testWatchYearNeedsOwnWatchesInTwoDifferentYears(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $a = $this->bareMovie(1, 'A');
         $b = $this->bareMovie(2, 'B');
 
@@ -191,17 +228,20 @@ class QuizServiceTest extends TestCase {
             $this->watch(1, null, '2025-01-10', null, null, 1),
             $this->watch(2, null, '2025-06-01', null, null, 2),
         ]);
-        $types = array_column($this->service->generate(self::LIB, self::USER, 2, $this->rng()), 'type');
+        $types = array_column($this->service()->generate(self::LIB, self::USER, 2, $this->rng()), 'type');
         $this->assertSame([QuizService::TYPE_WATCHED_FIRST, QuizService::TYPE_WATCHED_FIRST], $types);
     }
 
     public function testWatchYearIsOfferedWhenWatchesSpanTwoYears(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load([$this->bareMovie(1, 'A'), $this->bareMovie(2, 'B')], [], [
             $this->watch(1, null, '2024-01-10', null, null, 1),
             $this->watch(2, null, '2025-06-01', null, null, 2),
         ]);
 
-        $questions = $this->service->generate(self::LIB, self::USER, 2, $this->rng());
+        $questions = $this->service()->generate(self::LIB, self::USER, 2, $this->rng());
 
         $types = array_column($questions, 'type');
         sort($types);
@@ -215,12 +255,15 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testWatchedFirstAnswerIsTheEarlierTitle(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load([$this->bareMovie(1, 'Early'), $this->bareMovie(2, 'Late')], [], [
             $this->watch(1, null, '2024-01-10', null, null, 1),
             $this->watch(2, null, '2024-06-01', null, null, 2),
         ]);
 
-        $q = $this->service->generate(self::LIB, self::USER, 1, $this->rng())[0];
+        $q = $this->service()->generate(self::LIB, self::USER, 1, $this->rng())[0];
 
         $this->assertSame(QuizService::TYPE_WATCHED_FIRST, $q['type']);
         $this->assertCount(2, $q['options']);
@@ -229,13 +272,16 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testRewatchUsesTheFirstWatchDate(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load([$this->bareMovie(1, 'A'), $this->bareMovie(2, 'B')], [], [
             $this->watch(1, null, '2023-05-01', null, null, 1),
             $this->watch(1, null, '2025-05-01', null, null, 2),
             $this->watch(2, null, '2024-05-01', null, null, 3),
         ]);
 
-        $questions = $this->service->generate(self::LIB, self::USER, 2, $this->rng());
+        $questions = $this->service()->generate(self::LIB, self::USER, 2, $this->rng());
 
         foreach ($questions as $q) {
             if ($q['type'] === QuizService::TYPE_WATCH_YEAR && $q['subject']['title'] === 'A') {
@@ -248,6 +294,7 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testWatchesAreLoadedForTheAskingUserOnly(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
         // The mapper is the single source of watches and is scoped to the user;
         // the service must never fall back to the library-wide finder.
         $this->movieMapper->method('findAllByLibrary')->willReturn([]);
@@ -255,16 +302,19 @@ class QuizServiceTest extends TestCase {
         $this->watchMapper->expects($this->once())->method('findAllByLibraryAndUser')->with(self::LIB, self::USER)->willReturn([]);
         $this->watchMapper->expects($this->never())->method('findAllByLibrary');
 
-        $this->service->meta(self::LIB, self::USER);
+        $this->service()->meta(self::LIB, self::USER);
     }
 
     public function testRatingQuestionUsesTheLatestRating(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load([$this->bareMovie(1, 'A')], [], [
             $this->watch(1, null, '2023-01-01', 4, null, 1),
             $this->watch(1, null, '2024-01-01', 9, null, 2),
         ]);
 
-        $q = $this->service->generate(self::LIB, self::USER, 1, $this->rng())[0];
+        $q = $this->service()->generate(self::LIB, self::USER, 1, $this->rng())[0];
 
         $this->assertSame(QuizService::TYPE_RATING, $q['type']);
         $this->assertSame('number', $q['mode']);
@@ -273,10 +323,13 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testSeriesGetSeasonsQuestionButNoDirectorQuestion(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $series = [$this->series(1, 'Dark', 3)];
         $this->load([], $series);
 
-        $q = $this->service->generate(self::LIB, self::USER, 1, $this->rng())[0];
+        $q = $this->service()->generate(self::LIB, self::USER, 1, $this->rng())[0];
 
         // Release year or seasons only (a series has no director, 1 title has no distractors).
         $this->assertContains($q['type'], [QuizService::TYPE_RELEASE_YEAR, QuizService::TYPE_SEASONS]);
@@ -284,9 +337,12 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testSeasonsQuestionRange(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load([], [$this->series(1, 'Long Runner', 25, 0)]);
 
-        $q = $this->service->generate(self::LIB, self::USER, 1, $this->rng())[0];
+        $q = $this->service()->generate(self::LIB, self::USER, 1, $this->rng())[0];
 
         $this->assertSame(QuizService::TYPE_SEASONS, $q['type']);
         $this->assertSame(25, $q['answer']);
@@ -295,6 +351,9 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testReviewIsMaskedAndOnlyOfferedWithEnoughOtherTitles(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $review = 'Blade Runner is a slow burn but the visuals of blade runner are stunning and unforgettable.';
         $this->load(
             [$this->bareMovie(1, 'Blade Runner'), $this->bareMovie(2, 'B'), $this->bareMovie(3, 'C'), $this->bareMovie(4, 'D')],
@@ -302,7 +361,7 @@ class QuizServiceTest extends TestCase {
             [$this->watch(1, null, null, null, $review, 1)]
         );
 
-        $q = $this->service->generate(self::LIB, self::USER, 5, $this->rng())[0];
+        $q = $this->service()->generate(self::LIB, self::USER, 5, $this->rng())[0];
 
         $this->assertSame(QuizService::TYPE_REVIEW, $q['type']);
         $this->assertStringNotContainsStringIgnoringCase('blade runner', $q['extra']->review);
@@ -313,26 +372,35 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testReviewIsNotOfferedWithTooFewOtherTitles(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load(
             [$this->bareMovie(1, 'Blade Runner'), $this->bareMovie(2, 'B')],
             [],
             [$this->watch(1, null, null, null, 'A long enough review about the film itself.', 1)]
         );
 
-        $this->assertSame(0, $this->service->meta(self::LIB, self::USER)['maxQuestions']);
+        $this->assertSame(0, $this->service()->meta(self::LIB, self::USER)['maxQuestions']);
     }
 
     public function testReviewThatIsMostlyTheTitleIsNotOffered(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load(
             [$this->bareMovie(1, 'Alien'), $this->bareMovie(2, 'B'), $this->bareMovie(3, 'C'), $this->bareMovie(4, 'D')],
             [],
             [$this->watch(1, null, null, null, 'Alien Alien Alien', 1)]
         );
 
-        $this->assertSame(0, $this->service->meta(self::LIB, self::USER)['maxQuestions']);
+        $this->assertSame(0, $this->service()->meta(self::LIB, self::USER)['maxQuestions']);
     }
 
     public function testLongReviewIsCutAtAWordBoundary(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $review = trim(str_repeat('wonderful ', 60));
         $this->load(
             [$this->bareMovie(1, 'Alien'), $this->bareMovie(2, 'B'), $this->bareMovie(3, 'C'), $this->bareMovie(4, 'D')],
@@ -340,7 +408,7 @@ class QuizServiceTest extends TestCase {
             [$this->watch(1, null, null, null, $review, 1)]
         );
 
-        $q = $this->service->generate(self::LIB, self::USER, 1, $this->rng())[0];
+        $q = $this->service()->generate(self::LIB, self::USER, 1, $this->rng())[0];
 
         $text = $q['extra']->review;
         $this->assertLessThanOrEqual(281, mb_strlen($text));
@@ -348,9 +416,12 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testActorQuestionAsksForACastMemberAndOffersOutsiders(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $this->load($this->tenMovies());
 
-        $questions = $this->service->generate(self::LIB, self::USER, 10, $this->rng());
+        $questions = $this->service()->generate(self::LIB, self::USER, 10, $this->rng());
 
         $actor = array_values(array_filter($questions, fn ($q) => $q['type'] === QuizService::TYPE_ACTOR));
         $this->assertNotEmpty($actor);
@@ -367,6 +438,9 @@ class QuizServiceTest extends TestCase {
     }
 
     public function testTitlesDifferingOnlyInCaseCountOnceForDistractors(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
         $movies = [
             $this->movie(1, 'Same', ['year' => 0, 'director' => '', 'cast' => []]),
             $this->movie(2, 'same', ['year' => 0, 'director' => '', 'cast' => []]),
@@ -375,6 +449,6 @@ class QuizServiceTest extends TestCase {
         $this->load($movies);
 
         // "Same"/"same" collapse into one distinct title: 2 distinct titles, no 3 distractors.
-        $this->assertSame(0, $this->service->meta(self::LIB, self::USER)['maxQuestions']);
+        $this->assertSame(0, $this->service()->meta(self::LIB, self::USER)['maxQuestions']);
     }
 }

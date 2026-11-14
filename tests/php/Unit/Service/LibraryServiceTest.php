@@ -32,23 +32,25 @@ class LibraryServiceTest extends TestCase {
     private QuizResultMapper $quizResultMapper;
     private IUserManager $userManager;
     private IDBConnection $db;
-    private LibraryService $service;
+    private ?LibraryService $service = null;
 
     protected function setUp(): void {
         parent::setUp();
 
-        $this->libraryMapper  = $this->createMock(LibraryMapper::class);
-        $this->memberMapper   = $this->createMock(LibraryMemberMapper::class);
-        $this->movieMapper    = $this->createMock(MovieMapper::class);
-        $this->seriesMapper   = $this->createMock(SeriesMapper::class);
-        $this->watchlistMapper = $this->createMock(WatchlistMapper::class);
-        $this->watchMapper    = $this->createMock(MovieWatchMapper::class);
-        $this->episodeMapper  = $this->createMock(EpisodeMapper::class);
-        $this->quizResultMapper = $this->createMock(QuizResultMapper::class);
-        $this->userManager    = $this->createMock(IUserManager::class);
-        $this->db             = $this->createMock(IDBConnection::class);
+        $this->libraryMapper  = $this->createStub(LibraryMapper::class);
+        $this->memberMapper   = $this->createStub(LibraryMemberMapper::class);
+        $this->movieMapper    = $this->createStub(MovieMapper::class);
+        $this->seriesMapper   = $this->createStub(SeriesMapper::class);
+        $this->watchlistMapper = $this->createStub(WatchlistMapper::class);
+        $this->watchMapper    = $this->createStub(MovieWatchMapper::class);
+        $this->episodeMapper  = $this->createStub(EpisodeMapper::class);
+        $this->quizResultMapper = $this->createStub(QuizResultMapper::class);
+        $this->userManager    = $this->createStub(IUserManager::class);
+        $this->db             = $this->createStub(IDBConnection::class);
+    }
 
-        $this->service = new LibraryService(
+    private function service(): LibraryService {
+        return $this->service ??= new LibraryService(
             $this->libraryMapper,
             $this->memberMapper,
             $this->movieMapper,
@@ -65,22 +67,24 @@ class LibraryServiceTest extends TestCase {
     // ── getOwner ──────────────────────────────────────────────────────────────
 
     public function testGetOwnerReturnsTheLibraryOwner(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $library = new Library();
         $library->setOwner('anna');
         $this->libraryMapper->method('find')->with(4)->willReturn($library);
 
-        $this->assertSame('anna', $this->service->getOwner(4));
+        $this->assertSame('anna', $this->service()->getOwner(4));
     }
 
     public function testGetOwnerIsNullForAnUnknownLibrary(): void {
         $this->libraryMapper->method('find')->willThrowException(new \OCP\AppFramework\Db\DoesNotExistException('x'));
 
-        $this->assertNull($this->service->getOwner(99));
+        $this->assertNull($this->service()->getOwner(99));
     }
 
     // ── create ────────────────────────────────────────────────────────────────
 
     public function testCreateReturnsNewLibrary(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $owner = 'alice';
         $name  = 'Family Movies';
 
@@ -96,7 +100,7 @@ class LibraryServiceTest extends TestCase {
                 return $lib;
             });
 
-        $result = $this->service->create($owner, $name);
+        $result = $this->service()->create($owner, $name);
 
         $this->assertInstanceOf(Library::class, $result);
         $this->assertEquals(42, $result->getId());
@@ -107,6 +111,7 @@ class LibraryServiceTest extends TestCase {
     // ── rename ────────────────────────────────────────────────────────────────
 
     public function testRenameUpdatesName(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(1, 'alice', 'Old Name', false);
 
         $this->libraryMapper->expects($this->once())
@@ -118,12 +123,13 @@ class LibraryServiceTest extends TestCase {
             ->method('update')
             ->willReturnArgument(0);
 
-        $result = $this->service->rename(1, 'alice', 'New Name');
+        $result = $this->service()->rename(1, 'alice', 'New Name');
 
         $this->assertEquals('New Name', $result->getName());
     }
 
     public function testRenameThrowsWhenNotOwner(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(1, 'alice', 'My Lib', false);
 
         $this->libraryMapper->expects($this->once())
@@ -131,10 +137,11 @@ class LibraryServiceTest extends TestCase {
             ->willReturn($lib);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->rename(1, 'bob', 'Hacked Name');
+        $this->service()->rename(1, 'bob', 'Hacked Name');
     }
 
     public function testRenameThrowsForPersonalLibrary(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(1, 'alice', 'Personal', true);
 
         $this->libraryMapper->expects($this->once())
@@ -142,12 +149,14 @@ class LibraryServiceTest extends TestCase {
             ->willReturn($lib);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->rename(1, 'alice', 'Renamed');
+        $this->service()->rename(1, 'alice', 'Renamed');
     }
 
     // ── addMember ─────────────────────────────────────────────────────────────
 
     public function testAddMemberInsertsNewMembership(): void {
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 
         $this->libraryMapper->expects($this->once())
@@ -172,13 +181,15 @@ class LibraryServiceTest extends TestCase {
                 return $m;
             });
 
-        $result = $this->service->addMember(5, 'alice', 'bob', false);
+        $result = $this->service()->addMember(5, 'alice', 'bob', false);
 
         $this->assertEquals(99, $result->getId());
         $this->assertEquals('bob', $result->getUserId());
     }
 
     public function testAddMemberUpdatesExistingPermission(): void {
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 
         $existing = new LibraryMember();
@@ -201,12 +212,13 @@ class LibraryServiceTest extends TestCase {
                 return $m;
             });
 
-        $result = $this->service->addMember(5, 'alice', 'bob', true);
+        $result = $this->service()->addMember(5, 'alice', 'bob', true);
 
         $this->assertTrue($result->getPermissionEdit());
     }
 
     public function testAddMemberThrowsWhenNotOwner(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 
         $this->libraryMapper->expects($this->once())
@@ -214,10 +226,11 @@ class LibraryServiceTest extends TestCase {
             ->willReturn($lib);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->addMember(5, 'bob', 'charlie', false);
+        $this->service()->addMember(5, 'bob', 'charlie', false);
     }
 
     public function testAddMemberThrowsForPersonalLibrary(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Personal', true);
 
         $this->libraryMapper->expects($this->once())
@@ -225,12 +238,14 @@ class LibraryServiceTest extends TestCase {
             ->willReturn($lib);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->addMember(5, 'alice', 'bob', false);
+        $this->service()->addMember(5, 'alice', 'bob', false);
     }
 
     // ── removeMember ──────────────────────────────────────────────────────────
 
     public function testOwnerCanRemoveMember(): void {
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 
         $membership = $this->makeMembership(5, 'bob', false);
@@ -248,7 +263,7 @@ class LibraryServiceTest extends TestCase {
             ->method('delete')
             ->with($membership);
 
-        $this->service->removeMember(5, 'alice', 'bob');
+        $this->service()->removeMember(5, 'alice', 'bob');
     }
 
     public function testRemovingAMemberQueuesTheNotificationCleanupInsteadOfDoingItInline(): void {
@@ -275,7 +290,7 @@ class LibraryServiceTest extends TestCase {
             $order[] = 'delete';
             return $entity;
         });
-        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs = $this->createStub(\OCP\BackgroundJob\IJobList::class);
         $jobs->method('add')->willThrowException(new \RuntimeException('job list down'));
         $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
         $notifications->expects($this->once())->method('dismissLibrary')->with(5, 'bob', true)->willReturnCallback(function () use (&$order) {
@@ -299,6 +314,7 @@ class LibraryServiceTest extends TestCase {
     }
 
     public function testARetryRunsTheCleanupAgainOnlyWhileACleanupIsPending(): void {
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
         $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
         $this->memberMapper->method('findMembership')->willReturn(null);
         $this->memberMapper->expects($this->never())->method('delete');
@@ -328,7 +344,7 @@ class LibraryServiceTest extends TestCase {
         $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
         $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
         $order = [];
-        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications = $this->createStub(\OCA\MovieDB\Service\ReleaseNotificationService::class);
         $notifications->method('markCleanupPending')->willReturnCallback(function () use (&$order) {
             $order[] = 'mark';
         });
@@ -357,9 +373,9 @@ class LibraryServiceTest extends TestCase {
         $this->libraryMapper->method('find')->willReturn($this->makeLibrary(5, 'alice', 'Shared', false));
         $this->memberMapper->method('findMembership')->willReturn($this->makeMembership(5, 'bob', false));
         $this->memberMapper->method('delete')->willReturnArgument(0);
-        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs = $this->createStub(\OCP\BackgroundJob\IJobList::class);
         $jobs->method('add')->willThrowException(new \RuntimeException('job list down'));
-        $notifications = $this->createMock(\OCA\MovieDB\Service\ReleaseNotificationService::class);
+        $notifications = $this->createStub(\OCA\MovieDB\Service\ReleaseNotificationService::class);
         $notifications->method('dismissLibrary')->willThrowException(new \RuntimeException('db timeout'));
         $service = new LibraryService(
             $this->libraryMapper, $this->memberMapper, $this->movieMapper, $this->seriesMapper, $this->watchlistMapper,
@@ -378,7 +394,7 @@ class LibraryServiceTest extends TestCase {
             $order[] = 'delete';
             return $entity;
         });
-        $jobs = $this->createMock(\OCP\BackgroundJob\IJobList::class);
+        $jobs = $this->createStub(\OCP\BackgroundJob\IJobList::class);
         $jobs->method('add')->willReturnCallback(function () use (&$order) {
             $order[] = 'queue';
         });
@@ -393,6 +409,8 @@ class LibraryServiceTest extends TestCase {
     }
 
     public function testMemberCanRemoveThemselves(): void {
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 
         $membership = $this->makeMembership(5, 'bob', false);
@@ -411,10 +429,11 @@ class LibraryServiceTest extends TestCase {
             ->with($membership);
 
         // bob removes themselves (acting === target)
-        $this->service->removeMember(5, 'bob', 'bob');
+        $this->service()->removeMember(5, 'bob', 'bob');
     }
 
     public function testNonOwnerCannotRemoveOtherMember(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 
         $this->libraryMapper->expects($this->once())
@@ -423,10 +442,11 @@ class LibraryServiceTest extends TestCase {
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessageMatches('/owner/');
-        $this->service->removeMember(5, 'bob', 'charlie');
+        $this->service()->removeMember(5, 'bob', 'charlie');
     }
 
     public function testOwnerCannotBeRemoved(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 
         $this->libraryMapper->expects($this->once())
@@ -435,10 +455,12 @@ class LibraryServiceTest extends TestCase {
 
         $this->expectException(\InvalidArgumentException::class);
         $this->expectExceptionMessageMatches('/owner cannot be removed/i');
-        $this->service->removeMember(5, 'alice', 'alice');
+        $this->service()->removeMember(5, 'alice', 'alice');
     }
 
     public function testRemoveMemberIsIdempotentWhenNotMember(): void {
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 
         $this->libraryMapper->expects($this->once())
@@ -453,12 +475,13 @@ class LibraryServiceTest extends TestCase {
         $this->memberMapper->expects($this->never())
             ->method('delete');
 
-        $this->service->removeMember(5, 'alice', 'bob');
+        $this->service()->removeMember(5, 'alice', 'bob');
     }
 
     // ── canAccess / canEdit ───────────────────────────────────────────────────
 
     public function testCanAccessReturnsTrueForOwner(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $personal = $this->makeLibrary(1, 'alice', 'Personal', true);
 
         $this->libraryMapper->expects($this->once())
@@ -466,19 +489,21 @@ class LibraryServiceTest extends TestCase {
             ->with('alice')
             ->willReturn([$personal]);
 
-        $this->assertTrue($this->service->canAccess(1, 'alice'));
+        $this->assertTrue($this->service()->canAccess(1, 'alice'));
     }
 
     public function testCanAccessReturnsFalseForUnrelatedUser(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $this->libraryMapper->expects($this->once())
             ->method('findAccessible')
             ->with('charlie')
             ->willReturn([]);
 
-        $this->assertFalse($this->service->canAccess(1, 'charlie'));
+        $this->assertFalse($this->service()->canAccess(1, 'charlie'));
     }
 
     public function testCanEditReturnsTrueForOwner(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
 
         $this->libraryMapper->expects($this->once())
@@ -486,10 +511,12 @@ class LibraryServiceTest extends TestCase {
             ->with(5)
             ->willReturn($lib);
 
-        $this->assertTrue($this->service->canEdit(5, 'alice'));
+        $this->assertTrue($this->service()->canEdit(5, 'alice'));
     }
 
     public function testCanEditReturnsTrueForEditorMember(): void {
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
         $membership = $this->makeMembership(5, 'bob', true);
 
@@ -502,10 +529,12 @@ class LibraryServiceTest extends TestCase {
             ->with(5, 'bob')
             ->willReturn($membership);
 
-        $this->assertTrue($this->service->canEdit(5, 'bob'));
+        $this->assertTrue($this->service()->canEdit(5, 'bob'));
     }
 
     public function testCanEditReturnsFalseForViewerMember(): void {
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
         $membership = $this->makeMembership(5, 'bob', false);
 
@@ -517,7 +546,7 @@ class LibraryServiceTest extends TestCase {
             ->method('findMembership')
             ->willReturn($membership);
 
-        $this->assertFalse($this->service->canEdit(5, 'bob'));
+        $this->assertFalse($this->service()->canEdit(5, 'bob'));
     }
 
     // ── annotate ─────────────────────────────────────────────────────────────
@@ -525,13 +554,14 @@ class LibraryServiceTest extends TestCase {
     public function testAnnotateOwnerRole(): void {
         $lib = $this->makeLibrary(1, 'alice', 'Personal', true);
 
-        $result = $this->service->annotate($lib, 'alice');
+        $result = $this->service()->annotate($lib, 'alice');
 
         $this->assertEquals('owner', $result['role']);
         $this->assertTrue($result['permissionEdit']);
     }
 
     public function testAnnotateEditorRole(): void {
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
         $membership = $this->makeMembership(5, 'bob', true);
 
@@ -540,13 +570,14 @@ class LibraryServiceTest extends TestCase {
             ->with(5, 'bob')
             ->willReturn($membership);
 
-        $result = $this->service->annotate($lib, 'bob');
+        $result = $this->service()->annotate($lib, 'bob');
 
         $this->assertEquals('editor', $result['role']);
         $this->assertTrue($result['permissionEdit']);
     }
 
     public function testAnnotateViewerRole(): void {
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
         $lib = $this->makeLibrary(5, 'alice', 'Shared', false);
         $membership = $this->makeMembership(5, 'bob', false);
 
@@ -555,7 +586,7 @@ class LibraryServiceTest extends TestCase {
             ->with(5, 'bob')
             ->willReturn($membership);
 
-        $result = $this->service->annotate($lib, 'bob');
+        $result = $this->service()->annotate($lib, 'bob');
 
         $this->assertEquals('viewer', $result['role']);
         $this->assertFalse($result['permissionEdit']);
@@ -586,6 +617,7 @@ class LibraryServiceTest extends TestCase {
     // ── delete / purgeLibrary ─────────────────────────────────────────────────
 
     public function testDeleteRejectsNonOwner(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $library = new Library();
         $library->setId(5);
         $library->setOwner('alice');
@@ -594,10 +626,11 @@ class LibraryServiceTest extends TestCase {
         $this->libraryMapper->expects($this->never())->method('delete');
         $this->expectException(\InvalidArgumentException::class);
 
-        $this->service->delete(5, 'mallory');
+        $this->service()->delete(5, 'mallory');
     }
 
     public function testDeleteRejectsPersonalLibrary(): void {
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $library = new Library();
         $library->setId(5);
         $library->setOwner('alice');
@@ -607,10 +640,13 @@ class LibraryServiceTest extends TestCase {
         $this->libraryMapper->expects($this->never())->method('delete');
         $this->expectException(\InvalidArgumentException::class);
 
-        $this->service->delete(5, 'alice');
+        $this->service()->delete(5, 'alice');
     }
 
     public function testDeleteRunsCascadeInTransaction(): void {
+        $this->db = $this->createMock(IDBConnection::class);
+        $this->quizResultMapper = $this->createMock(QuizResultMapper::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $library = new Library();
         $library->setId(5);
         $library->setOwner('alice');
@@ -622,10 +658,11 @@ class LibraryServiceTest extends TestCase {
         $this->db->expects($this->once())->method('commit');
         $this->db->expects($this->never())->method('rollBack');
 
-        $this->service->delete(5, 'alice');
+        $this->service()->delete(5, 'alice');
     }
 
     public function testDeleteRollsBackOnFailure(): void {
+        $this->db = $this->createMock(IDBConnection::class);
         $library = new Library();
         $library->setId(5);
         $library->setOwner('alice');
@@ -636,10 +673,19 @@ class LibraryServiceTest extends TestCase {
         $this->db->expects($this->never())->method('commit');
         $this->expectException(\RuntimeException::class);
 
-        $this->service->delete(5, 'alice');
+        $this->service()->delete(5, 'alice');
     }
 
     public function testPurgeLibraryRemovesEverythingWithoutGuards(): void {
+        $this->db = $this->createMock(IDBConnection::class);
+        $this->quizResultMapper = $this->createMock(QuizResultMapper::class);
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->watchlistMapper = $this->createMock(WatchlistMapper::class);
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->movieMapper = $this->createMock(MovieMapper::class);
+        $this->memberMapper = $this->createMock(LibraryMemberMapper::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $library = new Library();
         $library->setId(9);
         $library->setOwner('alice');
@@ -657,6 +703,6 @@ class LibraryServiceTest extends TestCase {
         // purgeLibrary leaves transaction handling to its caller
         $this->db->expects($this->never())->method('beginTransaction');
 
-        $this->service->purgeLibrary(9);
+        $this->service()->purgeLibrary(9);
     }
 }

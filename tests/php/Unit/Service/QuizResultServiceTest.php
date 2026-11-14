@@ -10,17 +10,21 @@ use OCA\MovieDB\Service\QuizResultService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 
 class QuizResultServiceTest extends TestCase {
 
-    private QuizResultMapper&MockObject $mapper;
-    private QuizResultService $service;
+    private QuizResultMapper&Stub $mapper;
+    private ?QuizResultService $service = null;
 
     protected function setUp(): void {
         parent::setUp();
-        $this->mapper = $this->createMock(QuizResultMapper::class);
+        $this->mapper = $this->createStub(QuizResultMapper::class);
         $this->mapper->method('insert')->willReturnArgument(0);
-        $this->service = new QuizResultService($this->mapper);
+    }
+
+    private function service(): QuizResultService {
+        return $this->service ??= new QuizResultService($this->mapper);
     }
 
     private function valid(array $override = []): array {
@@ -36,7 +40,7 @@ class QuizResultServiceTest extends TestCase {
     }
 
     public function testCreateStoresRoundWithServerSidePercentAndTimestamp(): void {
-        $result = $this->service->create('alice', 7, $this->valid());
+        $result = $this->service()->create('alice', 7, $this->valid());
 
         $this->assertSame('alice', $result->getUserId());
         $this->assertSame(7, $result->getLibraryId());
@@ -50,7 +54,7 @@ class QuizResultServiceTest extends TestCase {
         // Regression: score 0 / percent 0 equal the property defaults, so the
         // Entity skipped them in the INSERT and MariaDB rejected the row
         // ("Field 'score' doesn't have a default value").
-        $result = $this->service->create('alice', 7, $this->valid([
+        $result = $this->service()->create('alice', 7, $this->valid([
             'questionCount' => 1, 'score' => 0, 'maxScore' => 10,
             'breakdown' => ['rating' => ['points' => 0, 'max' => 10]],
         ]));
@@ -64,7 +68,7 @@ class QuizResultServiceTest extends TestCase {
     }
 
     public function testPercentIsRounded(): void {
-        $result = $this->service->create('alice', 7, $this->valid([
+        $result = $this->service()->create('alice', 7, $this->valid([
             'questionCount' => 3, 'score' => 20, 'maxScore' => 30,
             'breakdown' => ['rating' => ['points' => 20, 'max' => 30]],
         ]));
@@ -97,16 +101,20 @@ class QuizResultServiceTest extends TestCase {
 
     #[DataProvider('invalidProvider')]
     public function testInvalidRoundsAreRejectedAndNotStored(array $override): void {
+        $this->mapper = $this->createMock(QuizResultMapper::class);
+        $this->mapper->method('insert')->willReturnArgument(0);
         $this->mapper->expects($this->never())->method('insert');
         $this->expectException(\InvalidArgumentException::class);
 
-        $this->service->create('alice', 7, $this->valid($override));
+        $this->service()->create('alice', 7, $this->valid($override));
     }
 
     public function testResetDeletesOnlyTheUsersRoundsInThatLibrary(): void {
+        $this->mapper = $this->createMock(QuizResultMapper::class);
+        $this->mapper->method('insert')->willReturnArgument(0);
         $this->mapper->expects($this->once())->method('deleteByUserAndLibrary')->with('alice', 7)->willReturn(4);
 
-        $this->assertSame(4, $this->service->reset('alice', 7));
+        $this->assertSame(4, $this->service()->reset('alice', 7));
     }
 
     private function round(int $id, array $breakdown): QuizResult {
@@ -117,13 +125,15 @@ class QuizResultServiceTest extends TestCase {
     }
 
     public function testListReturnsRoundsOldestFirstBestAndAccuracy(): void {
+        $this->mapper = $this->createMock(QuizResultMapper::class);
+        $this->mapper->method('insert')->willReturnArgument(0);
         $newest = $this->round(2, ['release_year' => ['points' => 10, 'max' => 10], 'rating' => ['points' => 0, 'max' => 10]]);
         $oldest = $this->round(1, ['release_year' => ['points' => 0, 'max' => 10]]);
         $this->mapper->method('findRecent')->with('alice', 7, 30)->willReturn([$newest, $oldest]);
         $this->mapper->method('findBest')->with('alice', 7)->willReturn($newest);
         $this->mapper->method('countByUserAndLibrary')->with('alice', 7)->willReturn(58);
 
-        $data = $this->service->list('alice', 7);
+        $data = $this->service()->list('alice', 7);
 
         $this->assertSame([1, 2], array_map(fn ($r) => $r->getId(), $data['rounds']));
         $this->assertSame($newest, $data['best']);
@@ -135,6 +145,6 @@ class QuizResultServiceTest extends TestCase {
         $this->mapper->method('findRecent')->willReturn([]);
         $this->mapper->method('findBest')->willReturn(null);
 
-        $this->assertSame(['rounds' => [], 'total' => 0, 'best' => null, 'accuracy' => []], $this->service->list('alice', 7));
+        $this->assertSame(['rounds' => [], 'total' => 0, 'best' => null, 'accuracy' => []], $this->service()->list('alice', 7));
     }
 }

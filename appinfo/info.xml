@@ -59,6 +59,7 @@ Movie and TV show data is provided by [The Movie Database (TMDB)](https://www.th
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/calendar.png</screenshot>
     <screenshot>https://raw.githubusercontent.com/shellmann/nextcloud-moviedb/main/screenshots/notifications.png</screenshot>
     <dependencies>
+        <php min-version="8.3"/>
         <nextcloud min-version="33" max-version="35"/>
     </dependencies>
     <background-jobs>

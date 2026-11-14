@@ -23,11 +23,11 @@ class DismissLibraryNotificationsJobTest extends TestCase {
 
     protected function setUp(): void {
         parent::setUp();
-        $this->service = $this->createMock(ReleaseNotificationService::class);
-        $this->members = $this->createMock(LibraryMemberMapper::class);
-        $this->jobList = $this->createMock(IJobList::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
-        $this->clock = $this->createMock(ITimeFactory::class);
+        $this->service = $this->createStub(ReleaseNotificationService::class);
+        $this->members = $this->createStub(LibraryMemberMapper::class);
+        $this->jobList = $this->createStub(IJobList::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
+        $this->clock = $this->createStub(ITimeFactory::class);
         $this->clock->method('getTime')->willReturn(1_000_000);
         // pending since shortly before "now" unless a test says otherwise
         $this->service->method('cleanupPendingSince')->willReturn(999_000);
@@ -45,6 +45,9 @@ class DismissLibraryNotificationsJobTest extends TestCase {
     }
 
     public function testDismissesTheLibraryNotificationsOfTheFormerMemberAndRemovesItself(): void {
+        $this->jobList = $this->createMock(IJobList::class);
+        $this->service = $this->createMock(ReleaseNotificationService::class);
+        $this->service->method('cleanupPendingSince')->willReturn(999_000);
         $this->members->method('findMembership')->willReturn(null);
         $this->service->expects($this->once())->method('dismissLibrary')->with(5, 'bob', true, $this->isInstanceOf(\Closure::class));
         $this->jobList->expects($this->once())->method('remove');
@@ -53,6 +56,9 @@ class DismissLibraryNotificationsJobTest extends TestCase {
     }
 
     public function testDoesNothingWhenTheUserIsAMemberAgainButStillRemovesItself(): void {
+        $this->jobList = $this->createMock(IJobList::class);
+        $this->service = $this->createMock(ReleaseNotificationService::class);
+        $this->service->method('cleanupPendingSince')->willReturn(999_000);
         $this->members->method('findMembership')->willReturn(new LibraryMember());
         $this->service->expects($this->never())->method('dismissLibrary');
         $this->jobList->expects($this->once())->method('remove');
@@ -61,6 +67,9 @@ class DismissLibraryNotificationsJobTest extends TestCase {
     }
 
     public function testIncompleteArgumentsAreDropped(): void {
+        $this->jobList = $this->createMock(IJobList::class);
+        $this->service = $this->createMock(ReleaseNotificationService::class);
+        $this->service->method('cleanupPendingSince')->willReturn(999_000);
         $this->service->expects($this->never())->method('dismissLibrary');
         $this->jobList->expects($this->exactly(2))->method('remove');
 
@@ -69,6 +78,7 @@ class DismissLibraryNotificationsJobTest extends TestCase {
     }
 
     public function testAFailureKeepsTheJobSoTheNextHourlyRunRetries(): void {
+        $this->jobList = $this->createMock(IJobList::class);
         $this->members->method('findMembership')->willReturn(null);
         $this->service->method('dismissLibrary')->willThrowException(new \RuntimeException('db timeout'));
         $this->jobList->expects($this->never())->method('remove');
@@ -77,7 +87,9 @@ class DismissLibraryNotificationsJobTest extends TestCase {
     }
 
     public function testItGivesUpAfterThreeDays(): void {
-        $this->service = $this->createMock(ReleaseNotificationService::class);
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->jobList = $this->createMock(IJobList::class);
+        $this->service = $this->createStub(ReleaseNotificationService::class);
         $this->service->method('cleanupPendingSince')->willReturn(1_000_000 - 4 * 24 * 3600);
         $this->members->method('findMembership')->willReturn(null);
         $this->service->method('dismissLibrary')->willThrowException(new \RuntimeException('db timeout'));
@@ -88,6 +100,7 @@ class DismissLibraryNotificationsJobTest extends TestCase {
     }
 
     public function testAJobWhoseCleanupIsAlreadyDoneRemovesItselfWithoutScanning(): void {
+        $this->jobList = $this->createMock(IJobList::class);
         $this->service = $this->createMock(ReleaseNotificationService::class);
         $this->service->method('cleanupPendingSince')->willReturn(null);
         $this->service->expects($this->never())->method('dismissLibrary');

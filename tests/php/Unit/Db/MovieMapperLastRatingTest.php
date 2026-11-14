@@ -24,7 +24,7 @@ class MovieMapperLastRatingTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $db = $this->createMock(IDBConnection::class);
+        $db = $this->createStub(IDBConnection::class);
         $db->method('getQueryBuilder')->willReturnCallback(function () {
             return $this->builders[] = new LastRatingQBStub();
         });

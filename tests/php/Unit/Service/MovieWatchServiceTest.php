@@ -17,19 +17,23 @@ use OCP\AppFramework\Db\DoesNotExistException;
 class MovieWatchServiceTest extends TestCase {
     private MovieWatchMapper $mapper;
     private PlatformMapper $platformMapper;
-    private MovieWatchService $service;
+    private ?MovieWatchService $service = null;
 
     private const LIBRARY_ID = 1;
 
     protected function setUp(): void {
         parent::setUp();
 
-        $this->mapper = $this->createMock(MovieWatchMapper::class);
-        $this->platformMapper = $this->createMock(PlatformMapper::class);
-        $this->service = new MovieWatchService($this->mapper, $this->platformMapper);
+        $this->mapper = $this->createStub(MovieWatchMapper::class);
+        $this->platformMapper = $this->createStub(PlatformMapper::class);
+    }
+
+    private function service(): MovieWatchService {
+        return $this->service ??= new MovieWatchService($this->mapper, $this->platformMapper);
     }
 
     public function testFindByMovie(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $movieId = 7;
         $watches = [
             $this->createWatch(1, $movieId),
@@ -41,11 +45,11 @@ class MovieWatchServiceTest extends TestCase {
             ->with($movieId, self::LIBRARY_ID)
             ->willReturn($watches);
 
-        $this->platformMapper->expects($this->any())
+        $this->platformMapper
             ->method('find')
             ->willThrowException(new DoesNotExistException('not found'));
 
-        $result = $this->service->findByMovie($movieId, self::LIBRARY_ID);
+        $result = $this->service()->findByMovie($movieId, self::LIBRARY_ID);
 
         $this->assertCount(2, $result);
         $this->assertIsArray($result[0]);
@@ -53,6 +57,7 @@ class MovieWatchServiceTest extends TestCase {
     }
 
     public function testCreatePopulatesWatch(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $movieId = 7;
         $userId = 'testuser';
         $data = [
@@ -77,13 +82,14 @@ class MovieWatchServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->create($movieId, $userId, self::LIBRARY_ID, $data);
+        $result = $this->service()->create($movieId, $userId, self::LIBRARY_ID, $data);
 
         $this->assertInstanceOf(MovieWatch::class, $result);
         $this->assertEquals(8, $result->getRating());
     }
 
     public function testCreateWithMinimalData(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $this->mapper->expects($this->once())
             ->method('insert')
             ->with($this->callback(function (MovieWatch $watch) {
@@ -93,31 +99,34 @@ class MovieWatchServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->create(5, 'testuser', self::LIBRARY_ID, []);
+        $result = $this->service()->create(5, 'testuser', self::LIBRARY_ID, []);
 
         $this->assertInstanceOf(MovieWatch::class, $result);
     }
 
     public function testCreateRejectsRatingBelowRange(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $this->mapper->expects($this->never())->method('insert');
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->create(1, 'testuser', self::LIBRARY_ID, ['rating' => 0]);
+        $this->service()->create(1, 'testuser', self::LIBRARY_ID, ['rating' => 0]);
     }
 
     public function testCreateRejectsRatingAboveRange(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $this->mapper->expects($this->never())->method('insert');
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->create(1, 'testuser', self::LIBRARY_ID, ['rating' => 11]);
+        $this->service()->create(1, 'testuser', self::LIBRARY_ID, ['rating' => 11]);
     }
 
     public function testCreateStoresNullForAnEmptyWatchedDate(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         // A cleared date field sends ""; a DATE column rejects it on MySQL/PostgreSQL.
         $this->mapper->expects($this->once())
             ->method('insert')
             ->with($this->callback(fn (MovieWatch $w) => $w->getWatchedAt() === null))
             ->willReturnArgument(0);
 
-        $this->service->create(5, 'testuser', self::LIBRARY_ID, ['watchedAt' => '']);
+        $this->service()->create(5, 'testuser', self::LIBRARY_ID, ['watchedAt' => '']);
     }
 
     public function testUpdateStoresNullForAnEmptyWatchedDate(): void {
@@ -126,12 +135,13 @@ class MovieWatchServiceTest extends TestCase {
         $this->mapper->method('find')->willReturn($watch);
         $this->mapper->method('update')->willReturnArgument(0);
 
-        $result = $this->service->update(1, self::LIBRARY_ID, ['watchedAt' => '']);
+        $result = $this->service()->update(1, self::LIBRARY_ID, ['watchedAt' => '']);
 
         $this->assertNull($result->getWatchedAt());
     }
 
     public function testUpdateAppliesOnlyProvidedFields(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $watch = $this->createWatch(1, 7);
         $watch->setRating(5);
         $watch->setReview('old');
@@ -151,12 +161,13 @@ class MovieWatchServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->update(1, self::LIBRARY_ID, ['rating' => 9]);
+        $result = $this->service()->update(1, self::LIBRARY_ID, ['rating' => 9]);
 
         $this->assertEquals(9, $result->getRating());
     }
 
     public function testUpdateCanNullField(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $watch = $this->createWatch(1, 7);
         $watch->setRating(5);
 
@@ -170,12 +181,13 @@ class MovieWatchServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->update(1, self::LIBRARY_ID, ['rating' => null]);
+        $result = $this->service()->update(1, self::LIBRARY_ID, ['rating' => null]);
 
         $this->assertNull($result->getRating());
     }
 
     public function testUpdateRejectsInvalidRating(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $watch = $this->createWatch(1, 7);
 
         $this->mapper->expects($this->once())
@@ -185,19 +197,21 @@ class MovieWatchServiceTest extends TestCase {
             ->method('update');
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->update(1, self::LIBRARY_ID, ['rating' => 99]);
+        $this->service()->update(1, self::LIBRARY_ID, ['rating' => 99]);
     }
 
     public function testUpdateThrowsWhenNotFound(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $this->mapper->expects($this->once())
             ->method('find')
             ->willThrowException(new DoesNotExistException('nope'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->update(999, self::LIBRARY_ID, ['rating' => 5]);
+        $this->service()->update(999, self::LIBRARY_ID, ['rating' => 5]);
     }
 
     public function testDelete(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $watch = $this->createWatch(1, 7);
 
         $this->mapper->expects($this->once())
@@ -208,16 +222,17 @@ class MovieWatchServiceTest extends TestCase {
             ->method('delete')
             ->with($watch);
 
-        $this->service->delete(1, self::LIBRARY_ID);
+        $this->service()->delete(1, self::LIBRARY_ID);
     }
 
     public function testDeleteThrowsWhenNotFound(): void {
+        $this->mapper = $this->createMock(MovieWatchMapper::class);
         $this->mapper->expects($this->once())
             ->method('find')
             ->willThrowException(new DoesNotExistException('nope'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->delete(999, self::LIBRARY_ID);
+        $this->service()->delete(999, self::LIBRARY_ID);
     }
 
     private function createWatch(int $id, int $movieId): MovieWatch {

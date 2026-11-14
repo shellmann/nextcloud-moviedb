@@ -19,17 +19,18 @@ use OCP\Config\IUserConfig;
 use OCP\Notification\IManager;
 use OCP\Notification\INotification;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use Psr\Log\LoggerInterface;
 
 class ReleaseNotificationServiceTest extends TestCase {
-    private EpisodeMapper&MockObject $episodes;
-    private WatchlistMapper&MockObject $watchlist;
-    private SeriesMapper&MockObject $series;
-    private LibraryMapper&MockObject $libraries;
-    private LibraryMemberMapper&MockObject $members;
-    private IUserConfig&MockObject $config;
-    private IManager&MockObject $manager;
-    private ReleaseNotificationService $service;
+    private EpisodeMapper&Stub $episodes;
+    private WatchlistMapper&Stub $watchlist;
+    private SeriesMapper&Stub $series;
+    private LibraryMapper&Stub $libraries;
+    private LibraryMemberMapper&Stub $members;
+    private IUserConfig&Stub $config;
+    private IManager&Stub $manager;
+    private ?ReleaseNotificationService $service = null;
     /** @var array<int, array{user: ?string, subject: ?string, params: array, object: ?array}> */
     private array $sent = [];
     /** @var string[] users whose delivery fails */
@@ -37,14 +38,14 @@ class ReleaseNotificationServiceTest extends TestCase {
 
     protected function setUp(): void {
         parent::setUp();
-        $this->episodes = $this->createMock(EpisodeMapper::class);
-        $this->watchlist = $this->createMock(WatchlistMapper::class);
-        $this->series = $this->createMock(SeriesMapper::class);
-        $this->libraries = $this->createMock(LibraryMapper::class);
-        $this->members = $this->createMock(LibraryMemberMapper::class);
-        $this->config = $this->createMock(IUserConfig::class);
+        $this->episodes = $this->createStub(EpisodeMapper::class);
+        $this->watchlist = $this->createStub(WatchlistMapper::class);
+        $this->series = $this->createStub(SeriesMapper::class);
+        $this->libraries = $this->createStub(LibraryMapper::class);
+        $this->members = $this->createStub(LibraryMemberMapper::class);
+        $this->config = $this->createStub(IUserConfig::class);
         $this->config->method('getValueString')->willReturn('1');
-        $this->manager = $this->createMock(IManager::class);
+        $this->manager = $this->createStub(IManager::class);
         $this->manager->method('createNotification')->willReturnCallback(fn () => $this->fakeNotification());
         $this->manager->method('notify')->willReturnCallback(function (INotification $n): void {
             if (in_array($n->state['user'], $this->failFor, true)) {
@@ -60,10 +61,12 @@ class ReleaseNotificationServiceTest extends TestCase {
         $member = new LibraryMember();
         $member->setUserId('bob');
         $this->members->method('findByLibrary')->willReturn([$member]);
+    }
 
-        $this->service = new ReleaseNotificationService(
+    private function service(): ReleaseNotificationService {
+        return $this->service ??= new ReleaseNotificationService(
             $this->episodes, $this->watchlist, $this->series, $this->libraries, $this->members,
-            $this->config, $this->manager, $this->createMock(LoggerInterface::class)
+            $this->config, $this->manager, $this->createStub(LoggerInterface::class)
         );
     }
 
@@ -97,10 +100,11 @@ class ReleaseNotificationServiceTest extends TestCase {
     }
 
     public function testNotifiesOwnerAndMemberOnceAndStampsTheEpisodes(): void {
+        $this->episodes = $this->createMock(EpisodeMapper::class);
         $this->episodes->method('findToNotify')->with('2026-11-04', '2026-11-06')->willReturn([$this->row(1, 1)]);
         $this->episodes->expects($this->once())->method('markNotified')->with([1 => '2026-11-06'], $this->matchesRegularExpression('/^\d{4}-\d{2}-\d{2} /'));
 
-        $count = $this->service->notifyAiredEpisodes('2026-11-06');
+        $count = $this->service()->notifyAiredEpisodes('2026-11-06');
 
         $this->assertSame(2, $count);
         $this->assertSame(['alice', 'bob'], array_column($this->sent, 'user'));
@@ -110,10 +114,11 @@ class ReleaseNotificationServiceTest extends TestCase {
     }
 
     public function testEpisodesOfOneShowAndDayAreOneNotificationWithACount(): void {
+        $this->episodes = $this->createMock(EpisodeMapper::class);
         $this->episodes->method('findToNotify')->willReturn([$this->row(1, 1), $this->row(2, 2), $this->row(3, 3)]);
         $this->episodes->expects($this->once())->method('markNotified')->with([1 => '2026-11-06', 2 => '2026-11-06', 3 => '2026-11-06'], $this->anything());
 
-        $this->assertSame(2, $this->service->notifyAiredEpisodes('2026-11-06'));
+        $this->assertSame(2, $this->service()->notifyAiredEpisodes('2026-11-06'));
         $this->assertSame(3, $this->sent[0]['params']['count']);
         $this->assertSame(3, $this->sent[0]['params']['episode']);
     }
@@ -121,22 +126,24 @@ class ReleaseNotificationServiceTest extends TestCase {
     public function testDifferentDaysOfTheSameShowAreSeparate(): void {
         $this->episodes->method('findToNotify')->willReturn([$this->row(1, 1, '2026-11-05'), $this->row(2, 2, '2026-11-06')]);
 
-        $this->assertSame(4, $this->service->notifyAiredEpisodes('2026-11-06'));
+        $this->assertSame(4, $this->service()->notifyAiredEpisodes('2026-11-06'));
     }
 
     public function testNothingToDoSendsAndStampsNothing(): void {
+        $this->episodes = $this->createMock(EpisodeMapper::class);
         $this->episodes->method('findToNotify')->willReturn([]);
         $this->episodes->expects($this->never())->method('markNotified');
 
-        $this->assertSame(0, $this->service->notifyAiredEpisodes('2026-11-06'));
+        $this->assertSame(0, $this->service()->notifyAiredEpisodes('2026-11-06'));
     }
 
     public function testUsersWhoOptedOutGetNothingButTheEpisodesAreStillStamped(): void {
-        $config = $this->createMock(IUserConfig::class);
+        $this->episodes = $this->createMock(EpisodeMapper::class);
+        $config = $this->createStub(IUserConfig::class);
         $config->method('getValueString')->willReturnCallback(fn (string $u) => $u === 'bob' ? '0' : '1');
         $service = new ReleaseNotificationService(
             $this->episodes, $this->watchlist, $this->series, $this->libraries, $this->members,
-            $config, $this->manager, $this->createMock(LoggerInterface::class)
+            $config, $this->manager, $this->createStub(LoggerInterface::class)
         );
         $this->episodes->method('findToNotify')->willReturn([$this->row(1, 1)]);
         $this->episodes->expects($this->once())->method('markNotified');
@@ -146,12 +153,12 @@ class ReleaseNotificationServiceTest extends TestCase {
     }
 
     public function testAFailingNotifyDoesNotStopTheOthers(): void {
-        $manager = $this->createMock(IManager::class);
+        $manager = $this->createStub(IManager::class);
         $manager->method('createNotification')->willReturnCallback(fn () => $this->fakeNotification());
         $manager->method('notify')->willThrowException(new \RuntimeException('boom'));
         $service = new ReleaseNotificationService(
             $this->episodes, $this->watchlist, $this->series, $this->libraries, $this->members,
-            $this->config, $manager, $this->createMock(LoggerInterface::class)
+            $this->config, $manager, $this->createStub(LoggerInterface::class)
         );
         $this->episodes->method('findToNotify')->willReturn([$this->row(1, 1)]);
 
@@ -159,6 +166,7 @@ class ReleaseNotificationServiceTest extends TestCase {
     }
 
     public function testReleasedWatchlistItemsGoToEveryMemberAndAreStamped(): void {
+        $this->watchlist = $this->createMock(WatchlistMapper::class);
         $item = new WatchlistItem();
         $item->setId(9);
         $item->setLibraryId(1);
@@ -169,7 +177,7 @@ class ReleaseNotificationServiceTest extends TestCase {
         $this->watchlist->method('findToNotify')->with('2026-11-04', '2026-11-06')->willReturn([$item]);
         $this->watchlist->expects($this->once())->method('markReleaseNotified')->with([9 => '2026-11-06'], $this->anything());
 
-        $this->assertSame(2, $this->service->notifyReleasedWatchlist('2026-11-06'));
+        $this->assertSame(2, $this->service()->notifyReleasedWatchlist('2026-11-06'));
         $this->assertSame(['watchlist', '9'], $this->sent[0]['object']);
         $this->assertSame('Dune Part Three', $this->sent[0]['params']['title']);
     }
@@ -181,18 +189,34 @@ class ReleaseNotificationServiceTest extends TestCase {
         $item->setTitle('Old');
         $this->watchlist->method('findToNotify')->willReturn([$item]);
 
-        $this->assertSame(1, $this->service->notifyReleasedWatchlist('2026-11-06'));
+        $this->assertSame(1, $this->service()->notifyReleasedWatchlist('2026-11-06'));
         $this->assertSame(['carol'], array_column($this->sent, 'user'));
         $this->assertArrayNotHasKey('libraryId', $this->sent[0]['params'], 'no ?library=0 link for a library-less item');
     }
 
     public function testDismissingARemovedShowMarksItsNotificationsProcessed(): void {
+        $this->manager = $this->createMock(IManager::class);
+        $this->manager->method('createNotification')->willReturnCallback(fn () => $this->fakeNotification());
+        $this->manager->method('notify')->willReturnCallback(function (INotification $n): void {
+            if (in_array($n->state['user'], $this->failFor, true)) {
+                throw new \RuntimeException('push is down');
+            }
+            $this->sent[] = $n->state;
+        });
         $this->manager->expects($this->once())->method('markProcessed');
 
-        $this->service->dismissSeries(5);
+        $this->service()->dismissSeries(5);
     }
 
     public function testDismissingALibraryCoversItsShowsAndWatchlistItems(): void {
+        $this->manager = $this->createMock(IManager::class);
+        $this->manager->method('createNotification')->willReturnCallback(fn () => $this->fakeNotification());
+        $this->manager->method('notify')->willReturnCallback(function (INotification $n): void {
+            if (in_array($n->state['user'], $this->failFor, true)) {
+                throw new \RuntimeException('push is down');
+            }
+            $this->sent[] = $n->state;
+        });
         $s = new Series();
         $s->setId(5);
         $i = new WatchlistItem();
@@ -201,15 +225,15 @@ class ReleaseNotificationServiceTest extends TestCase {
         $this->watchlist->method('findAllByLibrary')->willReturn([$i]);
         $this->manager->expects($this->exactly(2))->method('markProcessed');
 
-        $this->service->dismissLibrary(1, 'bob');
+        $this->service()->dismissLibrary(1, 'bob');
     }
 
     public function testDismissNeverThrows(): void {
-        $manager = $this->createMock(IManager::class);
+        $manager = $this->createStub(IManager::class);
         $manager->method('createNotification')->willThrowException(new \RuntimeException('boom'));
         $service = new ReleaseNotificationService(
             $this->episodes, $this->watchlist, $this->series, $this->libraries, $this->members,
-            $this->config, $manager, $this->createMock(LoggerInterface::class)
+            $this->config, $manager, $this->createStub(LoggerInterface::class)
         );
 
         $service->dismissWatchlistItem(1);
@@ -217,15 +241,17 @@ class ReleaseNotificationServiceTest extends TestCase {
     }
 
     public function testAFailedDeliveryLeavesTheEpisodesUnstampedForTheNextRun(): void {
+        $this->episodes = $this->createMock(EpisodeMapper::class);
         $this->failFor = ['bob'];
         $this->episodes->method('findToNotify')->willReturn([$this->row(1, 1), $this->row(2, 2, '2026-11-05')]);
         // both groups include bob, so nothing may be stamped
         $this->episodes->expects($this->once())->method('markNotified')->with([], $this->anything());
 
-        $this->assertSame(2, $this->service->notifyAiredEpisodes('2026-11-06'), 'alice was served');
+        $this->assertSame(2, $this->service()->notifyAiredEpisodes('2026-11-06'), 'alice was served');
     }
 
     public function testOnlyFullyDeliveredWatchlistItemsAreStamped(): void {
+        $this->watchlist = $this->createMock(WatchlistMapper::class);
         $ok = new WatchlistItem();
         $ok->setId(9);
         $ok->setUserId('carol');
@@ -240,10 +266,18 @@ class ReleaseNotificationServiceTest extends TestCase {
         $this->watchlist->method('findToNotify')->willReturn([$ok, $shared]);
         $this->watchlist->expects($this->once())->method('markReleaseNotified')->with([9 => '2026-11-06'], $this->anything());
 
-        $this->service->notifyReleasedWatchlist('2026-11-06');
+        $this->service()->notifyReleasedWatchlist('2026-11-06');
     }
 
     public function testALongLibraryCleanupStopsWhenItIsNoLongerWanted(): void {
+        $this->manager = $this->createMock(IManager::class);
+        $this->manager->method('createNotification')->willReturnCallback(fn () => $this->fakeNotification());
+        $this->manager->method('notify')->willReturnCallback(function (INotification $n): void {
+            if (in_array($n->state['user'], $this->failFor, true)) {
+                throw new \RuntimeException('push is down');
+            }
+            $this->sent[] = $n->state;
+        });
         $items = [];
         for ($id = 1; $id <= 60; $id++) {
             $i = new WatchlistItem();
@@ -254,20 +288,24 @@ class ReleaseNotificationServiceTest extends TestCase {
         $this->watchlist->method('findAllByLibrary')->willReturn($items);
         $this->manager->expects($this->never())->method('markProcessed'); // asked before every entry: stops at once
 
-        $this->service->dismissLibrary(1, 'bob', false, fn (): bool => false);
+        $this->service()->dismissLibrary(1, 'bob', false, fn (): bool => false);
     }
 
     public function testThePendingMarkerStaysAfterAFailedCleanupAndGoesAfterASuccessfulOne(): void {
+        $this->config = $this->createMock(IUserConfig::class);
+        $this->config->method('getValueString')->willReturn('1');
         $item = new WatchlistItem();
         $item->setId(1);
         $this->series->method('findAllByLibrary')->willReturn([]);
         $this->watchlist->method('findAllByLibrary')->willReturn([$item]);
         $this->config->expects($this->once())->method('deleteUserConfig')->with('bob', 'moviedb', 'cleanup_pending_1');
 
-        $this->service->dismissLibrary(1, 'bob', true);
+        $this->service()->dismissLibrary(1, 'bob', true);
     }
 
     public function testAFailedStrictCleanupKeepsTheMarker(): void {
+        $this->config = $this->createMock(IUserConfig::class);
+        $this->config->method('getValueString')->willReturn('1');
         $item = new WatchlistItem();
         $item->setId(1);
         $this->series->method('findAllByLibrary')->willReturn([]);
@@ -276,7 +314,7 @@ class ReleaseNotificationServiceTest extends TestCase {
         $this->config->expects($this->never())->method('deleteUserConfig');
 
         $this->expectException(\RuntimeException::class);
-        $this->service->dismissLibrary(1, 'bob', true);
+        $this->service()->dismissLibrary(1, 'bob', true);
     }
 
     public function testEveryActualLeaveWritesItsOwnTimeIntoTheMarker(): void {
@@ -285,7 +323,7 @@ class ReleaseNotificationServiceTest extends TestCase {
             ->with('bob', 'moviedb', 'cleanup_pending_1', $this->matchesRegularExpression('/^\d{9,}$/'));
         $service = new ReleaseNotificationService(
             $this->episodes, $this->watchlist, $this->series, $this->libraries, $this->members,
-            $config, $this->manager, $this->createMock(LoggerInterface::class)
+            $config, $this->manager, $this->createStub(LoggerInterface::class)
         );
 
         $service->markCleanupPending(1, 'bob');
