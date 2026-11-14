@@ -18,6 +18,16 @@ import { translate as t } from '@nextcloud/l10n'
 export function releaseNotes() {
 	return [
 		{
+			version: '1.12.0',
+			rateInAppStore: true,
+			items: [
+				t('moviedb', 'Movie and TV show pages have a "Play trailer" link.'),
+				t('moviedb', 'A new "Where to watch" section shows which streaming services offer a title in your country.'),
+				t('moviedb', 'The TV show page shows network logos and when the show was last synced with TMDB.'),
+				t('moviedb', 'MovieDB has a new app icon.'),
+			],
+		},
+		{
 			version: '1.11.1',
 			rateInAppStore: true,
 			items: [

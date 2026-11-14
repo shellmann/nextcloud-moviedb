@@ -7,7 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-11-14
+
+### Added
+- **Play trailer**: movie and TV show pages link to the trailer on YouTube (or Vimeo),
+  in your TMDB language if there is one, else in English. The link is hidden when TMDB
+  has no trailer. (#107)
+- **Where to watch**: movie and TV show pages list the streaming services that offer the
+  title in your country, with their logos, and link to the title's page on TMDB. The
+  country comes from your TMDB language in Settings (for example `de-DE` is Germany, `en-US`
+  the United States); the page names it. The data comes from JustWatch via TMDB. TMDB gives no direct links
+  into the services. Trailer and offers are fetched when you open a page and kept on
+  the server for 12 hours, so they need a TMDB key but no refresh and no migration. (#107)
+- **Network logos** on the TV show page instead of the network names. (#107)
+
 ### Changed
+- The TV show page says **"Last synced with TMDB"** at the bottom of the page instead of
+  "Episodes last updated from TMDB" under the details, because the sync also updates type,
+  network, score and cast. (#107)
 - **New app icon**: three colourful rings with a play button, in the style of the
   Nextcloud logo (used with the kind permission of Nextcloud GmbH). The navigation
   icon is a monochrome version of the same shape; the README shows the colour logo.

@@ -1,6 +1,7 @@
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import api from '@/services/api.js'
 import SeriesDetail from '@/views/SeriesDetail.vue'
 import { expectNoAxeViolations } from '../a11y.js'
 import { useLibrariesStore } from '@/stores/libraries.js'
@@ -32,7 +33,8 @@ function show(extra = {}) {
 	}
 }
 
-async function mountDetail(series) {
+async function mountDetail(series, extras = { trailer: null, watch: null }) {
+	vi.spyOn(api, 'getTmdbExtras').mockResolvedValue({ data: extras })
 	const store = useSeriesStore()
 	store.fetchOne = vi.fn(async () => { store.currentSeries = series })
 	store.setStopped = vi.fn().mockResolvedValue(series)
@@ -49,6 +51,7 @@ async function mountDetail(series) {
 				Delete: IconStub,
 				EyeOff: IconStub,
 				Pencil: IconStub,
+				Play: IconStub,
 				PlayCircleOutline: IconStub,
 				Refresh: IconStub,
 				Television: IconStub,
@@ -207,12 +210,19 @@ describe('SeriesDetail update from TMDB', () => {
 		expect(store.refresh).toHaveBeenCalledTimes(1)
 	})
 
-	it('says when the episodes were last updated, falling back to when the show was added', async () => {
+	it('says when the show was last synced with TMDB, falling back to when it was added', async () => {
 		const { wrapper } = await mountDetail(withSeasons({ tmdbRefreshedAt: '2026-10-19 08:00:00' }))
-		expect(wrapper.find('.refreshed-note').text()).toMatch(/^Episodes last updated from TMDB: .*19.*2026/)
+		expect(wrapper.find('.refreshed-note').text()).toMatch(/^Last synced with TMDB: .*19.*2026/)
 
 		const { wrapper: added } = await mountDetail(withSeasons())
-		expect(added.find('.refreshed-note').text()).toMatch(/^Episodes last updated from TMDB: .*1.*2026/)
+		expect(added.find('.refreshed-note').text()).toMatch(/^Last synced with TMDB: .*1.*2026/)
+	})
+
+	it('puts the sync date at the bottom of the page, after the seasons', async () => {
+		const { wrapper } = await mountDetail(withSeasons({ tmdbRefreshedAt: '2026-10-19 08:00:00' }))
+		const info = wrapper.find('.series-info')
+
+		expect(info.element.lastElementChild.classList.contains('refreshed-note')).toBe(true)
 	})
 })
 
@@ -286,10 +296,24 @@ describe('SeriesDetail TMDB details', () => {
 		const meta = wrapper.find('dl.series-meta')
 		expect(meta.exists()).toBe(true)
 		expect(meta.text()).toContain('Miniseries')
-		expect(meta.text()).toContain('HBO · Sky')
+		expect(meta.text()).toContain('HBO')
+		expect(meta.text()).toContain('Sky')
 		expect(meta.text()).toContain('TMDB user score')
 		expect(meta.text()).toContain('84 % (1234 votes)')
 		expect(meta.text()).toContain('Jane Doe')
+	})
+
+	it('shows network logos with the network name as alternative text', async () => {
+		const { wrapper } = await mountDetail(show({
+			networks: [{ name: 'HBO', logoPath: '/hbo.png' }, { name: 'Sky', logoPath: null }],
+		}))
+
+		const logo = wrapper.find('.series-meta .network-logo img')
+		expect(logo.attributes('alt')).toBe('HBO')
+		expect(logo.attributes('src')).toBe('https://image.tmdb.org/t/p/w92/hbo.png')
+		// A network without a logo stays readable as text.
+		expect(wrapper.find('.series-meta .networks').text()).toContain('Sky')
+		expect(wrapper.findAll('.series-meta .network-logo')).toHaveLength(1)
 	})
 
 	it('hides the score when nobody voted and omits unknown fields', async () => {
@@ -313,12 +337,84 @@ describe('SeriesDetail TMDB details', () => {
 			firstAirYear: 2019,
 			status: 'Ended',
 			seriesType: 'Scripted',
-			networks: [{ name: 'BBC', logoPath: null }],
+			networks: [{ name: 'BBC', logoPath: '/bbc.png' }],
 			tmdbRating: 90,
 			tmdbVoteCount: 10,
 			castData: [{ name: 'A', character: 'B' }],
-		}))
+			tmdbId: 77,
+			createdAt: '2026-10-01 10:00:00',
+		}), EXTRAS)
 		await expectNoAxeViolations(wrapper)
+	})
+})
+
+const EXTRAS = {
+	trailer: { site: 'YouTube', key: 'abc123', name: 'Trailer', url: 'https://www.youtube.com/watch?v=abc123' },
+	watch: {
+		region: 'DE',
+		link: 'https://www.themoviedb.org/tv/77/watch?locale=DE',
+		stream: [{ id: 8, name: 'Netflix', logoPath: '/n.jpg' }],
+		free: [],
+		rent: [],
+		buy: [],
+	},
+}
+
+describe('SeriesDetail trailer and where to watch', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'viewer', permissionEdit: false }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+	})
+
+	it('offers the trailer as an external link, also to people who cannot edit', async () => {
+		const { wrapper } = await mountDetail(show({ tmdbId: 77 }), EXTRAS)
+
+		const trailer = wrapper.find('.trailer-button')
+		expect(trailer.attributes('href')).toBe('https://www.youtube.com/watch?v=abc123')
+		expect(trailer.attributes('target')).toBe('_blank')
+		expect(trailer.text()).toContain('Play trailer')
+		expect(trailer.text()).toContain('(opens YouTube in a new tab)')
+		expect(api.getTmdbExtras).toHaveBeenCalledWith('tv', '77', 'de-DE')
+	})
+
+	it('shows where to watch above the cast', async () => {
+		const { wrapper } = await mountDetail(show({ tmdbId: 77, castData: [{ name: 'Phoebe' }] }), EXTRAS)
+
+		expect(wrapper.find('.where-to-watch img').attributes('alt')).toBe('Netflix')
+		const html = wrapper.find('.series-info').html()
+		expect(html.indexOf('where-to-watch')).toBeLessThan(html.indexOf('cast-section'))
+	})
+
+	it('shows neither without trailer or offers data', async () => {
+		const { wrapper } = await mountDetail(show({ tmdbId: 77 }))
+
+		expect(wrapper.find('.trailer-button').exists()).toBe(false)
+		expect(wrapper.find('.where-to-watch').exists()).toBe(false)
+	})
+
+	it('asks TMDB nothing for a show without a TMDB id', async () => {
+		const { wrapper } = await mountDetail(show({ tmdbId: null }), EXTRAS)
+
+		expect(api.getTmdbExtras).not.toHaveBeenCalled()
+		expect(wrapper.find('.trailer-button').exists()).toBe(false)
+	})
+
+	it('stays quiet when TMDB cannot be reached', async () => {
+		vi.spyOn(api, 'getTmdbExtras').mockRejectedValue(new Error('offline'))
+		const store = useSeriesStore()
+		store.fetchOne = vi.fn(async () => { store.currentSeries = show({ tmdbId: 77 }) })
+		const wrapper = mount(SeriesDetail, {
+			props: { id: '3' },
+			global: { stubs: { Play: IconStub, Refresh: IconStub, Television: IconStub }, mocks: { t: (app, text) => text, $router: { push: vi.fn() } } },
+		})
+		await flushPromises()
+
+		expect(wrapper.find('.series-detail').exists()).toBe(true)
+		expect(wrapper.find('.trailer-button').exists()).toBe(false)
+		expect(wrapper.find('.where-to-watch').exists()).toBe(false)
 	})
 })
 

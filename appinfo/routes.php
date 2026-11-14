@@ -60,6 +60,7 @@ return [
         ['name' => 'tmdb#searchSeries', 'url' => '/api/tmdb/series/search', 'verb' => 'GET'],
         ['name' => 'tmdb#seriesGenres', 'url' => '/api/tmdb/series/genres', 'verb' => 'GET'],
         ['name' => 'tmdb#seasonDetails', 'url' => '/api/tmdb/series/{tmdbId}/season/{seasonNumber}', 'verb' => 'GET', 'requirements' => ['tmdbId' => '\d+', 'seasonNumber' => '\d+']],
+        ['name' => 'tmdb#extras', 'url' => '/api/tmdb/{type}/{tmdbId}/extras', 'verb' => 'GET', 'requirements' => ['type' => 'movie|tv', 'tmdbId' => '\d+']],
         ['name' => 'tmdb#seriesDetails', 'url' => '/api/tmdb/series/{tmdbId}', 'verb' => 'GET', 'requirements' => ['tmdbId' => '\d+']],
 
         // Movie watch history
