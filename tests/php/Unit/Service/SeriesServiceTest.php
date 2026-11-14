@@ -34,19 +34,18 @@ class SeriesServiceTest extends TestCase {
     private PlatformMapper $platformMapper;
     private TmdbService $tmdbService;
     private IDBConnection $db;
-    private SeriesService $service;
+    private ?SeriesService $service = null;
 
     private const LIBRARY_ID = 1;
 
     protected function setUp(): void {
         parent::setUp();
 
-        $this->mapper = $this->createMock(SeriesMapper::class);
-        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
-        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
-        $this->platformMapper = $this->createMock(PlatformMapper::class);
-        $this->tmdbService = $this->createMock(TmdbService::class);
-        $this->db = $this->createMock(IDBConnection::class);
+        $this->mapper = $this->createStub(SeriesMapper::class);
+        $this->episodeMapper = $this->createStub(EpisodeMapper::class);
+        $this->platformMapper = $this->createStub(PlatformMapper::class);
+        $this->tmdbService = $this->createStub(TmdbService::class);
+        $this->db = $this->createStub(IDBConnection::class);
 
         // Default: no series-level watch metadata. findWithProgress tests that
         // assert on the rollup re-stub via stubSummary().
@@ -55,16 +54,18 @@ class SeriesServiceTest extends TestCase {
 
     /**
      * Stub the series-level watch summary used by findWithProgress. Called once
-     * in setUp with nulls; tests needing real values re-create the mock.
+     * in setUp with nulls; tests needing real values re-create the double;
+     * pass mock: true when the test sets expectations on the watch mapper.
      */
     private function stubSummary(
         ?string $watchedAt = null,
         ?int $rating = null,
         ?int $platformId = null,
         ?string $languageWatched = null,
-        ?string $review = null
+        ?string $review = null,
+        bool $mock = false,
     ): void {
-        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->watchMapper = $mock ? $this->createMock(MovieWatchMapper::class) : $this->createStub(MovieWatchMapper::class);
         $this->watchMapper->method('getSeriesWatchSummary')->willReturn([
             'watchedAt' => $watchedAt,
             'rating' => $rating,
@@ -72,7 +73,11 @@ class SeriesServiceTest extends TestCase {
             'languageWatched' => $languageWatched,
             'review' => $review,
         ]);
-        $this->service = new SeriesService(
+        $this->service = null;
+    }
+
+    private function service(): SeriesService {
+        return $this->service ??= new SeriesService(
             $this->mapper,
             $this->episodeMapper,
             $this->watchMapper,
@@ -85,6 +90,8 @@ class SeriesServiceTest extends TestCase {
     // ---- findWithProgress: derived aggregation from the watched flag ----
 
     public function testProgressExcludesSpecialsAndUnaired(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->mapper = $this->createMock(SeriesMapper::class);
         $seriesId = 1;
         $series = $this->makeSeries($seriesId);
 
@@ -101,7 +108,7 @@ class SeriesServiceTest extends TestCase {
         $this->mapper->method('find')->with($seriesId, self::LIBRARY_ID)->willReturn($series);
         $this->episodeMapper->method('findBySeries')->with($seriesId)->willReturn($episodes);
 
-        $result = $this->service->findWithProgress($seriesId, self::LIBRARY_ID);
+        $result = $this->service()->findWithProgress($seriesId, self::LIBRARY_ID);
 
         $this->assertSame(2, $result['airedEpisodeCount']);
         $this->assertSame(1, $result['watchedEpisodeCount']);
@@ -111,6 +118,7 @@ class SeriesServiceTest extends TestCase {
     }
 
     public function testFindWithProgressExposesSeriesLevelWatchMetadata(): void {
+        $this->platformMapper = $this->createMock(PlatformMapper::class);
         $seriesId = 1;
         $series = $this->makeSeries($seriesId);
 
@@ -127,7 +135,7 @@ class SeriesServiceTest extends TestCase {
         $platform->setName('Netflix');
         $this->platformMapper->method('find')->with(7)->willReturn($platform);
 
-        $result = $this->service->findWithProgress($seriesId, self::LIBRARY_ID);
+        $result = $this->service()->findWithProgress($seriesId, self::LIBRARY_ID);
 
         $this->assertSame('2020-03-04', $result['watchedAt']);
         $this->assertSame(9, $result['rating']);
@@ -151,7 +159,7 @@ class SeriesServiceTest extends TestCase {
         $this->mapper->method('find')->willReturn($series);
         $this->episodeMapper->method('findBySeries')->willReturn($episodes);
 
-        $result = $this->service->findWithProgress($seriesId, self::LIBRARY_ID);
+        $result = $this->service()->findWithProgress($seriesId, self::LIBRARY_ID);
 
         $this->assertNotNull($result['nextEpisode']);
         $this->assertSame(12, $result['nextEpisode']['id']);
@@ -170,7 +178,7 @@ class SeriesServiceTest extends TestCase {
         $this->mapper->method('find')->willReturn($series);
         $this->episodeMapper->method('findBySeries')->willReturn($episodes);
 
-        $result = $this->service->findWithProgress($seriesId, self::LIBRARY_ID);
+        $result = $this->service()->findWithProgress($seriesId, self::LIBRARY_ID);
 
         $this->assertSame(100, $result['progress']);
         $this->assertTrue($result['caughtUp']);
@@ -184,6 +192,9 @@ class SeriesServiceTest extends TestCase {
     // ---- mark-watched: flip the boolean flag ----
 
     public function testMarkSeasonWatchedFlipsAiredUnwatchedNonSpecials(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->mapper = $this->createMock(SeriesMapper::class);
+        $this->stubSummary(mock: true);
         $seriesId = 1;
         $season = 1;
 
@@ -205,12 +216,13 @@ class SeriesServiceTest extends TestCase {
             ->willReturn(1);
         $this->watchMapper->expects($this->never())->method('insert');
 
-        $changed = $this->service->markSeasonWatched($seriesId, $season, self::LIBRARY_ID);
+        $changed = $this->service()->markSeasonWatched($seriesId, $season, self::LIBRARY_ID);
 
         $this->assertSame(1, $changed);
     }
 
     public function testMarkSeasonUnwatchedFlipsWatchedEpisodes(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $seriesId = 1;
         $season = 1;
 
@@ -227,12 +239,13 @@ class SeriesServiceTest extends TestCase {
             ->with([11], false)
             ->willReturn(1);
 
-        $changed = $this->service->markSeasonWatched($seriesId, $season, self::LIBRARY_ID, false);
+        $changed = $this->service()->markSeasonWatched($seriesId, $season, self::LIBRARY_ID, false);
 
         $this->assertSame(1, $changed);
     }
 
     public function testMarkSeriesWatchedExcludesSpecialsAndUnaired(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $seriesId = 1;
 
         $episodes = [
@@ -249,12 +262,13 @@ class SeriesServiceTest extends TestCase {
             ->with([11], true)
             ->willReturn(1);
 
-        $changed = $this->service->markSeriesWatched($seriesId, self::LIBRARY_ID);
+        $changed = $this->service()->markSeriesWatched($seriesId, self::LIBRARY_ID);
 
         $this->assertSame(1, $changed);
     }
 
     public function testMarkSeriesWatchedNoOpWhenNothingChanges(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $seriesId = 1;
 
         // All aired non-specials already watched → bulk setter never called.
@@ -267,12 +281,14 @@ class SeriesServiceTest extends TestCase {
 
         $this->episodeMapper->expects($this->never())->method('setWatchedForEpisodes');
 
-        $changed = $this->service->markSeriesWatched($seriesId, self::LIBRARY_ID);
+        $changed = $this->service()->markSeriesWatched($seriesId, self::LIBRARY_ID);
 
         $this->assertSame(0, $changed);
     }
 
     public function testMarkEpisodeWatchedFlipsFlagAndUpdates(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->stubSummary(mock: true);
         $seriesId = 1;
         $episode = $this->makeEpisode(11, $seriesId, 1, 1, '2000-01-02', false);
 
@@ -285,10 +301,11 @@ class SeriesServiceTest extends TestCase {
             ->willReturnArgument(0);
         $this->watchMapper->expects($this->never())->method('insert');
 
-        $this->service->markEpisodeWatched($seriesId, 11, self::LIBRARY_ID);
+        $this->service()->markEpisodeWatched($seriesId, 11, self::LIBRARY_ID);
     }
 
     public function testMarkEpisodeUnwatchedFlipsFlagOff(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $seriesId = 1;
         $episode = $this->makeEpisode(11, $seriesId, 1, 1, '2000-01-02', true);
 
@@ -300,10 +317,11 @@ class SeriesServiceTest extends TestCase {
             ->with($this->callback(fn (Episode $e) => $e->getWatched() === false))
             ->willReturnArgument(0);
 
-        $this->service->markEpisodeWatched($seriesId, 11, self::LIBRARY_ID, false);
+        $this->service()->markEpisodeWatched($seriesId, 11, self::LIBRARY_ID, false);
     }
 
     public function testMarkEpisodeWatchedIsIdempotent(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $seriesId = 1;
         $episode = $this->makeEpisode(11, $seriesId, 1, 1, '2000-01-02', true);
 
@@ -313,10 +331,11 @@ class SeriesServiceTest extends TestCase {
         // Already watched → no update.
         $this->episodeMapper->expects($this->never())->method('update');
 
-        $this->service->markEpisodeWatched($seriesId, 11, self::LIBRARY_ID);
+        $this->service()->markEpisodeWatched($seriesId, 11, self::LIBRARY_ID);
     }
 
     public function testMarkEpisodeWatchedRejectsForeignEpisode(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $seriesId = 1;
         // Episode belongs to a different series.
         $episode = $this->makeEpisode(11, 999, 1, 1, '2000-01-02', false);
@@ -326,12 +345,13 @@ class SeriesServiceTest extends TestCase {
         $this->episodeMapper->expects($this->never())->method('update');
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->markEpisodeWatched($seriesId, 11, self::LIBRARY_ID);
+        $this->service()->markEpisodeWatched($seriesId, 11, self::LIBRARY_ID);
     }
 
     // ---- series-level watch metadata upsert ----
 
     public function testUpsertSeriesWatchInsertsWhenNone(): void {
+        $this->stubSummary(mock: true);
         $seriesId = 1;
         $userId = 'testuser';
 
@@ -351,7 +371,7 @@ class SeriesServiceTest extends TestCase {
             ->willReturnArgument(0);
         $this->watchMapper->expects($this->never())->method('update');
 
-        $this->service->upsertSeriesWatch($seriesId, $userId, self::LIBRARY_ID, [
+        $this->service()->upsertSeriesWatch($seriesId, $userId, self::LIBRARY_ID, [
             'rating' => 9,
             'platformId' => 3,
             'languageWatched' => 'de',
@@ -360,6 +380,7 @@ class SeriesServiceTest extends TestCase {
     }
 
     public function testUpsertSeriesWatchUpdatesExistingRow(): void {
+        $this->stubSummary(mock: true);
         $seriesId = 1;
         $userId = 'testuser';
 
@@ -376,7 +397,7 @@ class SeriesServiceTest extends TestCase {
             ->with($this->callback(fn (MovieWatch $w) => $w->getId() === 50 && $w->getRating() === 8))
             ->willReturnArgument(0);
 
-        $this->service->upsertSeriesWatch($seriesId, $userId, self::LIBRARY_ID, ['rating' => 8]);
+        $this->service()->upsertSeriesWatch($seriesId, $userId, self::LIBRARY_ID, ['rating' => 8]);
     }
 
     // ---- cascade delete ----
@@ -384,21 +405,23 @@ class SeriesServiceTest extends TestCase {
     // ---- stop watching ----
 
     public function testSetStoppedWatchingUpdatesTheSeries(): void {
+        $this->mapper = $this->createMock(SeriesMapper::class);
         $series = $this->makeSeries(1);
         $this->mapper->method('find')->with(1, self::LIBRARY_ID)->willReturn($series);
         $this->mapper->expects($this->once())->method('update')
             ->with($this->callback(fn (Series $s) => $s->getStoppedWatching() === true && $s->getUpdatedAt() !== null));
 
-        $this->service->setStoppedWatching(1, self::LIBRARY_ID, true);
+        $this->service()->setStoppedWatching(1, self::LIBRARY_ID, true);
     }
 
     public function testSetStoppedWatchingIsIdempotent(): void {
+        $this->mapper = $this->createMock(SeriesMapper::class);
         $series = $this->makeSeries(1);
         $series->setStoppedWatching(true);
         $this->mapper->method('find')->willReturn($series);
         $this->mapper->expects($this->never())->method('update');
 
-        $this->service->setStoppedWatching(1, self::LIBRARY_ID, true);
+        $this->service()->setStoppedWatching(1, self::LIBRARY_ID, true);
     }
 
     public function testStoppedShowReportsStoppedStatusOnDetail(): void {
@@ -410,10 +433,14 @@ class SeriesServiceTest extends TestCase {
             $this->makeEpisode(2, 1, 1, 2, '2020-01-08', false),
         ]);
 
-        $this->assertSame('stopped', $this->service->findWithProgress(1, self::LIBRARY_ID)['watchStatus']);
+        $this->assertSame('stopped', $this->service()->findWithProgress(1, self::LIBRARY_ID)['watchStatus']);
     }
 
     public function testDeleteCascadesEpisodesAndWatchRows(): void {
+        $this->db = $this->createMock(IDBConnection::class);
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->mapper = $this->createMock(SeriesMapper::class);
+        $this->stubSummary(mock: true);
         $seriesId = 1;
         $series = $this->makeSeries($seriesId);
 
@@ -425,7 +452,7 @@ class SeriesServiceTest extends TestCase {
         $this->mapper->expects($this->once())->method('delete')->with($series);
         $this->db->expects($this->once())->method('commit');
 
-        $this->service->delete($seriesId, self::LIBRARY_ID);
+        $this->service()->delete($seriesId, self::LIBRARY_ID);
     }
 
     public function testDeleteDismissesNotificationsOnlyAfterTheCommit(): void {
@@ -435,7 +462,7 @@ class SeriesServiceTest extends TestCase {
         $this->db->method('commit')->willReturnCallback(function () use (&$order) {
             $order[] = 'commit';
         });
-        $notifications = $this->createMock(ReleaseNotificationService::class);
+        $notifications = $this->createStub(ReleaseNotificationService::class);
         $notifications->method('dismissSeries')->willReturnCallback(function () use (&$order) {
             $order[] = 'dismiss';
         });
@@ -447,6 +474,7 @@ class SeriesServiceTest extends TestCase {
     }
 
     public function testDeleteKeepsNotificationsWhenTheTransactionRollsBack(): void {
+        $this->db = $this->createMock(IDBConnection::class);
         $series = $this->makeSeries(1);
         $this->mapper->method('find')->willReturn($series);
         $this->mapper->method('delete')->willThrowException(new \RuntimeException('db down'));
@@ -463,6 +491,11 @@ class SeriesServiceTest extends TestCase {
     // ---- createFromTmdb: eager episode fetch + optional series metadata ----
 
     public function testCreateFromTmdbFetchesAndStoresEpisodes(): void {
+        $this->db = $this->createMock(IDBConnection::class);
+        $this->tmdbService = $this->createMock(TmdbService::class);
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->mapper = $this->createMock(SeriesMapper::class);
+        $this->stubSummary(mock: true);
         $userId = 'testuser';
         $data = [
             'tmdbId' => 1399,
@@ -498,13 +531,14 @@ class SeriesServiceTest extends TestCase {
         $this->db->expects($this->once())->method('beginTransaction');
         $this->db->expects($this->once())->method('commit');
 
-        $result = $this->service->createFromTmdb($userId, self::LIBRARY_ID, $data);
+        $result = $this->service()->createFromTmdb($userId, self::LIBRARY_ID, $data);
 
         $this->assertInstanceOf(Series::class, $result);
         $this->assertSame(1, $result->getId());
     }
 
     public function testCreateFromTmdbPersistsSeriesWatchMetadata(): void {
+        $this->stubSummary(mock: true);
         $userId = 'testuser';
         $data = [
             'tmdbId' => 1399,
@@ -540,10 +574,11 @@ class SeriesServiceTest extends TestCase {
         $this->db->method('beginTransaction');
         $this->db->method('commit');
 
-        $this->service->createFromTmdb($userId, self::LIBRARY_ID, $data);
+        $this->service()->createFromTmdb($userId, self::LIBRARY_ID, $data);
     }
 
     public function testCreateFromTmdbSkipsExistingEpisodes(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $userId = 'testuser';
         $data = [
             'tmdbId' => 1399,
@@ -566,7 +601,7 @@ class SeriesServiceTest extends TestCase {
         $this->db->method('beginTransaction');
         $this->db->method('commit');
 
-        $this->service->createFromTmdb($userId, self::LIBRARY_ID, $data);
+        $this->service()->createFromTmdb($userId, self::LIBRARY_ID, $data);
     }
 
     /**
@@ -578,6 +613,7 @@ class SeriesServiceTest extends TestCase {
      * with seasonNumber 0 rather than being dropped or mis-seasoned.
      */
     public function testCreateFromTmdbImportsSpecialsSeasonZero(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $userId = 'testuser';
         $data = [
             'tmdbId' => 1396,
@@ -616,7 +652,7 @@ class SeriesServiceTest extends TestCase {
         $this->db->method('beginTransaction');
         $this->db->method('commit');
 
-        $this->service->createFromTmdb($userId, self::LIBRARY_ID, $data);
+        $this->service()->createFromTmdb($userId, self::LIBRARY_ID, $data);
 
         sort($insertedSeasons);
         $this->assertSame([0, 1], $insertedSeasons, 'Specials (season 0) must be imported, not dropped');
@@ -625,6 +661,7 @@ class SeriesServiceTest extends TestCase {
     // ---- update: persists series-level metadata ----
 
     public function testUpdatePersistsSeriesWatchMetadata(): void {
+        $this->stubSummary(mock: true);
         $seriesId = 1;
         $series = $this->makeSeries($seriesId);
 
@@ -637,7 +674,7 @@ class SeriesServiceTest extends TestCase {
             ->with($this->callback(fn (MovieWatch $w) => $w->getRating() === 7 && $w->getPlatformId() === 4))
             ->willReturnArgument(0);
 
-        $this->service->update($seriesId, self::LIBRARY_ID, [
+        $this->service()->update($seriesId, self::LIBRARY_ID, [
             'title' => 'Renamed',
             'rating' => 7,
             'platformId' => 4,
@@ -645,6 +682,7 @@ class SeriesServiceTest extends TestCase {
     }
 
     public function testUpdateWithoutMetadataDoesNotTouchWatchRow(): void {
+        $this->stubSummary(mock: true);
         $seriesId = 1;
         $series = $this->makeSeries($seriesId);
 
@@ -654,7 +692,7 @@ class SeriesServiceTest extends TestCase {
         $this->watchMapper->expects($this->never())->method('insert');
         $this->watchMapper->expects($this->never())->method('update');
 
-        $this->service->update($seriesId, self::LIBRARY_ID, ['title' => 'Renamed', 'isFavorite' => true]);
+        $this->service()->update($seriesId, self::LIBRARY_ID, ['title' => 'Renamed', 'isFavorite' => true]);
     }
 
     // ---- helpers ----

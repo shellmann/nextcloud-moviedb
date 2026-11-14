@@ -21,7 +21,7 @@ class UpcomingCalendarTest extends TestCase {
 
     protected function setUp(): void {
         parent::setUp();
-        $l = $this->createMock(IL10N::class);
+        $l = $this->createStub(IL10N::class);
         $l->method('t')->willReturnCallback(fn (string $t) => 'T:' . $t);
         $this->calendar = new UpcomingCalendar([
             $this->event('moviedb-ep-1-s3e1', 'Severance S03E01 · One', '2026-11-09'),
@@ -54,7 +54,7 @@ class UpcomingCalendarTest extends TestCase {
     }
 
     public function testASearchWithATimerangeOnlyBuildsThatWindow(): void {
-        $l = $this->createMock(IL10N::class);
+        $l = $this->createStub(IL10N::class);
         $windows = [];
         $calendar = new UpcomingCalendar(function (?string $from, ?string $until) use (&$windows): array {
             $windows[] = [$from, $until];

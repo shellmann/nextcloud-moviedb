@@ -11,25 +11,32 @@ use OCP\IURLGenerator;
 use OCP\L10N\IFactory;
 use OCP\Notification\INotification;
 use OCP\Notification\UnknownNotificationException;
+use PHPUnit\Framework\MockObject\Stub;
 
 class NotifierTest extends TestCase {
-    private Notifier $notifier;
+    private IFactory&Stub $factory;
+    private IURLGenerator&Stub $url;
+    private ?Notifier $notifier = null;
 
     protected function setUp(): void {
         parent::setUp();
-        $l = $this->createMock(IL10N::class);
+        $l = $this->createStub(IL10N::class);
         $l->method('t')->willReturnCallback(fn (string $t, array $p = []) => vsprintf($t, $p));
-        $factory = $this->createMock(IFactory::class);
-        $factory->method('get')->willReturn($l);
-        $url = $this->createMock(IURLGenerator::class);
-        $url->method('linkToRouteAbsolute')->willReturn('https://nc.example/apps/moviedb/');
-        $url->method('imagePath')->willReturn('/apps/moviedb/img/app-dark.svg');
-        $url->method('getAbsoluteURL')->willReturnCallback(fn (string $p) => 'https://nc.example' . $p);
-        $this->notifier = new Notifier($factory, $url);
+        $this->factory = $this->createStub(IFactory::class);
+        $this->factory->method('get')->willReturn($l);
+        $this->url = $this->createStub(IURLGenerator::class);
+        $this->url->method('linkToRouteAbsolute')->willReturn('https://nc.example/apps/moviedb/');
+        $this->url->method('imagePath')->willReturn('/apps/moviedb/img/app-dark.svg');
+        $this->url->method('getAbsoluteURL')->willReturnCallback(fn (string $p) => 'https://nc.example' . $p);
     }
 
-    private function notification(string $app, string $subject, array $params): INotification {
-        $n = $this->createMock(INotification::class);
+    private function notifier(): Notifier {
+        return $this->notifier ??= new Notifier($this->factory, $this->url);
+    }
+
+    private function notification(string $app, string $subject, array $params, bool $mock = true): INotification {
+        // a mock for the tests that check what prepare() sets, a stub for the others
+        $n = $mock ? $this->createMock(INotification::class) : $this->createStub(INotification::class);
         $n->method('getApp')->willReturn($app);
         $n->method('getSubject')->willReturn($subject);
         $n->method('getSubjectParameters')->willReturn($params);
@@ -42,14 +49,14 @@ class NotifierTest extends TestCase {
         $n->expects($this->once())->method('setLink')->with('https://nc.example/apps/moviedb/#/tv/5?library=2');
         $n->expects($this->once())->method('setIcon')->with('https://nc.example/apps/moviedb/img/app-dark.svg');
 
-        $this->assertSame($n, $this->notifier->prepare($n, 'en'));
+        $this->assertSame($n, $this->notifier()->prepare($n, 'en'));
     }
 
     public function testRendersSeveralEpisodesOfOneDay(): void {
         $n = $this->notification('moviedb', 'episodes_aired', ['seriesId' => 5, 'libraryId' => 2, 'title' => 'Severance', 'season' => 3, 'episode' => 8, 'count' => 8]);
         $n->expects($this->once())->method('setParsedSubject')->with('8 new episodes of Severance');
 
-        $this->notifier->prepare($n, 'en');
+        $this->notifier()->prepare($n, 'en');
     }
 
     public function testALibraryLessWatchlistItemGetsALinkWithoutLibraryAndATolerantTitle(): void {
@@ -57,7 +64,7 @@ class NotifierTest extends TestCase {
         $n->expects($this->once())->method('setParsedSubject')->with(' is out now');
         $n->expects($this->once())->method('setLink')->with('https://nc.example/apps/moviedb/#/watchlist?item=9');
 
-        $this->notifier->prepare($n, 'en');
+        $this->notifier()->prepare($n, 'en');
     }
 
     public function testRendersAReleasedWatchlistTitle(): void {
@@ -65,16 +72,16 @@ class NotifierTest extends TestCase {
         $n->expects($this->once())->method('setParsedSubject')->with('Dune Part Three is out now');
         $n->expects($this->once())->method('setLink')->with('https://nc.example/apps/moviedb/#/watchlist?library=1&item=9');
 
-        $this->notifier->prepare($n, 'en');
+        $this->notifier()->prepare($n, 'en');
     }
 
     public function testIgnoresOtherAppsAndUnknownSubjects(): void {
         $this->expectException(UnknownNotificationException::class);
-        $this->notifier->prepare($this->notification('files', 'x', []), 'en');
+        $this->notifier()->prepare($this->notification('files', 'x', [], false), 'en');
     }
 
     public function testUnknownSubjectOfOurAppIsRejected(): void {
         $this->expectException(UnknownNotificationException::class);
-        $this->notifier->prepare($this->notification('moviedb', 'nope', []), 'en');
+        $this->notifier()->prepare($this->notification('moviedb', 'nope', [], false), 'en');
     }
 }

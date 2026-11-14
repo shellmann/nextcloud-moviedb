@@ -18,7 +18,7 @@ class CalendarQueriesTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
         $this->rec = new SqlRecording();
-        $this->db = $this->createMock(IDBConnection::class);
+        $this->db = $this->createStub(IDBConnection::class);
         $this->db->method('getQueryBuilder')->willReturnCallback(fn () => new SqlRecordingQB($this->rec));
     }
 

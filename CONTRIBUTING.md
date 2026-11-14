@@ -16,7 +16,7 @@ This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.
 ## Getting Started
 
 ### Prerequisites
-- PHP 8.2 or higher
+- PHP 8.3 or higher
 - Node.js 26+ and npm (see `.nvmrc`; CI runs on Node 26)
 - Composer
 - Git

@@ -6,15 +6,14 @@ namespace OCA\MovieDB\Tests\Unit\Util;
 
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCA\MovieDB\Util\DateValue;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class DateValueTest extends TestCase {
     public function testKeepsAValidDate(): void {
         $this->assertSame('2026-10-29', DateValue::normalize('2026-10-29'));
     }
 
-    /**
-     * @dataProvider invalidProvider
-     */
+    #[DataProvider('invalidProvider')]
     public function testReturnsNullForAnythingElse(mixed $value): void {
         $this->assertNull(DateValue::normalize($value));
     }

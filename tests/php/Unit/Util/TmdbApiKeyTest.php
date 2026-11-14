@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Tests\Unit\Util;
 
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCA\MovieDB\Util\TmdbApiKey;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class TmdbApiKeyTest extends TestCase {
     public function testReadAccessTokenIsValid(): void {
@@ -21,9 +22,7 @@ class TmdbApiKeyTest extends TestCase {
         $this->assertFalse(TmdbApiKey::isValid(str_repeat('a', 501)));
     }
 
-    /**
-     * @dataProvider invalidKeyProvider
-     */
+    #[DataProvider('invalidKeyProvider')]
     public function testInvalidKeys(string $key): void {
         $this->assertFalse(TmdbApiKey::isValid($key));
     }

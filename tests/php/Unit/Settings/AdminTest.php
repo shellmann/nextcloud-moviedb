@@ -14,7 +14,7 @@ use OCP\IURLGenerator;
 
 class AdminTest extends TestCase {
     public function testFormProvidesOnlyWhetherAKeyIsSet(): void {
-        $tmdbService = $this->createMock(TmdbService::class);
+        $tmdbService = $this->createStub(TmdbService::class);
         $tmdbService->method('hasInstanceApiKey')->willReturn(true);
 
         $initialState = $this->createMock(IInitialState::class);
@@ -29,8 +29,8 @@ class AdminTest extends TestCase {
     }
 
     public function testFormIsInTheMovieDbSection(): void {
-        $admin = new Admin($this->createMock(TmdbService::class), $this->createMock(IInitialState::class));
-        $section = new AdminSection($this->createMock(IURLGenerator::class));
+        $admin = new Admin($this->createStub(TmdbService::class), $this->createStub(IInitialState::class));
+        $section = new AdminSection($this->createStub(IURLGenerator::class));
 
         $this->assertSame($section->getID(), $admin->getSection());
     }

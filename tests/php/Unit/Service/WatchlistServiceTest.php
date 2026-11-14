@@ -17,18 +17,22 @@ use OCP\AppFramework\Db\DoesNotExistException;
  */
 class WatchlistServiceTest extends TestCase {
     private WatchlistMapper $mapper;
-    private WatchlistService $service;
+    private ?WatchlistService $service = null;
 
     private const LIBRARY_ID = 1;
 
     protected function setUp(): void {
         parent::setUp();
 
-        $this->mapper = $this->createMock(WatchlistMapper::class);
-        $this->service = new WatchlistService($this->mapper);
+        $this->mapper = $this->createStub(WatchlistMapper::class);
+    }
+
+    private function service(): WatchlistService {
+        return $this->service ??= new WatchlistService($this->mapper);
     }
 
     public function testFind(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $itemId = 1;
         $item = new WatchlistItem();
         $item->setId($itemId);
@@ -40,7 +44,7 @@ class WatchlistServiceTest extends TestCase {
             ->with($itemId, self::LIBRARY_ID)
             ->willReturn($item);
 
-        $result = $this->service->find($itemId, self::LIBRARY_ID);
+        $result = $this->service()->find($itemId, self::LIBRARY_ID);
 
         $this->assertInstanceOf(WatchlistItem::class, $result);
         $this->assertEquals($itemId, $result->getId());
@@ -48,6 +52,7 @@ class WatchlistServiceTest extends TestCase {
     }
 
     public function testFindAll(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $filters = ['search' => 'Dune', 'sort' => 'priority'];
 
         $items = [
@@ -60,7 +65,7 @@ class WatchlistServiceTest extends TestCase {
             ->with(self::LIBRARY_ID, $filters, 50, 0)
             ->willReturn($items);
 
-        $result = $this->service->findAll(self::LIBRARY_ID, $filters);
+        $result = $this->service()->findAll(self::LIBRARY_ID, $filters);
 
         $this->assertIsArray($result);
         $this->assertCount(2, $result);
@@ -68,15 +73,17 @@ class WatchlistServiceTest extends TestCase {
     }
 
     public function testFindAllForwardsLimitAndOffset(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $this->mapper->expects($this->once())
             ->method('findAll')
             ->with(self::LIBRARY_ID, [], 10, 20)
             ->willReturn([]);
 
-        $this->service->findAll(self::LIBRARY_ID, [], 10, 20);
+        $this->service()->findAll(self::LIBRARY_ID, [], 10, 20);
     }
 
     public function testCount(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $expectedCount = 15;
         $filters = ['search' => 'Dune'];
 
@@ -85,12 +92,13 @@ class WatchlistServiceTest extends TestCase {
             ->with(self::LIBRARY_ID, $filters)
             ->willReturn($expectedCount);
 
-        $result = $this->service->count(self::LIBRARY_ID, $filters);
+        $result = $this->service()->count(self::LIBRARY_ID, $filters);
 
         $this->assertEquals($expectedCount, $result);
     }
 
     public function testCreate(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $userId = 'testuser';
         $data = [
             'tmdbId' => 438631,
@@ -118,13 +126,14 @@ class WatchlistServiceTest extends TestCase {
                 return $item;
             });
 
-        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
+        $result = $this->service()->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertInstanceOf(WatchlistItem::class, $result);
         $this->assertEquals($data['title'], $result->getTitle());
     }
 
     public function testCreateWithMinimalData(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $userId = 'testuser';
         $data = ['title' => 'Oppenheimer'];
 
@@ -142,7 +151,7 @@ class WatchlistServiceTest extends TestCase {
                 return $item;
             });
 
-        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
+        $result = $this->service()->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertEquals('Oppenheimer', $result->getTitle());
         $this->assertEquals(0, $result->getPriority());
@@ -150,6 +159,7 @@ class WatchlistServiceTest extends TestCase {
     }
 
     public function testCreateStoresNullForAnEmptyReleaseDate(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         // TMDB sends "" for titles that are not released yet; a DATE column rejects it (issue #90).
         $data = ['title' => 'Heat 2', 'tmdbId' => 1, 'releaseDate' => ''];
 
@@ -158,7 +168,7 @@ class WatchlistServiceTest extends TestCase {
             ->with($this->callback(fn (WatchlistItem $item) => $item->getReleaseDate() === null))
             ->willReturnArgument(0);
 
-        $this->assertNull($this->service->create('testuser', self::LIBRARY_ID, $data)->getReleaseDate());
+        $this->assertNull($this->service()->create('testuser', self::LIBRARY_ID, $data)->getReleaseDate());
     }
 
     public function testReleaseDateNewsLastsThirtyDays(): void {
@@ -174,13 +184,14 @@ class WatchlistServiceTest extends TestCase {
     }
 
     public function testAcknowledgeReleaseDateClearsTheNews(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $item = $this->createWatchlistItem(1, 'Heat 2');
         $item->setReleaseDateChangedAt((new \DateTime())->format('Y-m-d H:i:s'));
 
         $this->mapper->expects($this->once())->method('find')->with(1, self::LIBRARY_ID)->willReturn($item);
         $this->mapper->expects($this->once())->method('update')->with($item)->willReturnArgument(0);
 
-        $result = $this->service->acknowledgeReleaseDate(1, self::LIBRARY_ID);
+        $result = $this->service()->acknowledgeReleaseDate(1, self::LIBRARY_ID);
 
         $this->assertNull($result->getReleaseDateChangedAt());
         $this->assertFalse($result->hasReleaseDateNews());
@@ -193,10 +204,11 @@ class WatchlistServiceTest extends TestCase {
         $this->mapper->method('find')->willReturn($item);
         $this->mapper->method('update')->willReturnArgument(0);
 
-        $this->assertFalse($this->service->update(1, self::LIBRARY_ID, ['priority' => 3])->hasReleaseDateNews());
+        $this->assertFalse($this->service()->update(1, self::LIBRARY_ID, ['priority' => 3])->hasReleaseDateNews());
     }
 
     public function testCreatePersistsSeriesMediaType(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $userId = 'testuser';
         $data = [
             'tmdbId' => 1399,
@@ -215,12 +227,13 @@ class WatchlistServiceTest extends TestCase {
                 return $item;
             });
 
-        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
+        $result = $this->service()->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertEquals('series', $result->getMediaType());
     }
 
     public function testUpdate(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $itemId = 1;
         $existingItem = $this->createWatchlistItem($itemId, 'Old Title');
         $existingItem->setUserId('testuser');
@@ -246,13 +259,14 @@ class WatchlistServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->update($itemId, self::LIBRARY_ID, $updateData);
+        $result = $this->service()->update($itemId, self::LIBRARY_ID, $updateData);
 
         $this->assertEquals('Updated Title', $result->getTitle());
         $this->assertEquals(10, $result->getPriority());
     }
 
     public function testUpdateWithNullValues(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $itemId = 1;
         $existingItem = $this->createWatchlistItem($itemId, 'Title');
         $existingItem->setUserId('testuser');
@@ -271,12 +285,13 @@ class WatchlistServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->update($itemId, self::LIBRARY_ID, $updateData);
+        $result = $this->service()->update($itemId, self::LIBRARY_ID, $updateData);
 
         $this->assertNull($result->getNotes());
     }
 
     public function testDelete(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $itemId = 1;
         $item = $this->createWatchlistItem($itemId, 'To Delete');
         $item->setUserId('testuser');
@@ -290,10 +305,11 @@ class WatchlistServiceTest extends TestCase {
             ->method('delete')
             ->with($item);
 
-        $this->service->delete($itemId, self::LIBRARY_ID);
+        $this->service()->delete($itemId, self::LIBRARY_ID);
     }
 
     public function testDeleteThrowsDoesNotExistException(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $itemId = 999;
 
         $this->mapper->expects($this->once())
@@ -301,10 +317,11 @@ class WatchlistServiceTest extends TestCase {
             ->willThrowException(new DoesNotExistException('Item not found'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->delete($itemId, self::LIBRARY_ID);
+        $this->service()->delete($itemId, self::LIBRARY_ID);
     }
 
     public function testExistsByTmdbIdReturnsTrueWhenExists(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $tmdbId = 438631;
         $item = $this->createWatchlistItem(1, 'Dune');
 
@@ -313,24 +330,26 @@ class WatchlistServiceTest extends TestCase {
             ->with(self::LIBRARY_ID, $tmdbId, null)
             ->willReturn($item);
 
-        $result = $this->service->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
+        $result = $this->service()->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
 
         $this->assertTrue($result);
     }
 
     public function testExistsByTmdbIdReturnsFalseWhenNotExists(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $tmdbId = 999;
 
         $this->mapper->expects($this->once())
             ->method('findByTmdbId')
             ->willReturn(null);
 
-        $result = $this->service->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
+        $result = $this->service()->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
 
         $this->assertFalse($result);
     }
 
     public function testExistsByTmdbIdIsTypeAware(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $tmdbId = 1399;
 
         // A movie with this TMDB id exists, but no series with it does.
@@ -339,19 +358,21 @@ class WatchlistServiceTest extends TestCase {
             ->with(self::LIBRARY_ID, $tmdbId, 'series')
             ->willReturn(null);
 
-        $result = $this->service->existsByTmdbId(self::LIBRARY_ID, $tmdbId, 'series');
+        $result = $this->service()->existsByTmdbId(self::LIBRARY_ID, $tmdbId, 'series');
 
         $this->assertFalse($result);
     }
 
     public function testPickRandomReturnsNullWhenNothingMatches(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $this->mapper->method('countAll')->willReturn(0);
         $this->mapper->expects($this->never())->method('findAll');
 
-        $this->assertNull($this->service->pickRandom(self::LIBRARY_ID, ['genre' => 28]));
+        $this->assertNull($this->service()->pickRandom(self::LIBRARY_ID, ['genre' => 28]));
     }
 
     public function testPickRandomUsesOffsetWithinRangeAndStableSort(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $item = $this->createWatchlistItem(3, 'Dune');
         $this->mapper->method('countAll')->willReturn(5);
         $this->mapper->expects($this->once())
@@ -364,10 +385,11 @@ class WatchlistServiceTest extends TestCase {
             )
             ->willReturn([$item]);
 
-        $this->assertSame($item, $this->service->pickRandom(self::LIBRARY_ID, ['genre' => 28]));
+        $this->assertSame($item, $this->service()->pickRandom(self::LIBRARY_ID, ['genre' => 28]));
     }
 
     public function testPickRandomRetriesWithoutExcludeWhenOnlyTheExcludedItemMatches(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $item = $this->createWatchlistItem(7, 'Only one');
         $counts = [];
         $this->mapper->method('countAll')->willReturnCallback(function ($lib, $filters) use (&$counts) {
@@ -379,36 +401,39 @@ class WatchlistServiceTest extends TestCase {
             ->with(self::LIBRARY_ID, $this->callback(fn ($f) => !isset($f['excludeId'])), 1, 0)
             ->willReturn([$item]);
 
-        $result = $this->service->pickRandom(self::LIBRARY_ID, ['excludeId' => 7]);
+        $result = $this->service()->pickRandom(self::LIBRARY_ID, ['excludeId' => 7]);
 
         $this->assertSame($item, $result);
         $this->assertCount(2, $counts);
     }
 
     public function testPickRandomKeepsExcludeWhenOtherItemsMatch(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $this->mapper->method('countAll')->willReturn(2);
         $this->mapper->expects($this->once())
             ->method('findAll')
             ->with(self::LIBRARY_ID, $this->callback(fn ($f) => $f['excludeId'] === 7), 1, $this->anything())
             ->willReturn([$this->createWatchlistItem(8, 'Other')]);
 
-        $this->service->pickRandom(self::LIBRARY_ID, ['excludeId' => 7]);
+        $this->service()->pickRandom(self::LIBRARY_ID, ['excludeId' => 7]);
     }
 
     public function testPickRandomSetReturnsNothingWhenNoMatch(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $this->mapper->method('countAll')->willReturn(0);
         $this->mapper->expects($this->never())->method('findAll');
 
-        $this->assertSame([], $this->service->pickRandomSet(self::LIBRARY_ID, [], 8));
+        $this->assertSame([], $this->service()->pickRandomSet(self::LIBRARY_ID, [], 8));
     }
 
     public function testPickRandomSetReturnsEverythingWhenFewerThanRequested(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $items = [$this->createWatchlistItem(1, 'A'), $this->createWatchlistItem(2, 'B'), $this->createWatchlistItem(3, 'C')];
         $this->mapper->method('countAll')->willReturn(3);
         $this->mapper->expects($this->once())->method('findAll')
             ->with(self::LIBRARY_ID, $this->anything(), 8, 0)->willReturn($items);
 
-        $result = $this->service->pickRandomSet(self::LIBRARY_ID, [], 8);
+        $result = $this->service()->pickRandomSet(self::LIBRARY_ID, [], 8);
 
         $this->assertCount(3, $result);
         $this->assertEqualsCanonicalizing([1, 2, 3], array_map(fn ($i) => $i->getId(), $result));
@@ -422,7 +447,7 @@ class WatchlistServiceTest extends TestCase {
             return [$this->createWatchlistItem($offset + 1, "T$offset")];
         });
 
-        $result = $this->service->pickRandomSet(self::LIBRARY_ID, [], 8);
+        $result = $this->service()->pickRandomSet(self::LIBRARY_ID, [], 8);
 
         $this->assertCount(8, $result);
         $this->assertSame($offsets, array_values(array_unique($offsets)));
@@ -434,12 +459,13 @@ class WatchlistServiceTest extends TestCase {
     }
 
     public function testPickRandomSetDropsTheExclusionWhenItLeavesNothing(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $this->mapper->method('countAll')->willReturnCallback(fn ($lib, $f) => isset($f['excludeId']) ? 0 : 1);
         $this->mapper->expects($this->once())->method('findAll')
             ->with(self::LIBRARY_ID, $this->callback(fn ($f) => !isset($f['excludeId'])), 8, 0)
             ->willReturn([$this->createWatchlistItem(7, 'Only')]);
 
-        $this->assertCount(1, $this->service->pickRandomSet(self::LIBRARY_ID, ['excludeId' => 7], 8));
+        $this->assertCount(1, $this->service()->pickRandomSet(self::LIBRARY_ID, ['excludeId' => 7], 8));
     }
 
     private function createWatchlistItem(int $id, string $title): WatchlistItem {

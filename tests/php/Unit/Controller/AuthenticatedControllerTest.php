@@ -10,6 +10,7 @@ use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * Unit tests for AuthenticatedController
@@ -23,12 +24,12 @@ class AuthenticatedControllerTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $this->request = $this->createMock(IRequest::class);
-        $this->userSession = $this->createMock(IUserSession::class);
+        $this->request = $this->createStub(IRequest::class);
+        $this->userSession = $this->createStub(IUserSession::class);
     }
 
     public function testRequireAuthReturnsNullWhenAuthenticated(): void {
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('testuser');
 
         $this->userSession->method('getUser')->willReturn($user);
@@ -57,7 +58,7 @@ class AuthenticatedControllerTest extends TestCase {
 
     public function testUserIdIsSetWhenAuthenticated(): void {
         $userId = 'testuser123';
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn($userId);
 
         $this->userSession->method('getUser')->willReturn($user);
@@ -75,10 +76,9 @@ class AuthenticatedControllerTest extends TestCase {
         $this->assertNull($this->getUserId($controller));
     }
 
-    /**
-     * @dataProvider mediaTypeProvider
-     */
+    #[DataProvider('mediaTypeProvider')]
     public function testMediaTypeParam(?string $rawValue, ?string $expected): void {
+        $this->request = $this->createMock(IRequest::class);
         $this->request->method('getParam')->with('mediaType')->willReturn($rawValue);
 
         $controller = $this->createAuthenticatedController();

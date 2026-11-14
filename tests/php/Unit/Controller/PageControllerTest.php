@@ -16,9 +16,9 @@ use OCP\IUserSession;
 
 class PageControllerTest extends TestCase {
     public function testSendsSettingsWithThePage(): void {
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('alice');
-        $userSession = $this->createMock(IUserSession::class);
+        $userSession = $this->createStub(IUserSession::class);
         $userSession->method('getUser')->willReturn($user);
 
         $settings = ['hasApiKey' => true, 'hasUserApiKey' => false, 'hasInstanceApiKey' => true];
@@ -38,8 +38,8 @@ class PageControllerTest extends TestCase {
             });
 
         $controller = new PageController(
-            $this->createMock(IRequest::class),
-            $this->createMock(IURLGenerator::class),
+            $this->createStub(IRequest::class),
+            $this->createStub(IURLGenerator::class),
             $userSession,
             $settingsService,
             $initialState,

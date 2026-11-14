@@ -21,7 +21,7 @@ class WatchlistReleaseCheckQueryTest extends TestCase {
     }
 
     private function sql(): string {
-        $db = $this->createMock(IDBConnection::class);
+        $db = $this->createStub(IDBConnection::class);
         $db->method('getQueryBuilder')->willReturnCallback(fn () => new SqlRecordingQB($this->rec));
 
         $rec = $this->rec;

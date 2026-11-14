@@ -26,6 +26,7 @@ use OCP\App\IAppManager;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\Entity;
 use OCP\IDBConnection;
+use PHPUnit\Framework\MockObject\Stub;
 
 class ExportServiceTest extends TestCase {
     private MovieMapper $movieMapper;
@@ -35,26 +36,29 @@ class ExportServiceTest extends TestCase {
     private WatchlistMapper $watchlistMapper;
     private PlatformMapper $platformMapper;
     private LibraryMapper $libraryMapper;
-    private ExportService $service;
+    private IAppManager&Stub $appManager;
+    private ?ExportService $service = null;
 
     protected function setUp(): void {
         parent::setUp();
-        $this->movieMapper = $this->createMock(MovieMapper::class);
-        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
-        $this->seriesMapper = $this->createMock(SeriesMapper::class);
-        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
-        $this->watchlistMapper = $this->createMock(WatchlistMapper::class);
-        $this->platformMapper = $this->createMock(PlatformMapper::class);
-        $this->libraryMapper = $this->createMock(LibraryMapper::class);
+        $this->movieMapper = $this->createStub(MovieMapper::class);
+        $this->watchMapper = $this->createStub(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createStub(SeriesMapper::class);
+        $this->episodeMapper = $this->createStub(EpisodeMapper::class);
+        $this->watchlistMapper = $this->createStub(WatchlistMapper::class);
+        $this->platformMapper = $this->createStub(PlatformMapper::class);
+        $this->libraryMapper = $this->createStub(LibraryMapper::class);
 
         $library = new Library();
         $library->setName('Family');
         $this->libraryMapper->method('find')->willReturn($library);
 
-        $appManager = $this->createMock(IAppManager::class);
-        $appManager->method('getAppVersion')->willReturn('1.6.0');
+        $this->appManager = $this->createStub(IAppManager::class);
+        $this->appManager->method('getAppVersion')->willReturn('1.6.0');
+    }
 
-        $this->service = new ExportService(
+    private function service(): ExportService {
+        return $this->service ??= new ExportService(
             $this->movieMapper,
             $this->watchMapper,
             $this->seriesMapper,
@@ -62,7 +66,7 @@ class ExportServiceTest extends TestCase {
             $this->watchlistMapper,
             $this->platformMapper,
             $this->libraryMapper,
-            $appManager
+            $this->appManager
         );
     }
 
@@ -107,7 +111,7 @@ class ExportServiceTest extends TestCase {
     }
 
     public function testEnvelopeCarriesAppVersionAndLibraryName(): void {
-        $data = $this->service->export(1);
+        $data = $this->service()->export(1);
 
         $this->assertSame('moviedb', $data['app']);
         $this->assertSame(1, $data['formatVersion']);
@@ -132,7 +136,7 @@ class ExportServiceTest extends TestCase {
             $this->watch(1, null, ['setRating' => 8, 'setWatchedAt' => '2025-01-02']),
         ]);
 
-        $movies = $this->service->export(1)['movies'];
+        $movies = $this->service()->export(1)['movies'];
 
         $this->assertSame([9, 8], array_column($movies[0]['watches'], 'rating'));
         $this->assertSame(['2024-01-02', '2025-01-02'], array_column($movies[0]['watches'], 'watchedAt'));
@@ -150,7 +154,7 @@ class ExportServiceTest extends TestCase {
             $this->watch(null, 10, ['setRating' => 2]),
         ]);
 
-        $exported = $this->service->export(1)['series'][0];
+        $exported = $this->service()->export(1)['series'][0];
 
         $this->assertSame(9, $exported['watch']['rating']);
     }
@@ -161,7 +165,7 @@ class ExportServiceTest extends TestCase {
         $series->setTitle('Dark');
         $this->seriesMapper->method('findAllByLibrary')->willReturn([$series]);
 
-        $this->assertNull($this->service->export(1)['series'][0]['watch']);
+        $this->assertNull($this->service()->export(1)['series'][0]['watch']);
     }
 
     public function testOnlyCustomPlatformsAreListedButDefaultNamesStayOnWatches(): void {
@@ -176,7 +180,7 @@ class ExportServiceTest extends TestCase {
             $this->watch(2, null, ['setPlatformId' => 2]),
         ]);
 
-        $data = $this->service->export(1);
+        $data = $this->service()->export(1);
 
         $this->assertSame([['name' => 'My Cinema', 'icon' => 'mdi-movie']], $data['platforms']);
         $this->assertSame('Netflix', $data['movies'][0]['watches'][0]['platform']);
@@ -184,6 +188,7 @@ class ExportServiceTest extends TestCase {
     }
 
     public function testPlatformIsLookedUpOncePerId(): void {
+        $this->platformMapper = $this->createMock(PlatformMapper::class);
         $this->platformMapper->expects($this->once())->method('find')
             ->willReturn($this->platform(1, 'Netflix', true));
         $this->movieMapper->method('findAllByLibrary')->willReturn([$this->movie(1, 'A')]);
@@ -192,7 +197,7 @@ class ExportServiceTest extends TestCase {
             $this->watch(1, null, ['setPlatformId' => 1]),
         ]);
 
-        $this->service->export(1);
+        $this->service()->export(1);
     }
 
     public function testWatchOnDeletedPlatformIsExportedWithoutPlatform(): void {
@@ -202,7 +207,7 @@ class ExportServiceTest extends TestCase {
             $this->watch(1, null, ['setPlatformId' => 99, 'setRating' => 6]),
         ]);
 
-        $data = $this->service->export(1);
+        $data = $this->service()->export(1);
 
         $this->assertNull($data['movies'][0]['watches'][0]['platform']);
         $this->assertSame(6, $data['movies'][0]['watches'][0]['rating']);
@@ -232,7 +237,7 @@ class ExportServiceTest extends TestCase {
         $item->setReleaseDate('2030-01-01 00:00:00');
         $this->watchlistMapper->method('findAllByLibrary')->willReturn([$item]);
 
-        $data = $this->service->export(1);
+        $data = $this->service()->export(1);
 
         $this->assertSame('1999-03-31', $data['movies'][0]['releaseDate']);
         $this->assertNull($data['movies'][1]['releaseDate']);
@@ -264,7 +269,7 @@ class ExportServiceTest extends TestCase {
             $this->watch(null, 10),
         ]);
 
-        $data = $this->service->export(1);
+        $data = $this->service()->export(1);
 
         $this->assertSame(
             ['app', 'formatVersion', 'appVersion', 'exportedAt', 'library', 'platforms', 'movies', 'series', 'watchlist'],
@@ -299,7 +304,7 @@ class ExportServiceTest extends TestCase {
      * end up in the export file (and thus never travel between instances).
      */
     public function testExportDoesNotContainQuizResults(): void {
-        $json = json_encode($this->service->export(1));
+        $json = json_encode($this->service()->export(1));
 
         $this->assertStringNotContainsStringIgnoringCase('quiz', $json);
     }
@@ -309,7 +314,7 @@ class ExportServiceTest extends TestCase {
             $this->movie(1, 'A', ['setUserId' => 'alice', 'setLibraryId' => 7]),
         ]);
 
-        $json = json_encode($this->service->export(7));
+        $json = json_encode($this->service()->export(7));
 
         $this->assertStringNotContainsString('alice', $json);
         $this->assertStringNotContainsString('userId', $json);
@@ -364,7 +369,7 @@ class ExportServiceTest extends TestCase {
         ]);
 
         // Through the file: JSON out, JSON in, validated, imported into another library.
-        $file = json_decode(json_encode($this->service->export(1)), true);
+        $file = json_decode(json_encode($this->service()->export(1)), true);
         $validated = (new ImportValidator())->validate($file);
         $this->assertSame(['platforms' => 0, 'movies' => 0, 'watches' => 0, 'series' => 0, 'episodes' => 0, 'watchlist' => 0], $validated['invalid']);
 
@@ -408,13 +413,13 @@ class ExportServiceTest extends TestCase {
         };
         $mappers = [];
         foreach ([MovieMapper::class, MovieWatchMapper::class, SeriesMapper::class, EpisodeMapper::class, WatchlistMapper::class, PlatformMapper::class] as $class) {
-            $mapper = $this->createMock($class);
+            $mapper = $this->createStub($class);
             $mapper->method('insert')->willReturnCallback($assignId);
             $mappers[] = $mapper;
         }
 
         return [
-            new ImportService(...[...$mappers, $this->createMock(IDBConnection::class)]),
+            new ImportService(...[...$mappers, $this->createStub(IDBConnection::class)]),
             function () use (&$inserted): array {
                 return $inserted;
             },

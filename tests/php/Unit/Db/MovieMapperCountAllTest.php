@@ -29,7 +29,7 @@ class MovieMapperCountAllTest extends TestCase {
 
         $this->qbStub = new FluentQBStub();
 
-        $db = $this->createMock(IDBConnection::class);
+        $db = $this->createStub(IDBConnection::class);
         $db->method('getQueryBuilder')->willReturn($this->qbStub);
         $db->method('escapeLikeParameter')->willReturnArgument(0);
 

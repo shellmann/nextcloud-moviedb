@@ -27,8 +27,8 @@ class MovieServiceFindWithLatestWatchTest extends TestCase {
 
     protected function setUp(): void {
         parent::setUp();
-        $this->mapper = $this->createMock(MovieMapper::class);
-        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->mapper = $this->createStub(MovieMapper::class);
+        $this->watchMapper = $this->createStub(MovieWatchMapper::class);
         $this->service = new MovieService($this->mapper, $this->watchMapper);
     }
 

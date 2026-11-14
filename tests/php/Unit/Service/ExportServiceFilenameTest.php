@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Tests\Unit\Service;
 
 use OCA\MovieDB\Service\ExportService;
 use OCA\MovieDB\Tests\Unit\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class ExportServiceFilenameTest extends TestCase {
     private \DateTimeImmutable $at;
@@ -19,9 +20,7 @@ class ExportServiceFilenameTest extends TestCase {
         $this->assertSame('moviedb-Personal-2026-09-29_19-36.json', ExportService::filename('Personal', $this->at));
     }
 
-    /**
-     * @dataProvider namesProvider
-     */
+    #[DataProvider('namesProvider')]
     public function testNameIsReducedToSafeAscii(string $name, string $expected): void {
         $this->assertSame("moviedb-$expected-2026-09-29_19-36.json", ExportService::filename($name, $this->at));
     }
