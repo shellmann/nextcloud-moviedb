@@ -95,7 +95,7 @@
 						<div v-if="networks.length" class="meta-item">
 							<dt>{{ t('moviedb', 'Network') }}</dt>
 							<dd class="networks">
-								<template v-for="network in networks" :key="network.name">
+								<template v-for="(network, index) in networks" :key="`${index}-${network.name}`">
 									<!-- TMDB logos are often dark on transparent: a light chip keeps them readable in dark mode. -->
 									<span v-if="network.logoPath" class="network-logo">
 										<img :src="networkLogoUrl(network)" :alt="network.name" height="20">

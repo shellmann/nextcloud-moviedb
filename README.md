@@ -27,7 +27,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 - **Coming up & always up to date**: The dashboard lists the shows you are up to date on whose next episode airs soon; new seasons and episodes come in from TMDB by themselves, or with "Update from TMDB" on the show page
 - **Never miss an episode**: Nextcloud notifications when an episode airs or a watchlist title comes out, and a read-only "MovieDB – Upcoming" calendar in the Calendar app and on synced devices; both can be switched off per user
 - **More show details**: Type, network (with its logo), TMDB score and cast on the TV show page, and when it was last synced with TMDB
-- **Trailer and where to watch**: A "Play trailer" link and the streaming services that offer the title in your country (taken from your TMDB language, or your Nextcloud language) on the movie and TV show pages; fetched from TMDB when you open a page and kept for 12 hours
+- **Trailer and where to watch**: A "Play trailer" link and the streaming services that offer the title in your country (the country of your TMDB language in Settings, e.g. `de-DE` → Germany) on the movie and TV show pages; fetched from TMDB when you open a page and kept for 12 hours
 - **Rewatch Support**: Log multiple viewings with separate ratings, platforms, and dates
 - **TMDB Integration**: Automatically fetch movie and TV posters, cast, plot, and episode data
 - **Personal Ratings**: Rate movies and shows 1–10 and write your own reviews

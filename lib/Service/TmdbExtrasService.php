@@ -11,10 +11,14 @@ use OCP\L10N\IFactory;
 
 /**
  * Trailer and "where to watch" for a title, cached for twelve hours so that
- * opening a detail page does not call TMDB every time.
+ * opening a detail page does not call TMDB every time. A failed call (unknown
+ * title, TMDB down or busy) is remembered for five minutes, so a page that is
+ * opened again and again does not ask TMDB each time either.
  */
 class TmdbExtrasService {
     public const TTL = 43200;
+    public const FAILURE_TTL = 300;
+    private const FAILED = ['failed' => true];
 
     private ?ICache $cache = null;
 
@@ -39,11 +43,19 @@ class TmdbExtrasService {
         $key = 'extras-' . $type . '-' . $tmdbId . '-' . $language . '-' . $region;
 
         $cached = $this->cache()->get($key);
+        if ($cached === self::FAILED) {
+            throw new \RuntimeException('TMDB failed for this title a few minutes ago');
+        }
         if (is_array($cached) && array_key_exists('trailer', $cached) && array_key_exists('watch', $cached)) {
             return $cached;
         }
 
-        $extras = $this->tmdb->getExtras($type, $tmdbId, $userId, $language, $region);
+        try {
+            $extras = $this->tmdb->getExtras($type, $tmdbId, $userId, $language, $region);
+        } catch (\Exception $e) {
+            $this->cache()->set($key, self::FAILED, self::FAILURE_TTL);
+            throw $e;
+        }
         $this->cache()->set($key, $extras, self::TTL);
 
         return $extras;

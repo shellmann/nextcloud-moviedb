@@ -70,11 +70,21 @@ class TmdbExtrasServiceTest extends TestCase {
         $this->service()->get('movie', 1, null, 'de');
     }
 
-    public function testErrorsAreNotCached(): void {
+    public function testFailureIsRememberedForFiveMinutes(): void {
         $this->tmdb->method('getExtras')->willThrowException(new \RuntimeException('boom'));
         $this->cache = $this->createMock(ICache::class);
         $this->cache->method('get')->willReturn(null);
-        $this->cache->expects($this->never())->method('set');
+        $this->cache->expects($this->once())->method('set')
+            ->with('extras-movie-1-en-US-US', ['failed' => true], TmdbExtrasService::FAILURE_TTL);
+
+        $this->expectException(\RuntimeException::class);
+        $this->service()->get('movie', 1, 'alice', 'en-US');
+    }
+
+    public function testRememberedFailureDoesNotCallTmdb(): void {
+        $this->tmdb = $this->createMock(TmdbService::class);
+        $this->tmdb->expects($this->never())->method('getExtras');
+        $this->cache->method('get')->willReturn(['failed' => true]);
 
         $this->expectException(\RuntimeException::class);
         $this->service()->get('movie', 1, 'alice', 'en-US');
