@@ -18,15 +18,18 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\Config\IUserConfig;
 use OCP\Notification\IManager;
 use OCP\Notification\INotification;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use Psr\Log\LoggerInterface;
 
+#[AllowMockObjectsWithoutExpectations]
 class ReleaseNotificationServiceTest extends TestCase {
     private EpisodeMapper&MockObject $episodes;
     private WatchlistMapper&MockObject $watchlist;
-    private SeriesMapper&MockObject $series;
-    private LibraryMapper&MockObject $libraries;
-    private LibraryMemberMapper&MockObject $members;
+    private SeriesMapper&Stub $series;
+    private LibraryMapper&Stub $libraries;
+    private LibraryMemberMapper&Stub $members;
     private IUserConfig&MockObject $config;
     private IManager&MockObject $manager;
     private ReleaseNotificationService $service;
@@ -39,9 +42,9 @@ class ReleaseNotificationServiceTest extends TestCase {
         parent::setUp();
         $this->episodes = $this->createMock(EpisodeMapper::class);
         $this->watchlist = $this->createMock(WatchlistMapper::class);
-        $this->series = $this->createMock(SeriesMapper::class);
-        $this->libraries = $this->createMock(LibraryMapper::class);
-        $this->members = $this->createMock(LibraryMemberMapper::class);
+        $this->series = $this->createStub(SeriesMapper::class);
+        $this->libraries = $this->createStub(LibraryMapper::class);
+        $this->members = $this->createStub(LibraryMemberMapper::class);
         $this->config = $this->createMock(IUserConfig::class);
         $this->config->method('getValueString')->willReturn('1');
         $this->manager = $this->createMock(IManager::class);
@@ -146,7 +149,7 @@ class ReleaseNotificationServiceTest extends TestCase {
     }
 
     public function testAFailingNotifyDoesNotStopTheOthers(): void {
-        $manager = $this->createMock(IManager::class);
+        $manager = $this->createStub(IManager::class);
         $manager->method('createNotification')->willReturnCallback(fn () => $this->fakeNotification());
         $manager->method('notify')->willThrowException(new \RuntimeException('boom'));
         $service = new ReleaseNotificationService(
@@ -205,7 +208,7 @@ class ReleaseNotificationServiceTest extends TestCase {
     }
 
     public function testDismissNeverThrows(): void {
-        $manager = $this->createMock(IManager::class);
+        $manager = $this->createStub(IManager::class);
         $manager->method('createNotification')->willThrowException(new \RuntimeException('boom'));
         $service = new ReleaseNotificationService(
             $this->episodes, $this->watchlist, $this->series, $this->libraries, $this->members,

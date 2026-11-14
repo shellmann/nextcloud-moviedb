@@ -49,6 +49,13 @@ composer test                                     # all tests
 If a test needs a Nextcloud class or interface that is not stubbed yet, add a
 minimal stub to `NextcloudStubs.php`.
 
+The tests use PHPUnit 12, and `phpunit.xml` fails the run on any PHPUnit notice or
+deprecation. Use `createStub()` for a test double that only returns values, and
+`createMock()` only when the test sets expectations on it (`expects()`, `with()`).
+Classes whose `setUp()` builds shared mocks that some tests leave without
+expectations carry `#[AllowMockObjectsWithoutExpectations]`. Data providers are
+`public static` methods and are named with `#[DataProvider('...')]`.
+
 Migrations (`lib/Migration/`) have no unit tests and are excluded from coverage
 in `phpunit.xml`; they are pure database I/O and are covered by the upgrade check
 below.

@@ -15,9 +15,11 @@ use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\UserDataCleanupService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\IDBConnection;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 
+#[AllowMockObjectsWithoutExpectations]
 class UserDataCleanupServiceTest extends TestCase {
 
     private LibraryMapper&MockObject $libraryMapper;

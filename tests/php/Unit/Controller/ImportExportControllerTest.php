@@ -18,8 +18,10 @@ use OCP\IDateTimeZone;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
 
+#[AllowMockObjectsWithoutExpectations]
 class ImportExportControllerTest extends TestCase {
     private IRequest $request;
     private ExportService $exportService;
@@ -40,12 +42,12 @@ class ImportExportControllerTest extends TestCase {
         $this->libraryService = $this->createMock(LibraryService::class);
         $this->logger = $this->createMock(LoggerInterface::class);
 
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('alice');
-        $session = $this->createMock(IUserSession::class);
+        $session = $this->createStub(IUserSession::class);
         $session->method('getUser')->willReturn($user);
 
-        $zone = $this->createMock(IDateTimeZone::class);
+        $zone = $this->createStub(IDateTimeZone::class);
         $zone->method('getTimeZone')->willReturn(new \DateTimeZone('Europe/Berlin'));
 
         $this->controller = new ImportExportController(

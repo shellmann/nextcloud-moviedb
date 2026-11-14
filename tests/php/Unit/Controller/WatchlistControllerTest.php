@@ -19,6 +19,7 @@ use OCP\IDBConnection;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -29,6 +30,7 @@ use Psr\Log\LoggerInterface;
  * SeriesService::createFromTmdb, deletes the watchlist row, returns `series`,
  * and must NOT create a movie or mark any episodes watched.
  */
+#[AllowMockObjectsWithoutExpectations]
 class WatchlistControllerTest extends TestCase {
     private IRequest $request;
     private WatchlistService $service;
@@ -47,18 +49,18 @@ class WatchlistControllerTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $this->request = $this->createMock(IRequest::class);
+        $this->request = $this->createStub(IRequest::class);
         $this->service = $this->createMock(WatchlistService::class);
         $this->movieService = $this->createMock(MovieService::class);
         $this->watchService = $this->createMock(MovieWatchService::class);
         $this->seriesService = $this->createMock(SeriesService::class);
-        $this->tmdbService = $this->createMock(TmdbService::class);
-        $this->libraryService = $this->createMock(LibraryService::class);
-        $this->db = $this->createMock(IDBConnection::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
-        $this->userSession = $this->createMock(IUserSession::class);
+        $this->tmdbService = $this->createStub(TmdbService::class);
+        $this->libraryService = $this->createStub(LibraryService::class);
+        $this->db = $this->createStub(IDBConnection::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
+        $this->userSession = $this->createStub(IUserSession::class);
 
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('testuser');
         $this->userSession->method('getUser')->willReturn($user);
 
@@ -171,7 +173,7 @@ class WatchlistControllerTest extends TestCase {
 
     public function testAcknowledgeReleaseDateIsForbiddenWithoutEditPermission(): void {
         // A read-only member must not clear the badge for everyone who shares the library.
-        $libraryService = $this->createMock(LibraryService::class);
+        $libraryService = $this->createStub(LibraryService::class);
         $libraryService->method('resolveLibraryId')->willReturn(self::LIBRARY_ID);
         $libraryService->method('canEdit')->willReturn(false);
 

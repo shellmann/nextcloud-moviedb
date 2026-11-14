@@ -13,8 +13,10 @@ use OCP\Config\IUserConfig;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 
+#[AllowMockObjectsWithoutExpectations]
 class SettingsControllerTest extends TestCase {
     private IRequest $request;
     private IUserConfig $userConfig;
@@ -25,14 +27,14 @@ class SettingsControllerTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $this->request = $this->createMock(IRequest::class);
+        $this->request = $this->createStub(IRequest::class);
         $this->userConfig = $this->createMock(IUserConfig::class);
         $this->settingsService = $this->createMock(SettingsService::class);
         $this->tmdbService = $this->createMock(TmdbService::class);
 
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('alice');
-        $userSession = $this->createMock(IUserSession::class);
+        $userSession = $this->createStub(IUserSession::class);
         $userSession->method('getUser')->willReturn($user);
 
         $this->controller = new SettingsController(

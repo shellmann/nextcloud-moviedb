@@ -8,9 +8,11 @@ use OCA\MovieDB\Db\QuizResult;
 use OCA\MovieDB\Db\QuizResultMapper;
 use OCA\MovieDB\Service\QuizResultService;
 use OCA\MovieDB\Tests\Unit\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 
+#[AllowMockObjectsWithoutExpectations]
 class QuizResultServiceTest extends TestCase {
 
     private QuizResultMapper&MockObject $mapper;

@@ -10,11 +10,14 @@ use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Service\SeriesProgressService;
 use OCA\MovieDB\Tests\Unit\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 
+#[AllowMockObjectsWithoutExpectations]
 class SeriesProgressServiceTest extends TestCase {
 
-    private SeriesMapper&MockObject $seriesMapper;
+    private SeriesMapper&Stub $seriesMapper;
     private EpisodeMapper&MockObject $episodeMapper;
     private SeriesProgressService $service;
 
@@ -22,7 +25,7 @@ class SeriesProgressServiceTest extends TestCase {
 
     protected function setUp(): void {
         parent::setUp();
-        $this->seriesMapper = $this->createMock(SeriesMapper::class);
+        $this->seriesMapper = $this->createStub(SeriesMapper::class);
         $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $this->service = new SeriesProgressService($this->seriesMapper, $this->episodeMapper);
     }

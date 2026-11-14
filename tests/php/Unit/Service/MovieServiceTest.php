@@ -11,12 +11,14 @@ use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 /**
  * Unit tests for MovieService
  *
  * Tests the business logic layer for movie CRUD operations.
  */
+#[AllowMockObjectsWithoutExpectations]
 class MovieServiceTest extends TestCase {
     private MovieMapper $mapper;
     private MovieWatchMapper $watchMapper;

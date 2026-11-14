@@ -15,32 +15,35 @@ use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use Psr\Log\LoggerInterface;
 
+#[AllowMockObjectsWithoutExpectations]
 class SeriesControllerTest extends TestCase {
 
-    private IRequest&MockObject $request;
+    private IRequest&Stub $request;
     private SeriesService&MockObject $service;
     private LibraryService&MockObject $libraryService;
     private SeriesProgressService&MockObject $progressService;
     private SeriesRefreshService&MockObject $refreshService;
-    private IUserSession&MockObject $userSession;
+    private IUserSession&Stub $userSession;
 
     private const LIB = 4;
 
     protected function setUp(): void {
         parent::setUp();
-        $this->request = $this->createMock(IRequest::class);
+        $this->request = $this->createStub(IRequest::class);
         $this->service = $this->createMock(SeriesService::class);
         $this->libraryService = $this->createMock(LibraryService::class);
         $this->progressService = $this->createMock(SeriesProgressService::class);
         $this->refreshService = $this->createMock(SeriesRefreshService::class);
 
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('alice');
-        $this->userSession = $this->createMock(IUserSession::class);
+        $this->userSession = $this->createStub(IUserSession::class);
         $this->userSession->method('getUser')->willReturn($user);
     }
 
@@ -61,7 +64,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testNewEndpointsRequireAuthentication(): void {
-        $session = $this->createMock(IUserSession::class);
+        $session = $this->createStub(IUserSession::class);
         $session->method('getUser')->willReturn(null);
         $controller = $this->controller($session);
 

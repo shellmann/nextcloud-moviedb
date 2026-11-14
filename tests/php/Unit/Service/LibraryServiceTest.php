@@ -19,7 +19,9 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
 use OCP\IUserManager;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class LibraryServiceTest extends TestCase {
 
     private LibraryMapper $libraryMapper;
@@ -45,7 +47,7 @@ class LibraryServiceTest extends TestCase {
         $this->watchMapper    = $this->createMock(MovieWatchMapper::class);
         $this->episodeMapper  = $this->createMock(EpisodeMapper::class);
         $this->quizResultMapper = $this->createMock(QuizResultMapper::class);
-        $this->userManager    = $this->createMock(IUserManager::class);
+        $this->userManager    = $this->createStub(IUserManager::class);
         $this->db             = $this->createMock(IDBConnection::class);
 
         $this->service = new LibraryService(

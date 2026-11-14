@@ -10,7 +10,9 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\IRequest;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class AdminSettingsControllerTest extends TestCase {
     private IRequest $request;
     private TmdbService $tmdbService;
@@ -19,7 +21,7 @@ class AdminSettingsControllerTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $this->request = $this->createMock(IRequest::class);
+        $this->request = $this->createStub(IRequest::class);
         $this->tmdbService = $this->createMock(TmdbService::class);
 
         $this->controller = new AdminSettingsController($this->request, $this->tmdbService);

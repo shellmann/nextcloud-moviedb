@@ -10,9 +10,11 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\EventDispatcher\Event;
 use OCP\IUser;
 use OCP\User\Events\UserDeletedEvent;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 
+#[AllowMockObjectsWithoutExpectations]
 class UserDeletedListenerTest extends TestCase {
 
     private UserDataCleanupService&MockObject $cleanup;
@@ -27,7 +29,7 @@ class UserDeletedListenerTest extends TestCase {
     }
 
     private function event(): UserDeletedEvent {
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('alice');
         return new UserDeletedEvent($user);
     }

@@ -10,6 +10,7 @@ use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -17,6 +18,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * Tests the base authentication functionality for all API controllers.
  */
+#[AllowMockObjectsWithoutExpectations]
 class AuthenticatedControllerTest extends TestCase {
     private IRequest $request;
     private IUserSession $userSession;
@@ -25,11 +27,11 @@ class AuthenticatedControllerTest extends TestCase {
         parent::setUp();
 
         $this->request = $this->createMock(IRequest::class);
-        $this->userSession = $this->createMock(IUserSession::class);
+        $this->userSession = $this->createStub(IUserSession::class);
     }
 
     public function testRequireAuthReturnsNullWhenAuthenticated(): void {
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('testuser');
 
         $this->userSession->method('getUser')->willReturn($user);
@@ -58,7 +60,7 @@ class AuthenticatedControllerTest extends TestCase {
 
     public function testUserIdIsSetWhenAuthenticated(): void {
         $userId = 'testuser123';
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn($userId);
 
         $this->userSession->method('getUser')->willReturn($user);

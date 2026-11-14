@@ -12,8 +12,10 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\BackgroundJob\IJob;
 use OCP\BackgroundJob\IJobList;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
 
+#[AllowMockObjectsWithoutExpectations]
 class DismissLibraryNotificationsJobTest extends TestCase {
     private ReleaseNotificationService $service;
     private LibraryMemberMapper $members;
@@ -24,10 +26,10 @@ class DismissLibraryNotificationsJobTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
         $this->service = $this->createMock(ReleaseNotificationService::class);
-        $this->members = $this->createMock(LibraryMemberMapper::class);
+        $this->members = $this->createStub(LibraryMemberMapper::class);
         $this->jobList = $this->createMock(IJobList::class);
         $this->logger = $this->createMock(LoggerInterface::class);
-        $this->clock = $this->createMock(ITimeFactory::class);
+        $this->clock = $this->createStub(ITimeFactory::class);
         $this->clock->method('getTime')->willReturn(1_000_000);
         // pending since shortly before "now" unless a test says otherwise
         $this->service->method('cleanupPendingSince')->willReturn(999_000);

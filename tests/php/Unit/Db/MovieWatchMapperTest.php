@@ -37,7 +37,7 @@ class MovieWatchMapperTest extends TestCase {
     }
 
     private function mapperFor(string $provider): MovieWatchMapper {
-        $db = $this->createMock(IDBConnection::class);
+        $db = $this->createStub(IDBConnection::class);
         $db->method('getQueryBuilder')->willReturn($this->qbStub);
         $db->method('getDatabaseProvider')->willReturn($provider);
 

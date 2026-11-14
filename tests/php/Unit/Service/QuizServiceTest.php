@@ -12,10 +12,12 @@ use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Service\QuizService;
 use OCA\MovieDB\Tests\Unit\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use Random\Engine\Mt19937;
 use Random\Randomizer;
 
+#[AllowMockObjectsWithoutExpectations]
 class QuizServiceTest extends TestCase {
 
     private MovieMapper&MockObject $movieMapper;

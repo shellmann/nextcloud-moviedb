@@ -17,6 +17,7 @@ use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 /**
  * Unit tests for SeriesService — the episode-level TV layer.
@@ -27,6 +28,7 @@ use OCP\IDBConnection;
  * boolean flag on moviedb_episodes. Progress is derived from that flag;
  * mark-watched flips it (no per-episode watch rows).
  */
+#[AllowMockObjectsWithoutExpectations]
 class SeriesServiceTest extends TestCase {
     private SeriesMapper $mapper;
     private EpisodeMapper $episodeMapper;

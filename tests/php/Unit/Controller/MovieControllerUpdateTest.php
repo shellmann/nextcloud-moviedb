@@ -39,14 +39,14 @@ class MovieControllerUpdateTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $this->request = $this->createMock(IRequest::class);
-        $this->movieService = $this->createMock(MovieService::class);
+        $this->request = $this->createStub(IRequest::class);
+        $this->movieService = $this->createStub(MovieService::class);
         $this->watchService = $this->createMock(MovieWatchService::class);
-        $this->libraryService = $this->createMock(LibraryService::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
-        $this->userSession = $this->createMock(IUserSession::class);
+        $this->libraryService = $this->createStub(LibraryService::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
+        $this->userSession = $this->createStub(IUserSession::class);
 
-        $user = $this->createMock(IUser::class);
+        $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('testuser');
         $this->userSession->method('getUser')->willReturn($user);
 

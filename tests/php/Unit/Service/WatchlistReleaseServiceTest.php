@@ -9,9 +9,11 @@ use OCA\MovieDB\Db\WatchlistMapper;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Service\WatchlistReleaseService;
 use OCA\MovieDB\Tests\Unit\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 
+#[AllowMockObjectsWithoutExpectations]
 class WatchlistReleaseServiceTest extends TestCase {
     private WatchlistMapper&MockObject $mapper;
     private TmdbService&MockObject $tmdb;

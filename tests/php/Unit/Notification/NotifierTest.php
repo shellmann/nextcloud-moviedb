@@ -11,17 +11,19 @@ use OCP\IURLGenerator;
 use OCP\L10N\IFactory;
 use OCP\Notification\INotification;
 use OCP\Notification\UnknownNotificationException;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class NotifierTest extends TestCase {
     private Notifier $notifier;
 
     protected function setUp(): void {
         parent::setUp();
-        $l = $this->createMock(IL10N::class);
+        $l = $this->createStub(IL10N::class);
         $l->method('t')->willReturnCallback(fn (string $t, array $p = []) => vsprintf($t, $p));
-        $factory = $this->createMock(IFactory::class);
+        $factory = $this->createStub(IFactory::class);
         $factory->method('get')->willReturn($l);
-        $url = $this->createMock(IURLGenerator::class);
+        $url = $this->createStub(IURLGenerator::class);
         $url->method('linkToRouteAbsolute')->willReturn('https://nc.example/apps/moviedb/');
         $url->method('imagePath')->willReturn('/apps/moviedb/img/app-dark.svg');
         $url->method('getAbsoluteURL')->willReturnCallback(fn (string $p) => 'https://nc.example' . $p);

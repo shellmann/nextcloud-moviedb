@@ -18,7 +18,9 @@ use OCA\MovieDB\Service\ImportValidator;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\Entity;
 use OCP\IDBConnection;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class ImportServiceTest extends TestCase {
     private MovieMapper $movieMapper;
     private MovieWatchMapper $watchMapper;
@@ -35,12 +37,12 @@ class ImportServiceTest extends TestCase {
 
     protected function setUp(): void {
         parent::setUp();
-        $this->movieMapper = $this->createMock(MovieMapper::class);
-        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
-        $this->seriesMapper = $this->createMock(SeriesMapper::class);
-        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
-        $this->watchlistMapper = $this->createMock(WatchlistMapper::class);
-        $this->platformMapper = $this->createMock(PlatformMapper::class);
+        $this->movieMapper = $this->createStub(MovieMapper::class);
+        $this->watchMapper = $this->createStub(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createStub(SeriesMapper::class);
+        $this->episodeMapper = $this->createStub(EpisodeMapper::class);
+        $this->watchlistMapper = $this->createStub(WatchlistMapper::class);
+        $this->platformMapper = $this->createStub(PlatformMapper::class);
         $this->db = $this->createMock(IDBConnection::class);
 
         $assignId = function (Entity $e): Entity {
@@ -200,7 +202,7 @@ class ImportServiceTest extends TestCase {
     }
 
     public function testRollsBackAndRethrowsOnFailure(): void {
-        $failing = $this->createMock(MovieMapper::class);
+        $failing = $this->createStub(MovieMapper::class);
         $failing->method('findAllByLibrary')->willReturn([]);
         $failing->method('insert')->willThrowException(new \RuntimeException('db down'));
         $service = new ImportService(

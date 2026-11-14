@@ -13,6 +13,7 @@ use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Db\WatchlistMapper;
 use OCA\MovieDB\Service\StatsService;
 use OCA\MovieDB\Tests\Unit\TestCase;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 /**
  * Unit tests for StatsService — the dashboard aggregates.
@@ -22,6 +23,7 @@ use OCA\MovieDB\Tests\Unit\TestCase;
  * average rating is enforced at the mapper layer (getAverageRating drops its
  * movie_id filter) and passes straight through getOverview.
  */
+#[AllowMockObjectsWithoutExpectations]
 class StatsServiceTest extends TestCase {
     private MovieMapper $movieMapper;
     private MovieWatchMapper $watchMapper;
@@ -36,12 +38,12 @@ class StatsServiceTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $this->movieMapper = $this->createMock(MovieMapper::class);
+        $this->movieMapper = $this->createStub(MovieMapper::class);
         $this->watchMapper = $this->createMock(MovieWatchMapper::class);
-        $this->watchlistMapper = $this->createMock(WatchlistMapper::class);
+        $this->watchlistMapper = $this->createStub(WatchlistMapper::class);
         $this->platformMapper = $this->createMock(PlatformMapper::class);
         $this->seriesMapper = $this->createMock(SeriesMapper::class);
-        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->episodeMapper = $this->createStub(EpisodeMapper::class);
 
         $this->service = new StatsService(
             $this->movieMapper,

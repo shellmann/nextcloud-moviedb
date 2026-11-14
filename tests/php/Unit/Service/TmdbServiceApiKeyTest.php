@@ -11,10 +11,12 @@ use OCP\Http\Client\IClient;
 use OCP\Http\Client\IClientService;
 use OCP\Http\Client\IResponse;
 use OCP\IAppConfig;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 /**
  * Which TMDB key is used, and how the instance-wide key is stored and checked.
  */
+#[AllowMockObjectsWithoutExpectations]
 class TmdbServiceApiKeyTest extends TestCase {
     private IClientService $clientService;
     private IClient $client;
@@ -26,9 +28,9 @@ class TmdbServiceApiKeyTest extends TestCase {
         parent::setUp();
 
         $this->client = $this->createMock(IClient::class);
-        $this->clientService = $this->createMock(IClientService::class);
+        $this->clientService = $this->createStub(IClientService::class);
         $this->clientService->method('newClient')->willReturn($this->client);
-        $this->userConfig = $this->createMock(IUserConfig::class);
+        $this->userConfig = $this->createStub(IUserConfig::class);
         $this->appConfig = $this->createMock(IAppConfig::class);
 
         $this->service = new TmdbService($this->clientService, $this->userConfig, $this->appConfig);
@@ -128,7 +130,7 @@ class TmdbServiceApiKeyTest extends TestCase {
     }
 
     private function response(int $status, string $body = '{}'): IResponse {
-        $response = $this->createMock(IResponse::class);
+        $response = $this->createStub(IResponse::class);
         $response->method('getStatusCode')->willReturn($status);
         $response->method('getBody')->willReturn($body);
         return $response;

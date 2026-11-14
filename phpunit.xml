@@ -3,7 +3,9 @@
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/12.5/phpunit.xsd"
          bootstrap="tests/php/bootstrap.php"
          colors="true"
-         cacheDirectory=".phpunit.cache">
+         cacheDirectory=".phpunit.cache"
+         failOnPhpunitDeprecation="true"
+         failOnPhpunitNotice="true">
     <testsuites>
         <testsuite name="MovieDB Test Suite">
             <directory>tests/php</directory>

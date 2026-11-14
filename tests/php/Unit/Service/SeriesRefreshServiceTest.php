@@ -12,13 +12,16 @@ use OCA\MovieDB\Service\SeriesRefreshService;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\IDBConnection;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 
+#[AllowMockObjectsWithoutExpectations]
 class SeriesRefreshServiceTest extends TestCase {
     private SeriesMapper&MockObject $seriesMapper;
     private EpisodeMapper&MockObject $episodeMapper;
     private TmdbService&MockObject $tmdb;
-    private IDBConnection&MockObject $db;
+    private IDBConnection&Stub $db;
     private SeriesRefreshService $service;
 
     /** @var string[] order of TMDB calls and transaction events */
@@ -33,7 +36,7 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->seriesMapper = $this->createMock(SeriesMapper::class);
         $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $this->tmdb = $this->createMock(TmdbService::class);
-        $this->db = $this->createMock(IDBConnection::class);
+        $this->db = $this->createStub(IDBConnection::class);
         $this->db->method('beginTransaction')->willReturnCallback(function (): void {
             $this->events[] = 'begin';
         });
@@ -335,7 +338,7 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->episodeMapper->method('findBySeries')->willReturn([]);
         $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1]));
         $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => [$this->tmdbEp(1, 1, '2030-01-01')]]);
-        $failing = $this->createMock(EpisodeMapper::class);
+        $failing = $this->createStub(EpisodeMapper::class);
         $failing->method('findBySeries')->willReturn([]);
         $failing->method('insert')->willThrowException(new \RuntimeException('db'));
         $service = new SeriesRefreshService($this->seriesMapper, $failing, $this->tmdb, $this->db);

@@ -10,9 +10,11 @@ use OCA\MovieDB\Service\WhatsNewService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\App\IAppManager;
 use OCP\Config\IUserConfig;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 
+#[AllowMockObjectsWithoutExpectations]
 class WhatsNewServiceTest extends TestCase {
     private IUserConfig&MockObject $userConfig;
     private LibraryMapper&MockObject $libraryMapper;

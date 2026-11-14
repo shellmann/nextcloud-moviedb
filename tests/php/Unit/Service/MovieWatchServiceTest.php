@@ -10,10 +10,12 @@ use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Service\MovieWatchService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 /**
  * Unit tests for MovieWatchService — the per-viewing (rewatch) layer.
  */
+#[AllowMockObjectsWithoutExpectations]
 class MovieWatchServiceTest extends TestCase {
     private MovieWatchMapper $mapper;
     private PlatformMapper $platformMapper;

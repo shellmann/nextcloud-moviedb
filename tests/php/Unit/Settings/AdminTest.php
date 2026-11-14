@@ -11,10 +11,12 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\IURLGenerator;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class AdminTest extends TestCase {
     public function testFormProvidesOnlyWhetherAKeyIsSet(): void {
-        $tmdbService = $this->createMock(TmdbService::class);
+        $tmdbService = $this->createStub(TmdbService::class);
         $tmdbService->method('hasInstanceApiKey')->willReturn(true);
 
         $initialState = $this->createMock(IInitialState::class);

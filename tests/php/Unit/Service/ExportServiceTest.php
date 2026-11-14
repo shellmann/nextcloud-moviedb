@@ -26,7 +26,9 @@ use OCP\App\IAppManager;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Db\Entity;
 use OCP\IDBConnection;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
+#[AllowMockObjectsWithoutExpectations]
 class ExportServiceTest extends TestCase {
     private MovieMapper $movieMapper;
     private MovieWatchMapper $watchMapper;
@@ -39,19 +41,19 @@ class ExportServiceTest extends TestCase {
 
     protected function setUp(): void {
         parent::setUp();
-        $this->movieMapper = $this->createMock(MovieMapper::class);
-        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
-        $this->seriesMapper = $this->createMock(SeriesMapper::class);
-        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
-        $this->watchlistMapper = $this->createMock(WatchlistMapper::class);
+        $this->movieMapper = $this->createStub(MovieMapper::class);
+        $this->watchMapper = $this->createStub(MovieWatchMapper::class);
+        $this->seriesMapper = $this->createStub(SeriesMapper::class);
+        $this->episodeMapper = $this->createStub(EpisodeMapper::class);
+        $this->watchlistMapper = $this->createStub(WatchlistMapper::class);
         $this->platformMapper = $this->createMock(PlatformMapper::class);
-        $this->libraryMapper = $this->createMock(LibraryMapper::class);
+        $this->libraryMapper = $this->createStub(LibraryMapper::class);
 
         $library = new Library();
         $library->setName('Family');
         $this->libraryMapper->method('find')->willReturn($library);
 
-        $appManager = $this->createMock(IAppManager::class);
+        $appManager = $this->createStub(IAppManager::class);
         $appManager->method('getAppVersion')->willReturn('1.6.0');
 
         $this->service = new ExportService(
@@ -408,7 +410,7 @@ class ExportServiceTest extends TestCase {
         };
         $mappers = [];
         foreach ([MovieMapper::class, MovieWatchMapper::class, SeriesMapper::class, EpisodeMapper::class, WatchlistMapper::class, PlatformMapper::class] as $class) {
-            $mapper = $this->createMock($class);
+            $mapper = $this->createStub($class);
             $mapper->method('insert')->willReturnCallback($assignId);
             $mappers[] = $mapper;
         }

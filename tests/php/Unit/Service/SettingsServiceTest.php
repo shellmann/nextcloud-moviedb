@@ -9,8 +9,10 @@ use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\Config\IUserConfig;
 use OCP\IGroupManager;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 
+#[AllowMockObjectsWithoutExpectations]
 class SettingsServiceTest extends TestCase {
     private IUserConfig $userConfig;
     private TmdbService $tmdbService;
@@ -20,8 +22,8 @@ class SettingsServiceTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $this->userConfig = $this->createMock(IUserConfig::class);
-        $this->tmdbService = $this->createMock(TmdbService::class);
+        $this->userConfig = $this->createStub(IUserConfig::class);
+        $this->tmdbService = $this->createStub(TmdbService::class);
         $this->groupManager = $this->createMock(IGroupManager::class);
 
         $this->service = new SettingsService($this->userConfig, $this->tmdbService, $this->groupManager);

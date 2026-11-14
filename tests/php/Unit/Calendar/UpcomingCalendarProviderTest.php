@@ -10,8 +10,10 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\Config\IUserConfig;
 use OCP\IL10N;
 use OCP\L10N\IFactory;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 
+#[AllowMockObjectsWithoutExpectations]
 class UpcomingCalendarProviderTest extends TestCase {
     private UpcomingEventSource&MockObject $source;
     private IUserConfig&MockObject $config;
@@ -21,7 +23,7 @@ class UpcomingCalendarProviderTest extends TestCase {
         parent::setUp();
         $this->source = $this->createMock(UpcomingEventSource::class);
         $this->config = $this->createMock(IUserConfig::class);
-        $factory = $this->createMock(IFactory::class);
+        $factory = $this->createStub(IFactory::class);
         $factory->method('get')->willReturn($this->createMock(IL10N::class));
         $this->provider = new UpcomingCalendarProvider($this->source, $this->config, $factory);
     }

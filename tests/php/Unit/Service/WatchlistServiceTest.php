@@ -9,12 +9,14 @@ use OCA\MovieDB\Db\WatchlistMapper;
 use OCA\MovieDB\Service\WatchlistService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 /**
  * Unit tests for WatchlistService
  *
  * Tests the business logic for watchlist management.
  */
+#[AllowMockObjectsWithoutExpectations]
 class WatchlistServiceTest extends TestCase {
     private WatchlistMapper $mapper;
     private WatchlistService $service;

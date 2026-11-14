@@ -13,10 +13,13 @@ use OCA\MovieDB\Db\WatchlistMapper;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\IL10N;
 use OCP\IURLGenerator;
+use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 
+#[AllowMockObjectsWithoutExpectations]
 class UpcomingEventSourceTest extends TestCase {
-    private LibraryMapper&MockObject $libraries;
+    private LibraryMapper&Stub $libraries;
     private EpisodeMapper&MockObject $episodes;
     private WatchlistMapper&MockObject $watchlist;
     private UpcomingEventSource $source;
@@ -24,13 +27,13 @@ class UpcomingEventSourceTest extends TestCase {
 
     protected function setUp(): void {
         parent::setUp();
-        $this->libraries = $this->createMock(LibraryMapper::class);
+        $this->libraries = $this->createStub(LibraryMapper::class);
         $this->episodes = $this->createMock(EpisodeMapper::class);
         $this->watchlist = $this->createMock(WatchlistMapper::class);
-        $url = $this->createMock(IURLGenerator::class);
+        $url = $this->createStub(IURLGenerator::class);
         $url->method('linkToRouteAbsolute')->willReturn('https://nc.example/apps/moviedb/');
         $this->source = new UpcomingEventSource($this->libraries, $this->episodes, $this->watchlist, $url);
-        $this->l = $this->createMock(IL10N::class);
+        $this->l = $this->createStub(IL10N::class);
         $this->l->method('t')->willReturnCallback(fn (string $t, $p = []) => vsprintf($t, $p));
     }
 
