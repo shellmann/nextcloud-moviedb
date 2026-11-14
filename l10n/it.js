@@ -554,6 +554,10 @@ OC.L10N.register(
         "A new calendar \"MovieDB – Upcoming\" in the Calendar app and on your synced devices shows upcoming episodes and releases.": "Un nuovo calendario «MovieDB – Upcoming» nell'app Calendario e sui tuoi dispositivi sincronizzati mostra i prossimi episodi e le uscite.",
         "The TV show page shows more from TMDB: the type of show, the network, the TMDB score and the cast.": "La pagina della serie mostra più dati da TMDB: il tipo di serie, la rete, il punteggio TMDB e il cast.",
         "Better for screen readers and keyboard use, and Settings fits narrow screens.": "Migliore per screen reader e uso da tastiera, e le impostazioni si adattano agli schermi stretti.",
-        "\"Recently Watched\" on the dashboard now follows the episodes you watch, and shows without a watch date show up too.": "«Visti di recente» nella dashboard ora segue gli episodi che guardi, e anche le serie senza data di visione compaiono."
+        "\"Recently Watched\" on the dashboard now follows the episodes you watch, and shows without a watch date show up too.": "«Visti di recente» nella dashboard ora segue gli episodi che guardi, e anche le serie senza data di visione compaiono.",
+        "Movie and TV show pages have a \"Play trailer\" link.": "Le pagine di film e serie hanno un link «Guarda il trailer».",
+        "A new \"Where to watch\" section shows which streaming services offer a title in your country.": "Una nuova sezione «Dove guardare» mostra quali servizi di streaming offrono un titolo nel tuo paese.",
+        "The TV show page shows network logos and when the show was last synced with TMDB.": "La pagina della serie mostra i loghi delle emittenti e quando è stata sincronizzata l’ultima volta con TMDB.",
+        "MovieDB has a new app icon.": "MovieDB ha una nuova icona dell’app."
     },
 "nplurals=2; plural=(n != 1);");

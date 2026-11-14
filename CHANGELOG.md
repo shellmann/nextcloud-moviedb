@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-11-14
+
 ### Added
 - **Play trailer**: movie and TV show pages link to the trailer on YouTube (or Vimeo),
   in your TMDB language if there is one, else in English. The link is hidden when TMDB
