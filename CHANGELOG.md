@@ -8,6 +8,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Changed
+- **New app icon**: three colourful rings with a play button, in the style of the
+  Nextcloud logo (used with the kind permission of Nextcloud GmbH). The navigation
+  icon is a monochrome version of the same shape; the README shows the colour logo.
 - **Requires PHP 8.3 or later.** Nextcloud 33 and 34 already mark PHP 8.2 as deprecated,
   and Nextcloud 35 no longer supports it. The App Store now offers MovieDB only to
   servers with PHP 8.3 or later.

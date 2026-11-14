@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="img/logo.svg" alt="MovieDB logo" width="128">
+</p>
+
+<p align="center">
   <img src="screenshots/dashboard.png" alt="MovieDB dashboard screenshot" width="800">
 </p>
 
@@ -207,4 +211,5 @@ AGPL-3.0-or-later
 
 - Movie and TV show data provided by [The Movie Database (TMDB)](https://www.themoviedb.org/).
   This product uses TMDB and the TMDB APIs but is not endorsed, certified, or otherwise approved by TMDB.
+- The app icon is based on the Nextcloud logo, a trademark of Nextcloud GmbH, and is used with their permission (see [NOTICE](NOTICE)).
 - Built with [Vue 3](https://vuejs.org/), [Pinia](https://pinia.vuejs.org/), and [Nextcloud Vue](https://github.com/nextcloud/nextcloud-vue)

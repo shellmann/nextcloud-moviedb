@@ -1,0 +1,18 @@
+MovieDB for Nextcloud
+Copyright (c) shellmann and contributors. Licensed under AGPL-3.0-or-later (see LICENSE).
+
+App icon and logo
+-----------------
+The app icon (img/app.svg, img/app-dark.svg) and the logo (img/logo.svg) are based
+on the Nextcloud logo. "Nextcloud" and the Nextcloud logo are registered trademarks
+of Nextcloud GmbH.
+
+Nextcloud GmbH (Frank Karlitschek) allowed MovieDB to use the Nextcloud logo and
+name by email in November 2026, after the maintainer asked about this icon. The
+maintainer keeps that email. This permission is for MovieDB only; it does not
+extend to other projects that reuse these files, and Nextcloud GmbH may revoke it
+under its brand guidelines (https://nextcloud.com/brand/).
+
+Movie and TV show data
+----------------------
+This product uses the TMDB API but is not endorsed or certified by TMDB.
