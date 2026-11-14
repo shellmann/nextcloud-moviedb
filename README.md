@@ -1,4 +1,8 @@
 <p align="center">
+  <img src="img/logo.svg" alt="MovieDB logo" width="128">
+</p>
+
+<p align="center">
   <img src="screenshots/dashboard.png" alt="MovieDB dashboard screenshot" width="800">
 </p>
 

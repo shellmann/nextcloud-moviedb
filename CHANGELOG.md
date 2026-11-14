@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+- **New app icon**: three colourful rings with a play button, in the style of the
+  Nextcloud logo (used with the kind permission of Nextcloud GmbH). The navigation
+  icon is a monochrome version of the same shape; the README shows the colour logo.
+
 ## [1.11.1] - 2026-11-08
 
 ### Fixed
