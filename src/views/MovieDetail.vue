@@ -462,11 +462,13 @@ export default {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
+    flex-wrap: wrap;
     gap: 16px;
     margin-bottom: 12px;
 
     .movie-titles {
-        flex: 1;
+        flex: 1 1 240px;
+        min-width: 0;
 
         h2 {
             margin: 0;
@@ -485,7 +487,6 @@ export default {
         display: flex;
         flex-wrap: wrap;
         gap: 8px;
-        flex-shrink: 0;
     }
 
     @media (max-width: 600px) {
