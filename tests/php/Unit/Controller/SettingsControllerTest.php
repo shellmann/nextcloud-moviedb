@@ -13,6 +13,7 @@ use OCP\Config\IUserConfig;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class SettingsControllerTest extends TestCase {
     private IRequest $request;
@@ -115,9 +116,7 @@ class SettingsControllerTest extends TestCase {
         $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
     }
 
-    /**
-     * @dataProvider continueWatchingProvider
-     */
+    #[DataProvider('continueWatchingProvider')]
     public function testSavesContinueWatchingAsString(mixed $value, string $stored): void {
         $this->request->method('getParams')->willReturn(['showContinueWatching' => $value]);
         $this->userConfig->expects($this->once())->method('setValueString')
@@ -140,9 +139,7 @@ class SettingsControllerTest extends TestCase {
         $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
     }
 
-    /**
-     * @dataProvider continueWatchingProvider
-     */
+    #[DataProvider('continueWatchingProvider')]
     public function testSavesComingUpAsString(mixed $value, string $stored): void {
         $this->request->method('getParams')->willReturn(['showComingUp' => $value]);
         $this->userConfig->expects($this->once())->method('setValueString')
@@ -161,9 +158,7 @@ class SettingsControllerTest extends TestCase {
         $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
     }
 
-    /**
-     * @dataProvider continueWatchingProvider
-     */
+    #[DataProvider('continueWatchingProvider')]
     public function testSavesNotifyReleasesAndShowCalendarAsStrings(mixed $value, string $stored): void {
         $this->request->method('getParams')->willReturn(['notifyReleases' => $value, 'showCalendar' => $value]);
         $written = [];

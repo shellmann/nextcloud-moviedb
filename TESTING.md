@@ -3,7 +3,7 @@
 | What | Command | Needs | Runs in CI |
 |------|---------|-------|------------|
 | JavaScript/Vue tests | `npm test` | Node.js | every PR and push to `main` (`ci.yml`) |
-| PHP unit tests | `composer test` | PHP 8.2+, Composer | every PR and push to `main` (`ci.yml`) |
+| PHP unit tests | `composer test` | PHP 8.3+, Composer | every PR and push to `main` (`ci.yml`) |
 | Upgrade check + API smoke test | `tests/upgrade/check-upgrade.sh latest pgsql` | Docker, jq | every PR and push to `main` (`upgrade-check.yml`) |
 | Lint, translations, build | `npm run lint`, `npm run check:translations`, `npm run build` | Node.js | every PR and push to `main` (`ci.yml`) |
 

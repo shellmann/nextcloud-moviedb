@@ -8,6 +8,7 @@ use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\IDBConnection;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * Unit tests for MovieWatchMapper's year/platform aggregation.
@@ -59,9 +60,8 @@ class MovieWatchMapperTest extends TestCase {
      * Regression guard for #104: PostgreSQL has no substr(date, int, int), so
      * SUBSTR on the DATE column broke the dashboard stats there. Only SQLite,
      * which stores DATE as text, may use it.
-     *
-     * @dataProvider yearExpressionByProvider
      */
+    #[DataProvider('yearExpressionByProvider')]
     public function testGetCountByYearUsesYearExpressionTheDatabaseSupports(string $provider, string $expected): void {
         $this->mapperFor($provider)->getCountByYear(1);
 

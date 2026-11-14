@@ -53,7 +53,7 @@ class SeriesProgressServiceTest extends TestCase {
     public function testAttachProgressUsesOneQueryAndAddsFields(): void {
         // Only the series on the page are counted, not the whole library.
         $this->episodeMapper->expects($this->once())->method('progressByLibrary')
-            ->with(self::LIB, $this->isType('string'), [1, 2])
+            ->with(self::LIB, $this->isString(), [1, 2])
             ->willReturn([1 => ['watched' => 3, 'aired' => 4, 'lastWatchedAt' => '2026-10-01 10:00:00']]);
 
         $rows = $this->service->attachProgress([$this->series(1), $this->series(2)], self::LIB);

@@ -10,6 +10,7 @@ use OCA\MovieDB\Service\WhatsNewService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\App\IAppManager;
 use OCP\Config\IUserConfig;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 
 class WhatsNewServiceTest extends TestCase {
@@ -59,9 +60,7 @@ class WhatsNewServiceTest extends TestCase {
         $this->assertSame('1.9.0', $this->service->state('alice')['lastSeenVersion']);
     }
 
-    /**
-     * @dataProvider versionProvider
-     */
+    #[DataProvider('versionProvider')]
     public function testValidatesVersions(string $version, bool $valid): void {
         $this->assertSame($valid, WhatsNewService::isValidVersion($version));
     }

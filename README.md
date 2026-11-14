@@ -36,7 +36,7 @@ Track all the movies and TV shows you've watched with rich metadata from TMDB.
 ## Requirements
 
 - Nextcloud 33-35
-- PHP 8.2 or higher
+- PHP 8.3 or higher
 - A free TMDB API key ([Get one here](https://www.themoviedb.org/settings/api)), either per user or one for the whole instance
 
 ## Installation

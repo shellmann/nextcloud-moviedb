@@ -15,6 +15,7 @@ use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use Psr\Log\LoggerInterface;
 
@@ -252,9 +253,7 @@ class SeriesControllerTest extends TestCase {
         $this->assertSame(Http::STATUS_NOT_FOUND, $this->controller()->stopped(99)->getStatus());
     }
 
-    /**
-     * @dataProvider stoppedProvider
-     */
+    #[DataProvider('stoppedProvider')]
     public function testStoppedSetsOrClearsTheFlag(string $param, bool $stopped): void {
         $this->params(['stopped' => $param]);
         $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
@@ -294,9 +293,7 @@ class SeriesControllerTest extends TestCase {
         $this->controller()->index();
     }
 
-    /**
-     * @dataProvider badWatchStatusProvider
-     */
+    #[DataProvider('badWatchStatusProvider')]
     public function testIndexRejectsAnUnknownWatchStatus(mixed $value): void {
         $this->params(['watchStatus' => $value]);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);

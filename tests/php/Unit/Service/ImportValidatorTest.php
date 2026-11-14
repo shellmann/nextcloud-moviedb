@@ -6,6 +6,7 @@ namespace OCA\MovieDB\Tests\Unit\Service;
 
 use OCA\MovieDB\Service\ImportValidator;
 use OCA\MovieDB\Tests\Unit\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class ImportValidatorTest extends TestCase {
     private ImportValidator $validator;
@@ -79,9 +80,7 @@ class ImportValidatorTest extends TestCase {
         $this->assertSame(2, $r['invalid']['movies']);
     }
 
-    /**
-     * @dataProvider badPathProvider
-     */
+    #[DataProvider('badPathProvider')]
     public function testMaliciousImagePathsAreDropped(string $path): void {
         $r = $this->validator->validate($this->file(['movies' => [['title' => 'A', 'posterPath' => $path]]]));
         $this->assertNull($r['movies'][0]['posterPath']);
@@ -106,9 +105,7 @@ class ImportValidatorTest extends TestCase {
         $this->assertSame('<script>alert(1)</script>', $r['movies'][0]['director']);
     }
 
-    /**
-     * @dataProvider badRatingProvider
-     */
+    #[DataProvider('badRatingProvider')]
     public function testWatchWithInvalidRatingIsDropped(mixed $rating): void {
         $r = $this->validator->validate($this->file(['movies' => [[
             'title' => 'A', 'watches' => [['watchedAt' => '2024-01-01', 'rating' => $rating]],
@@ -194,9 +191,7 @@ class ImportValidatorTest extends TestCase {
         $this->assertSame(['Disney+', 'My Cinema'], $names);
     }
 
-    /**
-     * @dataProvider sectionLimitProvider
-     */
+    #[DataProvider('sectionLimitProvider')]
     public function testRejectsTooManyEntriesPerSection(string $section, int $limit): void {
         $this->expectException(\InvalidArgumentException::class);
         $this->validator->validate($this->file([$section => array_fill(0, $limit + 1, ['title' => 'x', 'name' => 'x'])]));

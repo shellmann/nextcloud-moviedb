@@ -10,6 +10,7 @@ use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
  * Unit tests for AuthenticatedController
@@ -75,9 +76,7 @@ class AuthenticatedControllerTest extends TestCase {
         $this->assertNull($this->getUserId($controller));
     }
 
-    /**
-     * @dataProvider mediaTypeProvider
-     */
+    #[DataProvider('mediaTypeProvider')]
     public function testMediaTypeParam(?string $rawValue, ?string $expected): void {
         $this->request->method('getParam')->with('mediaType')->willReturn($rawValue);
 

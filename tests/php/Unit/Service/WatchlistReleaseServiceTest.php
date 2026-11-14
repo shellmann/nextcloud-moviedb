@@ -9,6 +9,7 @@ use OCA\MovieDB\Db\WatchlistMapper;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Service\WatchlistReleaseService;
 use OCA\MovieDB\Tests\Unit\TestCase;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 
 class WatchlistReleaseServiceTest extends TestCase {
@@ -61,9 +62,7 @@ class WatchlistReleaseServiceTest extends TestCase {
         $this->assertFalse($item->hasReleaseDateNews());
     }
 
-    /**
-     * @dataProvider noDateProvider
-     */
+    #[DataProvider('noDateProvider')]
     public function testKeepsTheStoredDateWhenTmdbHasNone(array $details): void {
         $item = $this->item('2027-03-12');
         $this->tmdb->method('getMovieDetails')->willReturn($details);

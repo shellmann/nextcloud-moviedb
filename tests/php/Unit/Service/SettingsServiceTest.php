@@ -9,6 +9,7 @@ use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\Config\IUserConfig;
 use OCP\IGroupManager;
+use PHPUnit\Framework\Attributes\DataProvider;
 
 class SettingsServiceTest extends TestCase {
     private IUserConfig $userConfig;
@@ -32,9 +33,7 @@ class SettingsServiceTest extends TestCase {
         );
     }
 
-    /**
-     * @dataProvider keyProvider
-     */
+    #[DataProvider('keyProvider')]
     public function testKeyFlags(string $userKey, bool $instanceKey, bool $hasApiKey, bool $hasUserApiKey): void {
         $this->givenUserKey($userKey);
         $this->tmdbService->method('hasInstanceApiKey')->willReturn($instanceKey);
