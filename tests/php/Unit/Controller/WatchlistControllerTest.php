@@ -19,7 +19,6 @@ use OCP\IDBConnection;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -30,7 +29,6 @@ use Psr\Log\LoggerInterface;
  * SeriesService::createFromTmdb, deletes the watchlist row, returns `series`,
  * and must NOT create a movie or mark any episodes watched.
  */
-#[AllowMockObjectsWithoutExpectations]
 class WatchlistControllerTest extends TestCase {
     private IRequest $request;
     private WatchlistService $service;
@@ -42,7 +40,7 @@ class WatchlistControllerTest extends TestCase {
     private IDBConnection $db;
     private IUserSession $userSession;
     private LoggerInterface $logger;
-    private WatchlistController $controller;
+    private ?WatchlistController $controller = null;
 
     private const LIBRARY_ID = 1;
 
@@ -50,10 +48,10 @@ class WatchlistControllerTest extends TestCase {
         parent::setUp();
 
         $this->request = $this->createStub(IRequest::class);
-        $this->service = $this->createMock(WatchlistService::class);
-        $this->movieService = $this->createMock(MovieService::class);
-        $this->watchService = $this->createMock(MovieWatchService::class);
-        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->service = $this->createStub(WatchlistService::class);
+        $this->movieService = $this->createStub(MovieService::class);
+        $this->watchService = $this->createStub(MovieWatchService::class);
+        $this->seriesService = $this->createStub(SeriesService::class);
         $this->tmdbService = $this->createStub(TmdbService::class);
         $this->libraryService = $this->createStub(LibraryService::class);
         $this->db = $this->createStub(IDBConnection::class);
@@ -69,8 +67,10 @@ class WatchlistControllerTest extends TestCase {
 
         $this->db->method('beginTransaction');
         $this->db->method('commit');
+    }
 
-        $this->controller = new WatchlistController(
+    private function controller(): WatchlistController {
+        return $this->controller ??= new WatchlistController(
             $this->request,
             $this->service,
             $this->movieService,
@@ -95,6 +95,10 @@ class WatchlistControllerTest extends TestCase {
     }
 
     public function testMoveSeriesImportsShowAndReturnsSeries(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->watchService = $this->createMock(MovieWatchService::class);
+        $this->movieService = $this->createMock(MovieService::class);
+        $this->service = $this->createMock(WatchlistService::class);
         $item = $this->makeItem(5, 'series', 1399);
 
         $this->service->method('find')->with(5, self::LIBRARY_ID)->willReturn($item);
@@ -122,7 +126,7 @@ class WatchlistControllerTest extends TestCase {
         // Watchlist row removed in the same flow.
         $this->service->expects($this->once())->method('delete')->with(5, self::LIBRARY_ID);
 
-        $response = $this->controller->moveToWatched(5);
+        $response = $this->controller()->moveToWatched(5);
 
         $this->assertEquals(Http::STATUS_OK, $response->getStatus());
         $data = $response->getData();
@@ -132,6 +136,9 @@ class WatchlistControllerTest extends TestCase {
     }
 
     public function testMoveMovieCreatesMovieAndReturnsMovie(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->movieService = $this->createMock(MovieService::class);
+        $this->service = $this->createMock(WatchlistService::class);
         $item = $this->makeItem(7, 'movie', 27205);
 
         $this->service->method('find')->with(7, self::LIBRARY_ID)->willReturn($item);
@@ -150,7 +157,7 @@ class WatchlistControllerTest extends TestCase {
         $this->seriesService->expects($this->never())->method('createFromTmdb');
         $this->service->expects($this->once())->method('delete')->with(7, self::LIBRARY_ID);
 
-        $response = $this->controller->moveToWatched(7);
+        $response = $this->controller()->moveToWatched(7);
 
         $this->assertEquals(Http::STATUS_OK, $response->getStatus());
         $data = $response->getData();
@@ -160,18 +167,20 @@ class WatchlistControllerTest extends TestCase {
     }
 
     public function testAcknowledgeReleaseDateReturnsTheItem(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $item = $this->makeItem(5, 'movie', 1);
         $this->service->expects($this->once())->method('acknowledgeReleaseDate')
             ->with(5, self::LIBRARY_ID)
             ->willReturn($item);
 
-        $response = $this->controller->acknowledgeReleaseDate(5);
+        $response = $this->controller()->acknowledgeReleaseDate(5);
 
         $this->assertEquals(Http::STATUS_OK, $response->getStatus());
         $this->assertSame($item, $response->getData()['item']);
     }
 
     public function testAcknowledgeReleaseDateIsForbiddenWithoutEditPermission(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         // A read-only member must not clear the badge for everyone who shares the library.
         $libraryService = $this->createStub(LibraryService::class);
         $libraryService->method('resolveLibraryId')->willReturn(self::LIBRARY_ID);
@@ -198,10 +207,11 @@ class WatchlistControllerTest extends TestCase {
         $this->service->method('acknowledgeReleaseDate')
             ->willThrowException(new \OCP\AppFramework\Db\DoesNotExistException('x'));
 
-        $this->assertEquals(Http::STATUS_NOT_FOUND, $this->controller->acknowledgeReleaseDate(5)->getStatus());
+        $this->assertEquals(Http::STATUS_NOT_FOUND, $this->controller()->acknowledgeReleaseDate(5)->getStatus());
     }
 
     public function testIndexDefaultsToPageOneAndLimitFifty(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $this->request->method('getParam')->willReturnCallback(
             fn($k, $d = null) => $d
@@ -216,7 +226,7 @@ class WatchlistControllerTest extends TestCase {
             ->with(self::LIBRARY_ID, $this->anything())
             ->willReturn(0);
 
-        $response = $this->controller->index();
+        $response = $this->controller()->index();
 
         $data = $response->getData();
         $this->assertSame(1, $data['page']);
@@ -224,6 +234,7 @@ class WatchlistControllerTest extends TestCase {
     }
 
     public function testIndexAppliesPageAndLimitParams(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $this->request->method('getParam')->willReturnCallback(
             fn($k, $d = null) => match ($k) {
@@ -240,7 +251,7 @@ class WatchlistControllerTest extends TestCase {
             ->willReturn([]);
         $this->service->method('count')->willReturn(25);
 
-        $response = $this->controller->index();
+        $response = $this->controller()->index();
 
         $data = $response->getData();
         $this->assertSame(3, $data['page']);
@@ -249,6 +260,7 @@ class WatchlistControllerTest extends TestCase {
     }
 
     public function testIndexCapsLimitAtOneHundred(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $this->request->method('getParam')->willReturnCallback(
             fn($k, $d = null) => $k === 'limit' ? '500' : $d
@@ -260,12 +272,13 @@ class WatchlistControllerTest extends TestCase {
             ->willReturn([]);
         $this->service->method('count')->willReturn(0);
 
-        $response = $this->controller->index();
+        $response = $this->controller()->index();
 
         $this->assertSame(100, $response->getData()['limit']);
     }
 
     public function testIndexForwardsMediaTypeFilter(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $this->request->method('getParam')->willReturnCallback(
             fn($k, $d = null) => $k === 'mediaType' ? 'series' : $d
@@ -285,7 +298,7 @@ class WatchlistControllerTest extends TestCase {
                 return 0;
             });
 
-        $this->controller->index();
+        $this->controller()->index();
     }
 
     public function testIndexReturnsTotalUnfilteredWhenFilterApplied(): void {
@@ -301,7 +314,7 @@ class WatchlistControllerTest extends TestCase {
         });
         $this->service->method('findAll')->willReturn([]);
 
-        $response = $this->controller->index();
+        $response = $this->controller()->index();
 
         $data = $response->getData();
         $this->assertSame(3, $data['total']);
@@ -310,6 +323,7 @@ class WatchlistControllerTest extends TestCase {
     }
 
     public function testIndexTotalUnfilteredMatchesTotalWhenNoFilterApplied(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $this->request->method('getParam')->willReturnCallback(fn($k, $d = null) => $d);
 
@@ -319,7 +333,7 @@ class WatchlistControllerTest extends TestCase {
             ->willReturn(12);
         $this->service->method('findAll')->willReturn([]);
 
-        $response = $this->controller->index();
+        $response = $this->controller()->index();
 
         $data = $response->getData();
         $this->assertSame(12, $data['total']);
@@ -327,6 +341,7 @@ class WatchlistControllerTest extends TestCase {
     }
 
     public function testIndexIgnoresInvalidMediaType(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $this->request->method('getParam')->willReturnCallback(
             fn($k, $d = null) => $k === 'mediaType' ? 'bogus' : $d
@@ -338,10 +353,11 @@ class WatchlistControllerTest extends TestCase {
             ->willReturn([]);
         $this->service->method('count')->willReturn(0);
 
-        $this->controller->index();
+        $this->controller()->index();
     }
 
     public function testIndexClampsInvalidPaginationParams(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $this->request->method('getParam')->willReturnCallback(
             fn($k, $d = null) => match ($k) {
@@ -358,7 +374,7 @@ class WatchlistControllerTest extends TestCase {
             ->willReturn([]);
         $this->service->method('count')->willReturn(5);
 
-        $response = $this->controller->index();
+        $response = $this->controller()->index();
 
         $data = $response->getData();
         $this->assertSame(1, $data['page']);
@@ -368,6 +384,7 @@ class WatchlistControllerTest extends TestCase {
     }
 
     public function testIndexClampsNegativePageAndLimit(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $this->request->method('getParam')->willReturnCallback(
             fn($k, $d = null) => match ($k) {
@@ -383,7 +400,7 @@ class WatchlistControllerTest extends TestCase {
             ->willReturn([]);
         $this->service->method('count')->willReturn(0);
 
-        $response = $this->controller->index();
+        $response = $this->controller()->index();
 
         $data = $response->getData();
         $this->assertSame(1, $data['page']);
@@ -391,6 +408,7 @@ class WatchlistControllerTest extends TestCase {
     }
 
     public function testRandomForwardsFiltersAndReturnsItem(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $params = ['mediaType' => 'movie', 'genre' => '878', 'minPriority' => '1', 'exclude' => '4'];
         $this->request->method('getParam')->willReturnCallback(fn ($k, $d = null) => $params[$k] ?? $d);
@@ -406,12 +424,13 @@ class WatchlistControllerTest extends TestCase {
             ])
             ->willReturn($item);
 
-        $response = $this->controller->random();
+        $response = $this->controller()->random();
 
         $this->assertSame($item, $response->getData()['item']);
     }
 
     public function testRandomClampsPriorityAndReturnsNullItem(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $params = ['minPriority' => '99', 'genre' => '-3'];
         $this->request->method('getParam')->willReturnCallback(fn ($k, $d = null) => $params[$k] ?? $d);
@@ -423,10 +442,11 @@ class WatchlistControllerTest extends TestCase {
             ))
             ->willReturn(null);
 
-        $this->assertNull($this->controller->random()->getData()['item']);
+        $this->assertNull($this->controller()->random()->getData()['item']);
     }
 
     public function testRandomWithCountReturnsASetAndKeepsItemForCompatibility(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $params = ['count' => '8', 'genre' => '28'];
         $this->request->method('getParam')->willReturnCallback(fn ($k, $d = null) => $params[$k] ?? $d);
@@ -437,19 +457,20 @@ class WatchlistControllerTest extends TestCase {
             ->with(self::LIBRARY_ID, $this->callback(fn ($f) => $f['genre'] === 28), 8)->willReturn([$a, $b]);
         $this->service->expects($this->never())->method('pickRandom');
 
-        $data = $this->controller->random()->getData();
+        $data = $this->controller()->random()->getData();
 
         $this->assertSame([$a, $b], $data['items']);
         $this->assertSame($a, $data['item']);
     }
 
     public function testRandomClampsCountToTwelve(): void {
+        $this->service = $this->createMock(WatchlistService::class);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIBRARY_ID);
         $params = ['count' => '500'];
         $this->request->method('getParam')->willReturnCallback(fn ($k, $d = null) => $params[$k] ?? $d);
 
         $this->service->expects($this->once())->method('pickRandomSet')->with(self::LIBRARY_ID, $this->anything(), 12)->willReturn([]);
 
-        $this->assertNull($this->controller->random()->getData()['item']);
+        $this->assertNull($this->controller()->random()->getData()['item']);
     }
 }

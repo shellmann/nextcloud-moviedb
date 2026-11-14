@@ -10,7 +10,6 @@ use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
@@ -18,7 +17,6 @@ use PHPUnit\Framework\Attributes\DataProvider;
  *
  * Tests the base authentication functionality for all API controllers.
  */
-#[AllowMockObjectsWithoutExpectations]
 class AuthenticatedControllerTest extends TestCase {
     private IRequest $request;
     private IUserSession $userSession;
@@ -26,7 +24,7 @@ class AuthenticatedControllerTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $this->request = $this->createMock(IRequest::class);
+        $this->request = $this->createStub(IRequest::class);
         $this->userSession = $this->createStub(IUserSession::class);
     }
 
@@ -80,6 +78,7 @@ class AuthenticatedControllerTest extends TestCase {
 
     #[DataProvider('mediaTypeProvider')]
     public function testMediaTypeParam(?string $rawValue, ?string $expected): void {
+        $this->request = $this->createMock(IRequest::class);
         $this->request->method('getParam')->with('mediaType')->willReturn($rawValue);
 
         $controller = $this->createAuthenticatedController();

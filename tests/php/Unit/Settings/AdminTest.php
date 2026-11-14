@@ -11,9 +11,7 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Http\TemplateResponse;
 use OCP\AppFramework\Services\IInitialState;
 use OCP\IURLGenerator;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
-#[AllowMockObjectsWithoutExpectations]
 class AdminTest extends TestCase {
     public function testFormProvidesOnlyWhetherAKeyIsSet(): void {
         $tmdbService = $this->createStub(TmdbService::class);
@@ -31,8 +29,8 @@ class AdminTest extends TestCase {
     }
 
     public function testFormIsInTheMovieDbSection(): void {
-        $admin = new Admin($this->createMock(TmdbService::class), $this->createMock(IInitialState::class));
-        $section = new AdminSection($this->createMock(IURLGenerator::class));
+        $admin = new Admin($this->createStub(TmdbService::class), $this->createStub(IInitialState::class));
+        $section = new AdminSection($this->createStub(IURLGenerator::class));
 
         $this->assertSame($section->getID(), $admin->getSection());
     }

@@ -13,9 +13,7 @@ use OCP\IRequest;
 use OCP\IURLGenerator;
 use OCP\IUser;
 use OCP\IUserSession;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
-#[AllowMockObjectsWithoutExpectations]
 class PageControllerTest extends TestCase {
     public function testSendsSettingsWithThePage(): void {
         $user = $this->createStub(IUser::class);
@@ -40,8 +38,8 @@ class PageControllerTest extends TestCase {
             });
 
         $controller = new PageController(
-            $this->createMock(IRequest::class),
-            $this->createMock(IURLGenerator::class),
+            $this->createStub(IRequest::class),
+            $this->createStub(IURLGenerator::class),
             $userSession,
             $settingsService,
             $initialState,

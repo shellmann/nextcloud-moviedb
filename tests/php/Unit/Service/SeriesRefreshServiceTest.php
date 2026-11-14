@@ -12,17 +12,15 @@ use OCA\MovieDB\Service\SeriesRefreshService;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\IDBConnection;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 
-#[AllowMockObjectsWithoutExpectations]
 class SeriesRefreshServiceTest extends TestCase {
-    private SeriesMapper&MockObject $seriesMapper;
-    private EpisodeMapper&MockObject $episodeMapper;
-    private TmdbService&MockObject $tmdb;
+    private SeriesMapper&Stub $seriesMapper;
+    private EpisodeMapper&Stub $episodeMapper;
+    private TmdbService&Stub $tmdb;
     private IDBConnection&Stub $db;
-    private SeriesRefreshService $service;
+    private ?SeriesRefreshService $service = null;
 
     /** @var string[] order of TMDB calls and transaction events */
     private array $events = [];
@@ -33,9 +31,9 @@ class SeriesRefreshServiceTest extends TestCase {
 
     protected function setUp(): void {
         parent::setUp();
-        $this->seriesMapper = $this->createMock(SeriesMapper::class);
-        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
-        $this->tmdb = $this->createMock(TmdbService::class);
+        $this->seriesMapper = $this->createStub(SeriesMapper::class);
+        $this->episodeMapper = $this->createStub(EpisodeMapper::class);
+        $this->tmdb = $this->createStub(TmdbService::class);
         $this->db = $this->createStub(IDBConnection::class);
         $this->db->method('beginTransaction')->willReturnCallback(function (): void {
             $this->events[] = 'begin';
@@ -56,8 +54,10 @@ class SeriesRefreshServiceTest extends TestCase {
             $this->updated[] = $e;
             return $e;
         });
+    }
 
-        $this->service = new SeriesRefreshService($this->seriesMapper, $this->episodeMapper, $this->tmdb, $this->db);
+    private function service(): SeriesRefreshService {
+        return $this->service ??= new SeriesRefreshService($this->seriesMapper, $this->episodeMapper, $this->tmdb, $this->db);
     }
 
     private function series(?string $status = 'Returning Series'): Series {
@@ -112,7 +112,7 @@ class SeriesRefreshServiceTest extends TestCase {
             $this->tmdbEp($season, 2, '2030-01-08'),
         ]]);
 
-        $result = $this->service->refresh($this->series(), 'alice', 'en-US');
+        $result = $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         $this->assertSame(['newEpisodes' => 2, 'updatedEpisodes' => 0, 'newSeasons' => 1], $result);
         $this->assertCount(2, $this->inserted);
@@ -129,7 +129,7 @@ class SeriesRefreshServiceTest extends TestCase {
             $this->tmdbEp(1, 2, '2030-02-01'),
         ]]);
 
-        $result = $this->service->refresh($this->series(), 'alice', 'en-US');
+        $result = $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         $this->assertSame(['newEpisodes' => 1, 'updatedEpisodes' => 0, 'newSeasons' => 0], $result);
     }
@@ -140,7 +140,7 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1]));
         $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => [$this->tmdbEp(1, 1, '2030-03-03', 'New name')]]);
 
-        $result = $this->service->refresh($this->series(), 'alice', 'en-US');
+        $result = $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         $this->assertSame(1, $result['updatedEpisodes']);
         $this->assertSame('2030-03-03', $watched->getAirDate());
@@ -156,20 +156,30 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1]));
         $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => [$this->tmdbEp(1, 1, '2030-01-01')]]);
 
-        $result = $this->service->refresh($this->series(), 'alice', 'en-US');
+        $result = $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         $this->assertSame(['newEpisodes' => 0, 'updatedEpisodes' => 0, 'newSeasons' => 0], $result);
         $this->assertSame([], $this->updated);
     }
 
     public function testKeepsEpisodesTmdbNoLongerLists(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->episodeMapper->method('insert')->willReturnCallback(function (Episode $e): Episode {
+            $e->setId(1000 + count($this->inserted));
+            $this->inserted[] = $e;
+            return $e;
+        });
+        $this->episodeMapper->method('update')->willReturnCallback(function (Episode $e): Episode {
+            $this->updated[] = $e;
+            return $e;
+        });
         $gone = $this->stored(1, 3, '2020-01-01', true);
         $this->episodeMapper->method('findBySeries')->willReturn([$this->stored(1, 1, '2030-01-01'), $gone]);
         $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1]));
         $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => [$this->tmdbEp(1, 1, '2030-01-01')]]);
         $this->episodeMapper->expects($this->never())->method('deleteBySeries');
 
-        $this->service->refresh($this->series(), 'alice', 'en-US');
+        $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         $this->assertNotContains($gone, $this->updated);
         $this->assertTrue($gone->getWatched());
@@ -183,7 +193,7 @@ class SeriesRefreshServiceTest extends TestCase {
             ['id' => 999999, 'season_number' => 1, 'episode_number' => 1, 'name' => 'Name', 'air_date' => '2030-01-01'],
         ]]);
 
-        $result = $this->service->refresh($this->series(), 'alice', 'en-US');
+        $result = $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         $this->assertSame(0, $result['newEpisodes']);
         $this->assertSame([], $this->inserted);
@@ -191,6 +201,7 @@ class SeriesRefreshServiceTest extends TestCase {
     }
 
     public function testOnlyFetchesSeasonsThatNeedIt(): void {
+        $this->tmdb = $this->createMock(TmdbService::class);
         $old = '2020-01-01';
         $this->episodeMapper->method('findBySeries')->willReturn([
             $this->stored(1, 1, $old), $this->stored(1, 2, $old),
@@ -202,7 +213,7 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->tmdb->expects($this->once())->method('getSeasonDetails')->with(77, 3, 'alice', 'en-US')
             ->willReturn(['episodes' => [$this->tmdbEp(3, 1, $old), $this->tmdbEp(3, 2, '2030-05-05')]]);
 
-        $result = $this->service->refresh($this->series(), 'alice', 'en-US');
+        $result = $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         $this->assertSame(1, $result['newEpisodes']);
     }
@@ -218,7 +229,7 @@ class SeriesRefreshServiceTest extends TestCase {
             return ['episodes' => [$this->tmdbEp($season, 1, '2020-01-01', $season === 1 ? 'Better name' : 'Name')]];
         });
 
-        $result = $this->service->refresh($this->series(), 'alice', 'en-US', true);
+        $result = $this->service()->refresh($this->series(), 'alice', 'en-US', true);
 
         $this->assertSame([1, 2, 3], $fetched);
         $this->assertSame(1, $result['updatedEpisodes']);
@@ -227,13 +238,14 @@ class SeriesRefreshServiceTest extends TestCase {
     }
 
     public function testBackgroundModeSkipsOldCompleteSeasons(): void {
+        $this->tmdb = $this->createMock(TmdbService::class);
         $old = '2020-01-01';
         $this->episodeMapper->method('findBySeries')->willReturn([$this->stored(1, 1, $old), $this->stored(2, 1, $old), $this->stored(3, 1, $old)]);
         $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 1, 2 => 1, 3 => 1]));
         $this->tmdb->expects($this->once())->method('getSeasonDetails')->with(77, 3, 'alice', 'en-US')
             ->willReturn(['episodes' => [$this->tmdbEp(3, 1, $old)]]);
 
-        $this->service->refresh($this->series(), 'alice', 'en-US');
+        $this->service()->refresh($this->series(), 'alice', 'en-US');
     }
 
     public function testRefetchesSeasonsWithUndatedOrRecentEpisodes(): void {
@@ -248,20 +260,21 @@ class SeriesRefreshServiceTest extends TestCase {
             return ['episodes' => []];
         });
 
-        $this->service->refresh($this->series(), 'alice', 'en-US');
+        $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         // 1 (undated), 2 (recent), 4 (new and latest); 3 is old and complete.
         $this->assertSame([1, 2, 4], $fetched);
     }
 
     public function testUpdatesSeriesFieldsAndTheRefreshTime(): void {
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
         $series = $this->series('Returning Series');
         $this->episodeMapper->method('findBySeries')->willReturn([]);
         $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 0], 'Ended'));
         $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => []]);
         $this->seriesMapper->expects($this->once())->method('update')->with($series);
 
-        $this->service->refresh($series, 'alice', 'en-US');
+        $this->service()->refresh($series, 'alice', 'en-US');
 
         $this->assertSame('Ended', $series->getStatus());
         $this->assertSame('Show', $series->getTitle());
@@ -282,7 +295,7 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->tmdb->method('getSeriesDetails')->willReturn($details);
         $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => []]);
 
-        $this->service->refresh($series, 'alice', 'en-US');
+        $this->service()->refresh($series, 'alice', 'en-US');
 
         $this->assertSame('Miniseries', $series->getSeriesType());
         $this->assertSame([['name' => 'HBO', 'logoPath' => '/hbo.png']], $series->getNetworks());
@@ -298,7 +311,7 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->tmdb->method('getSeriesDetails')->willReturn($this->details([1 => 0], 'Ended'));
         $this->tmdb->method('getSeasonDetails')->willReturn(['episodes' => []]);
 
-        $this->service->refresh($series, 'alice', 'en-US');
+        $this->service()->refresh($series, 'alice', 'en-US');
 
         $this->assertSame('', $series->getSeriesType());
         $this->assertNull($series->getTmdbRating());
@@ -315,18 +328,19 @@ class SeriesRefreshServiceTest extends TestCase {
             return ['episodes' => [$this->tmdbEp(1, 1, '2030-01-01')]];
         });
 
-        $this->service->refresh($this->series(), 'alice', 'en-US');
+        $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         $this->assertSame(['tmdb', 'tmdb', 'begin', 'commit'], $this->events);
     }
 
     public function testATmdbFailureLeavesTheShowUntouched(): void {
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
         $this->episodeMapper->method('findBySeries')->willReturn([]);
         $this->tmdb->method('getSeriesDetails')->willThrowException(new \RuntimeException('down'));
         $this->seriesMapper->expects($this->never())->method('update');
 
         try {
-            $this->service->refresh($this->series(), 'alice', 'en-US');
+            $this->service()->refresh($this->series(), 'alice', 'en-US');
             $this->fail('Expected the exception');
         } catch (\RuntimeException) {
             $this->assertSame([], $this->events);
@@ -356,10 +370,11 @@ class SeriesRefreshServiceTest extends TestCase {
         $series->setTmdbId(null);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->service->refresh($series, 'alice', 'en-US');
+        $this->service()->refresh($series, 'alice', 'en-US');
     }
 
     public function testMarkRefreshedStampsTheStoredRowNotTheDirtyEntity(): void {
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
         // A refresh that failed after changing the entity: the rolled-back values must not be saved.
         $dirty = $this->series('Ended');
         $dirty->setNumberOfSeasons(9);
@@ -367,7 +382,7 @@ class SeriesRefreshServiceTest extends TestCase {
         $this->seriesMapper->method('find')->with($dirty->getId())->willReturn($stored);
         $this->seriesMapper->expects($this->once())->method('update')->with($stored);
 
-        $this->service->markRefreshed($dirty);
+        $this->service()->markRefreshed($dirty);
 
         $this->assertNotNull($stored->getTmdbRefreshedAt());
         $this->assertSame('Returning Series', $stored->getStatus());
@@ -382,7 +397,7 @@ class SeriesRefreshServiceTest extends TestCase {
             ? [$this->tmdbEp(1, 1, '2030-01-01'), $this->tmdbEp(1, 1, '2030-01-01')]
             : [$this->tmdbEp(1, 1, '2030-01-01')]]);
 
-        $result = $this->service->refresh($this->series(), 'alice', 'en-US');
+        $result = $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         $this->assertSame(1, $result['newEpisodes']);
         $this->assertCount(1, $this->inserted);
@@ -394,6 +409,16 @@ class SeriesRefreshServiceTest extends TestCase {
     }
 
     public function testAMovedEpisodeThatWasAlreadyAnnouncedIsAnnouncedAgain(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->episodeMapper->method('insert')->willReturnCallback(function (Episode $e): Episode {
+            $e->setId(1000 + count($this->inserted));
+            $this->inserted[] = $e;
+            return $e;
+        });
+        $this->episodeMapper->method('update')->willReturnCallback(function (Episode $e): Episode {
+            $this->updated[] = $e;
+            return $e;
+        });
         $announced = $this->stored(1, 1, '2030-01-01');
         $announced->setNotifiedAt('2029-12-31 10:00:00');
         $this->episodeMapper->method('findBySeries')->willReturn([$announced]);
@@ -403,10 +428,20 @@ class SeriesRefreshServiceTest extends TestCase {
         // its own statement, whatever stamp the in-memory entity holds
         $this->episodeMapper->expects($this->once())->method('clearNotified')->with((int)$announced->getId());
 
-        $this->service->refresh($this->series(), 'alice', 'en-US');
+        $this->service()->refresh($this->series(), 'alice', 'en-US');
     }
 
     public function testAnUnchangedAirDateKeepsTheAnnouncedStamp(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
+        $this->episodeMapper->method('insert')->willReturnCallback(function (Episode $e): Episode {
+            $e->setId(1000 + count($this->inserted));
+            $this->inserted[] = $e;
+            return $e;
+        });
+        $this->episodeMapper->method('update')->willReturnCallback(function (Episode $e): Episode {
+            $this->updated[] = $e;
+            return $e;
+        });
         $announced = $this->stored(1, 1, '2030-01-01');
         $announced->setNotifiedAt('2029-12-31 10:00:00');
         $this->episodeMapper->method('findBySeries')->willReturn([$announced]);
@@ -415,7 +450,7 @@ class SeriesRefreshServiceTest extends TestCase {
 
         $this->episodeMapper->expects($this->never())->method('clearNotified');
 
-        $this->service->refresh($this->series(), 'alice', 'en-US');
+        $this->service()->refresh($this->series(), 'alice', 'en-US');
 
         $this->assertSame('2029-12-31 10:00:00', $announced->getNotifiedAt());
     }
@@ -425,7 +460,7 @@ class SeriesRefreshServiceTest extends TestCase {
         $stored->setSeriesType(null);
         $this->seriesMapper->method('find')->willReturn($stored);
 
-        $this->service->markRefreshed($stored);
+        $this->service()->markRefreshed($stored);
 
         $this->assertSame('', $stored->getSeriesType(), 'a show that cannot be fetched must not stay in the backfill set');
     }

@@ -18,17 +18,18 @@ use OCP\IDateTimeZone;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
+use PHPUnit\Framework\MockObject\Stub;
 use Psr\Log\LoggerInterface;
 
-#[AllowMockObjectsWithoutExpectations]
 class ImportExportControllerTest extends TestCase {
     private IRequest $request;
     private ExportService $exportService;
     private ImportService $importService;
     private LibraryService $libraryService;
     private LoggerInterface $logger;
-    private ImportExportController $controller;
+    private IDateTimeZone&Stub $zone;
+    private IUserSession&Stub $session;
+    private ?ImportExportController $controller = null;
 
     /** @var string[] */
     private array $tempFiles = [];
@@ -36,28 +37,30 @@ class ImportExportControllerTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
 
-        $this->request = $this->createMock(IRequest::class);
-        $this->exportService = $this->createMock(ExportService::class);
-        $this->importService = $this->createMock(ImportService::class);
-        $this->libraryService = $this->createMock(LibraryService::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->request = $this->createStub(IRequest::class);
+        $this->exportService = $this->createStub(ExportService::class);
+        $this->importService = $this->createStub(ImportService::class);
+        $this->libraryService = $this->createStub(LibraryService::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
 
         $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('alice');
-        $session = $this->createStub(IUserSession::class);
-        $session->method('getUser')->willReturn($user);
+        $this->session = $this->createStub(IUserSession::class);
+        $this->session->method('getUser')->willReturn($user);
 
-        $zone = $this->createStub(IDateTimeZone::class);
-        $zone->method('getTimeZone')->willReturn(new \DateTimeZone('Europe/Berlin'));
+        $this->zone = $this->createStub(IDateTimeZone::class);
+        $this->zone->method('getTimeZone')->willReturn(new \DateTimeZone('Europe/Berlin'));
+    }
 
-        $this->controller = new ImportExportController(
+    private function controller(): ImportExportController {
+        return $this->controller ??= new ImportExportController(
             $this->request,
             $this->exportService,
             $this->importService,
             new ImportValidator(),
             $this->libraryService,
-            $zone,
-            $session,
+            $this->zone,
+            $this->session,
             $this->logger
         );
     }
@@ -85,49 +88,55 @@ class ImportExportControllerTest extends TestCase {
     // ── export ─────────────────────────────────────────────────────────────
 
     public function testExportRefusesLibraryTheUserCannotAccess(): void {
+        $this->exportService = $this->createMock(ExportService::class);
         $this->libraryService->method('resolveLibraryId')
             ->willThrowException(new \InvalidArgumentException('denied'));
         $this->exportService->expects($this->never())->method('export');
 
-        $response = $this->controller->export();
+        $response = $this->controller()->export();
 
         $this->assertInstanceOf(JSONResponse::class, $response);
         $this->assertSame(Http::STATUS_FORBIDDEN, $response->getStatus());
     }
 
     public function testExportNeverFallsBackToTheReadResolver(): void {
+        $this->libraryService = $this->createMock(LibraryService::class);
         $this->libraryService->expects($this->never())->method('resolveReadLibraryId');
         $this->libraryService->method('resolveLibraryId')->willReturn(3);
         $this->exportService->method('export')->willReturn(['library' => ['name' => 'X']]);
 
-        $this->controller->export();
+        $this->controller()->export();
     }
 
     public function testExportReturnsDownloadForAccessibleLibrary(): void {
+        $this->exportService = $this->createMock(ExportService::class);
         $this->libraryService->method('resolveLibraryId')->willReturn(3);
         $this->exportService->expects($this->once())->method('export')->with(3)
             ->willReturn(['library' => ['name' => 'Family']]);
 
-        $this->assertInstanceOf(DataDownloadResponse::class, $this->controller->export());
+        $this->assertInstanceOf(DataDownloadResponse::class, $this->controller()->export());
     }
 
     // ── import ─────────────────────────────────────────────────────────────
 
     public function testImportRefusesUnknownLibrary(): void {
+        $this->importService = $this->createMock(ImportService::class);
         $this->libraryService->method('resolveLibraryId')
             ->willThrowException(new \InvalidArgumentException('denied'));
         $this->importService->expects($this->never())->method('import');
 
-        $this->assertSame(Http::STATUS_FORBIDDEN, $this->controller->import()->getStatus());
+        $this->assertSame(Http::STATUS_FORBIDDEN, $this->controller()->import()->getStatus());
     }
 
     public function testImportRefusesViewers(): void {
+        $this->importService = $this->createMock(ImportService::class);
+        $this->request = $this->createMock(IRequest::class);
         $this->libraryService->method('resolveLibraryId')->willReturn(3);
         $this->libraryService->method('canEdit')->willReturn(false);
         $this->request->expects($this->never())->method('getUploadedFile');
         $this->importService->expects($this->never())->method('import');
 
-        $this->assertSame(Http::STATUS_FORBIDDEN, $this->controller->import()->getStatus());
+        $this->assertSame(Http::STATUS_FORBIDDEN, $this->controller()->import()->getStatus());
     }
 
     public function testImportWithoutFileIsABadRequest(): void {
@@ -135,63 +144,73 @@ class ImportExportControllerTest extends TestCase {
         $this->libraryService->method('canEdit')->willReturn(true);
         $this->request->method('getUploadedFile')->willReturn(null);
 
-        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->import()->getStatus());
+        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller()->import()->getStatus());
     }
 
     public function testImportRejectsOversizedFile(): void {
+        $this->importService = $this->createMock(ImportService::class);
+        $this->request = $this->createMock(IRequest::class);
         $this->libraryService->method('resolveLibraryId')->willReturn(3);
         $this->libraryService->method('canEdit')->willReturn(true);
         $this->upload($this->validFile(), UPLOAD_ERR_OK, ImportExportController::MAX_FILE_SIZE + 1);
         $this->importService->expects($this->never())->method('import');
 
-        $this->assertSame(Http::STATUS_REQUEST_ENTITY_TOO_LARGE, $this->controller->import()->getStatus());
+        $this->assertSame(Http::STATUS_REQUEST_ENTITY_TOO_LARGE, $this->controller()->import()->getStatus());
     }
 
     public function testImportRejectsFileTooLargeForPhp(): void {
+        $this->request = $this->createMock(IRequest::class);
         $this->libraryService->method('resolveLibraryId')->willReturn(3);
         $this->libraryService->method('canEdit')->willReturn(true);
         $this->upload('', UPLOAD_ERR_INI_SIZE);
 
-        $this->assertSame(Http::STATUS_REQUEST_ENTITY_TOO_LARGE, $this->controller->import()->getStatus());
+        $this->assertSame(Http::STATUS_REQUEST_ENTITY_TOO_LARGE, $this->controller()->import()->getStatus());
     }
 
     public function testImportRejectsFileWithTooManyEntriesBeforeDecoding(): void {
+        $this->importService = $this->createMock(ImportService::class);
+        $this->request = $this->createMock(IRequest::class);
         $this->libraryService->method('resolveLibraryId')->willReturn(3);
         $this->libraryService->method('canEdit')->willReturn(true);
         // Far below the byte cap, but would decode to hundreds of MB.
         $this->upload('[' . str_repeat('{},', JsonComplexity::MAX_OBJECTS + 1) . '{}]');
         $this->importService->expects($this->never())->method('import');
 
-        $response = $this->controller->import();
+        $response = $this->controller()->import();
 
         $this->assertSame(Http::STATUS_REQUEST_ENTITY_TOO_LARGE, $response->getStatus());
         $this->assertSame('The file contains too many entries.', $response->getData()['error']);
     }
 
     public function testImportRejectsInvalidJson(): void {
+        $this->request = $this->createMock(IRequest::class);
         $this->libraryService->method('resolveLibraryId')->willReturn(3);
         $this->libraryService->method('canEdit')->willReturn(true);
         $this->upload('{not json');
 
-        $response = $this->controller->import();
+        $response = $this->controller()->import();
 
         $this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
         $this->assertSame('The file is not valid JSON.', $response->getData()['error']);
     }
 
     public function testImportRejectsForeignFileWithValidatorMessage(): void {
+        $this->importService = $this->createMock(ImportService::class);
+        $this->request = $this->createMock(IRequest::class);
         $this->libraryService->method('resolveLibraryId')->willReturn(3);
         $this->libraryService->method('canEdit')->willReturn(true);
         $this->upload('{"app":"other","formatVersion":1}');
         $this->importService->expects($this->never())->method('import');
 
-        $response = $this->controller->import();
+        $response = $this->controller()->import();
 
         $this->assertSame(Http::STATUS_BAD_REQUEST, $response->getStatus());
         $this->assertSame('This is not a MovieDB export file.', $response->getData()['error']);
     }
 
     public function testImportPassesCurrentUserAndResolvedLibraryToService(): void {
+        $this->importService = $this->createMock(ImportService::class);
+        $this->request = $this->createMock(IRequest::class);
         $this->libraryService->method('resolveLibraryId')->willReturn(3);
         $this->libraryService->method('canEdit')->willReturn(true);
         $this->upload($this->validFile());
@@ -200,20 +219,22 @@ class ImportExportControllerTest extends TestCase {
             ->with(3, 'alice', $this->callback(fn ($d) => $d['movies'][0]['title'] === 'A'))
             ->willReturn($result);
 
-        $response = $this->controller->import();
+        $response = $this->controller()->import();
 
         $this->assertSame(Http::STATUS_OK, $response->getStatus());
         $this->assertSame($result, $response->getData());
     }
 
     public function testImportFailureIsLoggedAndDoesNotLeakTheException(): void {
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->request = $this->createMock(IRequest::class);
         $this->libraryService->method('resolveLibraryId')->willReturn(3);
         $this->libraryService->method('canEdit')->willReturn(true);
         $this->upload($this->validFile());
         $this->importService->method('import')->willThrowException(new \RuntimeException('SQLSTATE secret detail'));
         $this->logger->expects($this->once())->method('error');
 
-        $response = $this->controller->import();
+        $response = $this->controller()->import();
 
         $this->assertSame(Http::STATUS_INTERNAL_SERVER_ERROR, $response->getStatus());
         $this->assertStringNotContainsString('SQLSTATE', json_encode($response->getData()));

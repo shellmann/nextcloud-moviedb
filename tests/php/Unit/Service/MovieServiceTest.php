@@ -11,30 +11,32 @@ use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
 /**
  * Unit tests for MovieService
  *
  * Tests the business logic layer for movie CRUD operations.
  */
-#[AllowMockObjectsWithoutExpectations]
 class MovieServiceTest extends TestCase {
     private MovieMapper $mapper;
     private MovieWatchMapper $watchMapper;
-    private MovieService $service;
+    private ?MovieService $service = null;
 
     private const LIBRARY_ID = 1;
 
     protected function setUp(): void {
         parent::setUp();
 
-        $this->mapper = $this->createMock(MovieMapper::class);
-        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
-        $this->service = new MovieService($this->mapper, $this->watchMapper);
+        $this->mapper = $this->createStub(MovieMapper::class);
+        $this->watchMapper = $this->createStub(MovieWatchMapper::class);
+    }
+
+    private function service(): MovieService {
+        return $this->service ??= new MovieService($this->mapper, $this->watchMapper);
     }
 
     public function testFind(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $movieId = 1;
         $movie = new Movie();
         $movie->setId($movieId);
@@ -45,7 +47,7 @@ class MovieServiceTest extends TestCase {
             ->with($movieId, self::LIBRARY_ID)
             ->willReturn($movie);
 
-        $result = $this->service->find($movieId, self::LIBRARY_ID);
+        $result = $this->service()->find($movieId, self::LIBRARY_ID);
 
         $this->assertInstanceOf(Movie::class, $result);
         $this->assertEquals($movieId, $result->getId());
@@ -53,6 +55,7 @@ class MovieServiceTest extends TestCase {
     }
 
     public function testFindThrowsDoesNotExistException(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $movieId = 999;
 
         $this->mapper->expects($this->once())
@@ -61,10 +64,11 @@ class MovieServiceTest extends TestCase {
             ->willThrowException(new DoesNotExistException('Movie not found'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->find($movieId, self::LIBRARY_ID);
+        $this->service()->find($movieId, self::LIBRARY_ID);
     }
 
     public function testFindAll(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $filters = ['genre' => 28, 'year' => 2020];
         $limit = 25;
         $offset = 0;
@@ -79,7 +83,7 @@ class MovieServiceTest extends TestCase {
             ->with(self::LIBRARY_ID, $filters, $limit, $offset)
             ->willReturn($movies);
 
-        $result = $this->service->findAll(self::LIBRARY_ID, $filters, $limit, $offset);
+        $result = $this->service()->findAll(self::LIBRARY_ID, $filters, $limit, $offset);
 
         $this->assertIsArray($result);
         $this->assertCount(2, $result);
@@ -87,6 +91,7 @@ class MovieServiceTest extends TestCase {
     }
 
     public function testCount(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $filters = ['favorite' => true];
         $expectedCount = 42;
 
@@ -95,12 +100,14 @@ class MovieServiceTest extends TestCase {
             ->with(self::LIBRARY_ID, $filters)
             ->willReturn($expectedCount);
 
-        $result = $this->service->count(self::LIBRARY_ID, $filters);
+        $result = $this->service()->count(self::LIBRARY_ID, $filters);
 
         $this->assertEquals($expectedCount, $result);
     }
 
     public function testCreateWithMinimalData(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->mapper = $this->createMock(MovieMapper::class);
         $userId = 'testuser';
         $data = [
             'title' => 'The Matrix',
@@ -123,7 +130,7 @@ class MovieServiceTest extends TestCase {
         $this->watchMapper->expects($this->never())
             ->method('insert');
 
-        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
+        $result = $this->service()->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertInstanceOf(Movie::class, $result);
         $this->assertEquals('The Matrix', $result->getTitle());
@@ -131,6 +138,8 @@ class MovieServiceTest extends TestCase {
     }
 
     public function testCreateWithFullData(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->mapper = $this->createMock(MovieMapper::class);
         $userId = 'testuser';
         $data = [
             'tmdbId' => 603,
@@ -173,7 +182,7 @@ class MovieServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
+        $result = $this->service()->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertEquals(603, $result->getTmdbId());
         $this->assertEquals('The Matrix', $result->getTitle());
@@ -182,6 +191,7 @@ class MovieServiceTest extends TestCase {
     }
 
     public function testCreateExtractsYearFromReleaseDate(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $userId = 'testuser';
         $data = [
             'title' => 'Inception',
@@ -198,12 +208,13 @@ class MovieServiceTest extends TestCase {
                 return $movie;
             });
 
-        $result = $this->service->create($userId, self::LIBRARY_ID, $data);
+        $result = $this->service()->create($userId, self::LIBRARY_ID, $data);
 
         $this->assertEquals(2010, $result->getReleaseYear());
     }
 
     public function testCreateStoresNullDateAndYearForAnEmptyReleaseDate(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $this->mapper->expects($this->once())
             ->method('insert')
             ->with($this->callback(fn (Movie $movie) => $movie->getReleaseDate() === null && $movie->getReleaseYear() === null))
@@ -212,7 +223,7 @@ class MovieServiceTest extends TestCase {
                 return $movie;
             });
 
-        $result = $this->service->create('testuser', self::LIBRARY_ID, ['title' => 'Heat 2', 'releaseDate' => '']);
+        $result = $this->service()->create('testuser', self::LIBRARY_ID, ['title' => 'Heat 2', 'releaseDate' => '']);
 
         $this->assertNull($result->getReleaseDate());
         $this->assertNull($result->getReleaseYear());
@@ -226,13 +237,14 @@ class MovieServiceTest extends TestCase {
         $this->mapper->method('find')->willReturn($movie);
         $this->mapper->method('update')->willReturnArgument(0);
 
-        $result = $this->service->update(1, self::LIBRARY_ID, ['releaseDate' => '']);
+        $result = $this->service()->update(1, self::LIBRARY_ID, ['releaseDate' => '']);
 
         $this->assertNull($result->getReleaseDate());
         $this->assertNull($result->getReleaseYear());
     }
 
     public function testCreateStoresNullForAnEmptyDateWatched(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
         $this->mapper->method('insert')->willReturnCallback(function (Movie $movie) {
             $movie->setId(1);
             return $movie;
@@ -242,10 +254,11 @@ class MovieServiceTest extends TestCase {
             ->with($this->callback(fn (MovieWatch $w) => $w->getWatchedAt() === null))
             ->willReturnArgument(0);
 
-        $this->service->create('testuser', self::LIBRARY_ID, ['title' => 'Heat 2', 'rating' => 4, 'dateWatched' => '']);
+        $this->service()->create('testuser', self::LIBRARY_ID, ['title' => 'Heat 2', 'rating' => 4, 'dateWatched' => '']);
     }
 
     public function testUpdate(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $movieId = 1;
         $existingMovie = $this->createMovieEntity($movieId, 'Old Title');
 
@@ -268,13 +281,15 @@ class MovieServiceTest extends TestCase {
             }))
             ->willReturnArgument(0);
 
-        $result = $this->service->update($movieId, self::LIBRARY_ID, $updateData);
+        $result = $this->service()->update($movieId, self::LIBRARY_ID, $updateData);
 
         $this->assertEquals('New Title', $result->getTitle());
         $this->assertTrue($result->getIsFavorite());
     }
 
     public function testUpdateIgnoresWatchFields(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->mapper = $this->createMock(MovieMapper::class);
         // Watch data (rating/review/etc.) is owned by MovieWatch now; update must
         // not touch the movie row with it and must not create a watch row.
         $movieId = 1;
@@ -295,12 +310,13 @@ class MovieServiceTest extends TestCase {
         $this->watchMapper->expects($this->never())
             ->method('insert');
 
-        $result = $this->service->update($movieId, self::LIBRARY_ID, $updateData);
+        $result = $this->service()->update($movieId, self::LIBRARY_ID, $updateData);
 
         $this->assertEquals('Renamed', $result->getTitle());
     }
 
     public function testUpdateThrowsDoesNotExistException(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $movieId = 999;
         $updateData = ['title' => 'New Title'];
 
@@ -310,10 +326,11 @@ class MovieServiceTest extends TestCase {
             ->willThrowException(new DoesNotExistException('Movie not found'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->update($movieId, self::LIBRARY_ID, $updateData);
+        $this->service()->update($movieId, self::LIBRARY_ID, $updateData);
     }
 
     public function testDelete(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $movieId = 1;
         $movie = $this->createMovieEntity($movieId, 'To Delete');
 
@@ -326,10 +343,11 @@ class MovieServiceTest extends TestCase {
             ->method('delete')
             ->with($movie);
 
-        $this->service->delete($movieId, self::LIBRARY_ID);
+        $this->service()->delete($movieId, self::LIBRARY_ID);
     }
 
     public function testDeleteThrowsDoesNotExistException(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $movieId = 999;
 
         $this->mapper->expects($this->once())
@@ -338,10 +356,11 @@ class MovieServiceTest extends TestCase {
             ->willThrowException(new DoesNotExistException('Movie not found'));
 
         $this->expectException(DoesNotExistException::class);
-        $this->service->delete($movieId, self::LIBRARY_ID);
+        $this->service()->delete($movieId, self::LIBRARY_ID);
     }
 
     public function testExistsByTmdbIdReturnsTrueWhenExists(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $tmdbId = 603;
         $movie = $this->createMovieEntity(1, 'The Matrix');
 
@@ -350,12 +369,13 @@ class MovieServiceTest extends TestCase {
             ->with(self::LIBRARY_ID, $tmdbId)
             ->willReturn($movie);
 
-        $result = $this->service->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
+        $result = $this->service()->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
 
         $this->assertTrue($result);
     }
 
     public function testExistsByTmdbIdReturnsFalseWhenNotExists(): void {
+        $this->mapper = $this->createMock(MovieMapper::class);
         $tmdbId = 999;
 
         $this->mapper->expects($this->once())
@@ -363,7 +383,7 @@ class MovieServiceTest extends TestCase {
             ->with(self::LIBRARY_ID, $tmdbId)
             ->willReturn(null);
 
-        $result = $this->service->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
+        $result = $this->service()->existsByTmdbId(self::LIBRARY_ID, $tmdbId);
 
         $this->assertFalse($result);
     }

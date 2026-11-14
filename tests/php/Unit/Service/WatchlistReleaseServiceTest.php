@@ -9,21 +9,23 @@ use OCA\MovieDB\Db\WatchlistMapper;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Service\WatchlistReleaseService;
 use OCA\MovieDB\Tests\Unit\TestCase;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 
-#[AllowMockObjectsWithoutExpectations]
 class WatchlistReleaseServiceTest extends TestCase {
-    private WatchlistMapper&MockObject $mapper;
-    private TmdbService&MockObject $tmdb;
-    private WatchlistReleaseService $service;
+    private WatchlistMapper&Stub $mapper;
+    private TmdbService&Stub $tmdb;
+    private ?WatchlistReleaseService $service = null;
 
     protected function setUp(): void {
         parent::setUp();
-        $this->mapper = $this->createMock(WatchlistMapper::class);
-        $this->tmdb = $this->createMock(TmdbService::class);
-        $this->service = new WatchlistReleaseService($this->mapper, $this->tmdb);
+        $this->mapper = $this->createStub(WatchlistMapper::class);
+        $this->tmdb = $this->createStub(TmdbService::class);
+    }
+
+    private function service(): WatchlistReleaseService {
+        return $this->service ??= new WatchlistReleaseService($this->mapper, $this->tmdb);
     }
 
     private function item(?string $releaseDate, string $mediaType = 'movie', ?int $tmdbId = 42): WatchlistItem {
@@ -36,41 +38,46 @@ class WatchlistReleaseServiceTest extends TestCase {
     }
 
     public function testTakesOverANewDateAndMarksItAsNews(): void {
+        $this->tmdb = $this->createMock(TmdbService::class);
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $item = $this->item(null);
         $this->tmdb->method('getMovieDetails')->with(42, 'owner', 'de-DE')->willReturn(['release_date' => '2027-03-12']);
         $this->mapper->expects($this->once())->method('updateReleaseDate')->with((int)$item->getId(), '2027-03-12', $this->anything());
 
-        $this->assertTrue($this->service->refresh($item, 'owner', 'de-DE'));
+        $this->assertTrue($this->service()->refresh($item, 'owner', 'de-DE'));
         $this->assertSame('2027-03-12', $item->getReleaseDate());
         $this->assertTrue($item->hasReleaseDateNews());
     }
 
     public function testTakesOverAMovedDate(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $item = $this->item('2027-03-12');
         $this->tmdb->method('getMovieDetails')->willReturn(['release_date' => '2027-06-01']);
         $this->mapper->expects($this->once())->method('updateReleaseDate');
 
-        $this->assertTrue($this->service->refresh($item, 'owner', 'de-DE'));
+        $this->assertTrue($this->service()->refresh($item, 'owner', 'de-DE'));
         $this->assertSame('2027-06-01', $item->getReleaseDate());
         $this->assertTrue($item->hasReleaseDateNews());
     }
 
     public function testDoesNothingWhenTheDateIsTheSame(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $item = $this->item('2027-03-12');
         $this->tmdb->method('getMovieDetails')->willReturn(['release_date' => '2027-03-12']);
         $this->mapper->expects($this->never())->method('updateReleaseDate');
 
-        $this->assertFalse($this->service->refresh($item, 'owner', 'de-DE'));
+        $this->assertFalse($this->service()->refresh($item, 'owner', 'de-DE'));
         $this->assertFalse($item->hasReleaseDateNews());
     }
 
     #[DataProvider('noDateProvider')]
     public function testKeepsTheStoredDateWhenTmdbHasNone(array $details): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $item = $this->item('2027-03-12');
         $this->tmdb->method('getMovieDetails')->willReturn($details);
         $this->mapper->expects($this->never())->method('updateReleaseDate');
 
-        $this->assertFalse($this->service->refresh($item, 'owner', 'de-DE'));
+        $this->assertFalse($this->service()->refresh($item, 'owner', 'de-DE'));
         $this->assertSame('2027-03-12', $item->getReleaseDate());
     }
 
@@ -83,29 +90,33 @@ class WatchlistReleaseServiceTest extends TestCase {
     }
 
     public function testUsesTheFirstAirDateForSeries(): void {
+        $this->tmdb = $this->createMock(TmdbService::class);
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $item = $this->item(null, 'series');
         $this->tmdb->expects($this->never())->method('getMovieDetails');
         $this->tmdb->method('getSeriesDetails')->with(42, 'owner', 'de-DE')->willReturn(['first_air_date' => '2027-01-15']);
         $this->mapper->expects($this->once())->method('updateReleaseDate');
 
-        $this->assertTrue($this->service->refresh($item, 'owner', 'de-DE'));
+        $this->assertTrue($this->service()->refresh($item, 'owner', 'de-DE'));
         $this->assertSame('2027-01-15', $item->getReleaseDate());
     }
 
     public function testIgnoresItemsWithoutTmdbId(): void {
+        $this->tmdb = $this->createMock(TmdbService::class);
         $this->tmdb->expects($this->never())->method('getMovieDetails');
 
-        $this->assertFalse($this->service->refresh($this->item(null, 'movie', null), 'owner', 'de-DE'));
+        $this->assertFalse($this->service()->refresh($this->item(null, 'movie', null), 'owner', 'de-DE'));
     }
 
     public function testAPostponedTitleThatWasAlreadyAnnouncedIsAnnouncedAgain(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $item = $this->item('2027-03-12');
         $item->setReleaseNotifiedAt('2027-03-12 08:00:00');
         $this->tmdb->method('getMovieDetails')->willReturn(['release_date' => '2027-06-01']);
         // one statement moves the date AND forgets the announcement: nothing can slip in between
         $this->mapper->expects($this->once())->method('updateReleaseDate')->with((int)$item->getId(), '2027-06-01', $this->anything());
 
-        $this->service->refresh($item, 'owner', 'de-DE');
+        $this->service()->refresh($item, 'owner', 'de-DE');
 
         $this->assertNull($item->getReleaseNotifiedAt());
     }

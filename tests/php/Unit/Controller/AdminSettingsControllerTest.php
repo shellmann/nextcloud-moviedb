@@ -10,21 +10,21 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\IRequest;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
-#[AllowMockObjectsWithoutExpectations]
 class AdminSettingsControllerTest extends TestCase {
     private IRequest $request;
     private TmdbService $tmdbService;
-    private AdminSettingsController $controller;
+    private ?AdminSettingsController $controller = null;
 
     protected function setUp(): void {
         parent::setUp();
 
         $this->request = $this->createStub(IRequest::class);
-        $this->tmdbService = $this->createMock(TmdbService::class);
+        $this->tmdbService = $this->createStub(TmdbService::class);
+    }
 
-        $this->controller = new AdminSettingsController($this->request, $this->tmdbService);
+    private function controller(): AdminSettingsController {
+        return $this->controller ??= new AdminSettingsController($this->request, $this->tmdbService);
     }
 
     /**
@@ -47,59 +47,65 @@ class AdminSettingsControllerTest extends TestCase {
     }
 
     public function testSavesVerifiedKey(): void {
+        $this->tmdbService = $this->createMock(TmdbService::class);
         $this->request->method('getParams')->willReturn(['tmdbApiKey' => 'new-key']);
         $this->tmdbService->method('verifyApiKey')->with('new-key')->willReturn(true);
         $this->tmdbService->expects($this->once())->method('setInstanceApiKey')->with('new-key');
         $this->tmdbService->method('hasInstanceApiKey')->willReturn(true);
 
-        $response = $this->controller->update();
+        $response = $this->controller()->update();
 
         $this->assertSame(Http::STATUS_OK, $response->getStatus());
         $this->assertSame(['hasInstanceApiKey' => true], $response->getData());
     }
 
     public function testEmptyKeyRemovesIt(): void {
+        $this->tmdbService = $this->createMock(TmdbService::class);
         $this->request->method('getParams')->willReturn(['tmdbApiKey' => '']);
         $this->tmdbService->expects($this->never())->method('verifyApiKey');
         $this->tmdbService->expects($this->once())->method('deleteInstanceApiKey');
         $this->tmdbService->method('hasInstanceApiKey')->willReturn(false);
 
-        $response = $this->controller->update();
+        $response = $this->controller()->update();
 
         $this->assertSame(Http::STATUS_OK, $response->getStatus());
         $this->assertSame(['hasInstanceApiKey' => false], $response->getData());
     }
 
     public function testMissingKeyChangesNothing(): void {
+        $this->tmdbService = $this->createMock(TmdbService::class);
         $this->request->method('getParams')->willReturn([]);
         $this->tmdbService->expects($this->never())->method('deleteInstanceApiKey');
         $this->tmdbService->expects($this->never())->method('setInstanceApiKey');
 
-        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
+        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller()->update()->getStatus());
     }
 
     public function testInvalidKeyFormatIsRejected(): void {
+        $this->tmdbService = $this->createMock(TmdbService::class);
         $this->request->method('getParams')->willReturn(['tmdbApiKey' => 'not a key']);
         $this->tmdbService->expects($this->never())->method('verifyApiKey');
         $this->tmdbService->expects($this->never())->method('setInstanceApiKey');
 
-        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller->update()->getStatus());
+        $this->assertSame(Http::STATUS_BAD_REQUEST, $this->controller()->update()->getStatus());
     }
 
     public function testKeyRejectedByTmdbIsNotSaved(): void {
+        $this->tmdbService = $this->createMock(TmdbService::class);
         $this->request->method('getParams')->willReturn(['tmdbApiKey' => 'wrong-key']);
         $this->tmdbService->method('verifyApiKey')->willReturn(false);
         $this->tmdbService->expects($this->never())->method('setInstanceApiKey');
 
-        $this->assertSame(Http::STATUS_UNPROCESSABLE_ENTITY, $this->controller->update()->getStatus());
+        $this->assertSame(Http::STATUS_UNPROCESSABLE_ENTITY, $this->controller()->update()->getStatus());
     }
 
     public function testTmdbUnreachableIsNotSaved(): void {
+        $this->tmdbService = $this->createMock(TmdbService::class);
         $this->request->method('getParams')->willReturn(['tmdbApiKey' => 'new-key']);
         $this->tmdbService->method('verifyApiKey')->willThrowException(new \RuntimeException('Could not reach TMDB'));
         $this->tmdbService->expects($this->never())->method('setInstanceApiKey');
 
-        $this->assertSame(Http::STATUS_BAD_GATEWAY, $this->controller->update()->getStatus());
+        $this->assertSame(Http::STATUS_BAD_GATEWAY, $this->controller()->update()->getStatus());
     }
 
     public function testResponseNeverContainsTheKey(): void {
@@ -107,6 +113,6 @@ class AdminSettingsControllerTest extends TestCase {
         $this->tmdbService->method('verifyApiKey')->willReturn(true);
         $this->tmdbService->method('hasInstanceApiKey')->willReturn(true);
 
-        $this->assertStringNotContainsString('new-key', json_encode($this->controller->update()->getData()));
+        $this->assertStringNotContainsString('new-key', json_encode($this->controller()->update()->getData()));
     }
 }

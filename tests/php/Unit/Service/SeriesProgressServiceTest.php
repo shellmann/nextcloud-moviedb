@@ -10,24 +10,25 @@ use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
 use OCA\MovieDB\Service\SeriesProgressService;
 use OCA\MovieDB\Tests\Unit\TestCase;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 
-#[AllowMockObjectsWithoutExpectations]
 class SeriesProgressServiceTest extends TestCase {
 
     private SeriesMapper&Stub $seriesMapper;
-    private EpisodeMapper&MockObject $episodeMapper;
-    private SeriesProgressService $service;
+    private EpisodeMapper&Stub $episodeMapper;
+    private ?SeriesProgressService $service = null;
 
     private const LIB = 3;
 
     protected function setUp(): void {
         parent::setUp();
         $this->seriesMapper = $this->createStub(SeriesMapper::class);
-        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
-        $this->service = new SeriesProgressService($this->seriesMapper, $this->episodeMapper);
+        $this->episodeMapper = $this->createStub(EpisodeMapper::class);
+    }
+
+    private function service(): SeriesProgressService {
+        return $this->service ??= new SeriesProgressService($this->seriesMapper, $this->episodeMapper);
     }
 
     // ---- watchStatus ----
@@ -54,12 +55,13 @@ class SeriesProgressServiceTest extends TestCase {
     // ---- attachProgress ----
 
     public function testAttachProgressUsesOneQueryAndAddsFields(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         // Only the series on the page are counted, not the whole library.
         $this->episodeMapper->expects($this->once())->method('progressByLibrary')
             ->with(self::LIB, $this->isString(), [1, 2])
             ->willReturn([1 => ['watched' => 3, 'aired' => 4, 'lastWatchedAt' => '2026-10-01 10:00:00']]);
 
-        $rows = $this->service->attachProgress([$this->series(1), $this->series(2)], self::LIB);
+        $rows = $this->service()->attachProgress([$this->series(1), $this->series(2)], self::LIB);
 
         $this->assertSame([3, 4, 75, 'in_progress'], [
             $rows[0]['watchedEpisodeCount'], $rows[0]['airedEpisodeCount'], $rows[0]['progress'], $rows[0]['watchStatus'],
@@ -72,8 +74,9 @@ class SeriesProgressServiceTest extends TestCase {
     }
 
     public function testAttachProgressSkipsTheQueryForAnEmptyList(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $this->episodeMapper->expects($this->never())->method('progressByLibrary');
-        $this->assertSame([], $this->service->attachProgress([], self::LIB));
+        $this->assertSame([], $this->service()->attachProgress([], self::LIB));
     }
 
     // ---- continueWatching ----
@@ -99,7 +102,7 @@ class SeriesProgressServiceTest extends TestCase {
         $this->episodeMapper->method('findNextUnwatched')
             ->willReturnCallback(fn (int $seriesId) => $this->episode($seriesId));
 
-        $rows = $this->service->continueWatching(self::LIB, 10);
+        $rows = $this->service()->continueWatching(self::LIB, 10);
 
         $this->assertSame([2, 1, 3, 4], array_column($rows, 'id'));
         $this->assertSame(200, $rows[0]['nextEpisode']['id']);
@@ -115,11 +118,11 @@ class SeriesProgressServiceTest extends TestCase {
         );
         $this->episodeMapper->method('findNextUnwatched')->willReturn(null);
 
-        $this->assertCount(2, $this->service->continueWatching(self::LIB, 2));
-        $this->assertCount(SeriesProgressService::CONTINUE_LIMIT_MAX, $this->service->continueWatching(self::LIB, 500));
+        $this->assertCount(2, $this->service()->continueWatching(self::LIB, 2));
+        $this->assertCount(SeriesProgressService::CONTINUE_LIMIT_MAX, $this->service()->continueWatching(self::LIB, 500));
         // A missing or non-positive limit means the default, not "one row".
-        $this->assertCount(SeriesProgressService::CONTINUE_LIMIT_DEFAULT, $this->service->continueWatching(self::LIB, 0));
-        $this->assertCount(SeriesProgressService::CONTINUE_LIMIT_DEFAULT, $this->service->continueWatching(self::LIB, -3));
+        $this->assertCount(SeriesProgressService::CONTINUE_LIMIT_DEFAULT, $this->service()->continueWatching(self::LIB, 0));
+        $this->assertCount(SeriesProgressService::CONTINUE_LIMIT_DEFAULT, $this->service()->continueWatching(self::LIB, -3));
     }
 
     private function series(int $id, bool $stopped = false, string $createdAt = '2026-01-01 00:00:00'): Series {
@@ -160,17 +163,19 @@ class SeriesProgressServiceTest extends TestCase {
     }
 
     public function testComingUpAsksForTheNextThirtyDaysByDefault(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $this->episodeMapper->expects($this->once())->method('upcomingByLibrary')
             ->with(self::LIB, $this->in(0), $this->in(30))->willReturn([]);
 
-        $this->assertSame([], $this->service->comingUp(self::LIB));
+        $this->assertSame([], $this->service()->comingUp(self::LIB));
     }
 
     public function testComingUpClampsTheWindowAndTheLimit(): void {
+        $this->episodeMapper = $this->createMock(EpisodeMapper::class);
         $this->episodeMapper->expects($this->once())->method('upcomingByLibrary')
             ->with(self::LIB, $this->in(0), $this->in(90))->willReturn([]);
 
-        $this->service->comingUp(self::LIB, 500, 500);
+        $this->service()->comingUp(self::LIB, 500, 500);
     }
 
     public function testComingUpListsCaughtUpShowsSoonestFirst(): void {
@@ -183,7 +188,7 @@ class SeriesProgressServiceTest extends TestCase {
             1 => ['watched' => 8, 'aired' => 8, 'lastWatchedAt' => '2026-10-16 10:00:00'],
         ]);
 
-        $rows = $this->service->comingUp(self::LIB);
+        $rows = $this->service()->comingUp(self::LIB);
 
         $this->assertSame([1, 2], array_column($rows, 'id'));
         $this->assertSame(2, $rows[0]['upcomingEpisode']['seasonNumber']);
@@ -206,7 +211,7 @@ class SeriesProgressServiceTest extends TestCase {
             3 => ['watched' => 8, 'aired' => 8, 'lastWatchedAt' => null],
         ]);
 
-        $this->assertSame([3], array_column($this->service->comingUp(self::LIB), 'id'));
+        $this->assertSame([3], array_column($this->service()->comingUp(self::LIB), 'id'));
     }
 
     public function testComingUpUsesTheFirstEpisodeAndCountsTheSameDay(): void {
@@ -220,7 +225,7 @@ class SeriesProgressServiceTest extends TestCase {
         $this->seriesMapper->method('findAllByLibrary')->willReturn([$this->series(1)]);
         $this->episodeMapper->method('progressByLibrary')->willReturn([1 => ['watched' => 8, 'aired' => 8, 'lastWatchedAt' => null]]);
 
-        $rows = $this->service->comingUp(self::LIB);
+        $rows = $this->service()->comingUp(self::LIB);
 
         $this->assertCount(1, $rows);
         $this->assertSame(1, $rows[0]['upcomingEpisode']['episodeNumber']);
@@ -238,7 +243,7 @@ class SeriesProgressServiceTest extends TestCase {
         $this->seriesMapper->method('findAllByLibrary')->willReturn([$this->series(1)]);
         $this->episodeMapper->method('progressByLibrary')->willReturn([1 => ['watched' => 8, 'aired' => 8, 'lastWatchedAt' => null]]);
 
-        $rows = $this->service->comingUp(self::LIB);
+        $rows = $this->service()->comingUp(self::LIB);
 
         $this->assertSame(3, $rows[0]['sameDayCount']);
         $this->assertSame(4, $rows[0]['sameDayLastEpisode']);
@@ -252,6 +257,6 @@ class SeriesProgressServiceTest extends TestCase {
         $this->seriesMapper->method('findAllByLibrary')->willReturn([$this->series(3), $this->series(1), $this->series(2)]);
         $this->episodeMapper->method('progressByLibrary')->willReturn([]);
 
-        $this->assertSame([1, 2], array_column($this->service->comingUp(self::LIB, 30, 2), 'id'));
+        $this->assertSame([1, 2], array_column($this->service()->comingUp(self::LIB, 30, 2), 'id'));
     }
 }

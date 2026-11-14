@@ -18,9 +18,7 @@ use OCA\MovieDB\Service\ImportValidator;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\Entity;
 use OCP\IDBConnection;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 
-#[AllowMockObjectsWithoutExpectations]
 class ImportServiceTest extends TestCase {
     private MovieMapper $movieMapper;
     private MovieWatchMapper $watchMapper;
@@ -29,7 +27,7 @@ class ImportServiceTest extends TestCase {
     private WatchlistMapper $watchlistMapper;
     private PlatformMapper $platformMapper;
     private IDBConnection $db;
-    private ImportService $service;
+    private ?ImportService $service = null;
 
     /** @var Entity[] */
     private array $inserted = [];
@@ -43,7 +41,7 @@ class ImportServiceTest extends TestCase {
         $this->episodeMapper = $this->createStub(EpisodeMapper::class);
         $this->watchlistMapper = $this->createStub(WatchlistMapper::class);
         $this->platformMapper = $this->createStub(PlatformMapper::class);
-        $this->db = $this->createMock(IDBConnection::class);
+        $this->db = $this->createStub(IDBConnection::class);
 
         $assignId = function (Entity $e): Entity {
             $e->setId($this->nextId++);
@@ -53,8 +51,10 @@ class ImportServiceTest extends TestCase {
         foreach ([$this->movieMapper, $this->watchMapper, $this->seriesMapper, $this->episodeMapper, $this->watchlistMapper, $this->platformMapper] as $m) {
             $m->method('insert')->willReturnCallback($assignId);
         }
+    }
 
-        $this->service = new ImportService(
+    private function service(): ImportService {
+        return $this->service ??= new ImportService(
             $this->movieMapper,
             $this->watchMapper,
             $this->seriesMapper,
@@ -79,7 +79,7 @@ class ImportServiceTest extends TestCase {
             'watches' => [['watchedAt' => '2024-01-02', 'rating' => 9], ['watchedAt' => '2025-01-02', 'rating' => 8]],
         ]]]);
 
-        $result = $this->service->import(5, 'alice', $data);
+        $result = $this->service()->import(5, 'alice', $data);
 
         $this->assertSame(1, $result['imported']['movies']);
         $this->assertSame(2, $result['imported']['watches']);
@@ -103,7 +103,7 @@ class ImportServiceTest extends TestCase {
             ['tmdbId' => 603, 'title' => 'The Matrix'],
             ['tmdbId' => 604, 'title' => 'Reloaded'],
         ]]);
-        $result = $this->service->import(5, 'alice', $data);
+        $result = $this->service()->import(5, 'alice', $data);
 
         $this->assertSame(1, $result['imported']['movies']);
         $this->assertSame(1, $result['skippedDuplicates']['movies']);
@@ -114,7 +114,7 @@ class ImportServiceTest extends TestCase {
             ['title' => 'No Id', 'releaseDate' => '2001-01-01'],
             ['title' => 'no id ', 'releaseDate' => '2001-05-05'],
         ]]);
-        $result = $this->service->import(5, 'alice', $data);
+        $result = $this->service()->import(5, 'alice', $data);
 
         $this->assertSame(1, $result['imported']['movies']);
         $this->assertSame(1, $result['skippedDuplicates']['movies']);
@@ -130,7 +130,7 @@ class ImportServiceTest extends TestCase {
             'title' => 'A',
             'watches' => [['platform' => 'netflix'], ['platform' => 'My Cinema']],
         ]]]);
-        $result = $this->service->import(5, 'alice', $data);
+        $result = $this->service()->import(5, 'alice', $data);
 
         $this->assertSame(1, $result['imported']['platforms']);
         $created = $this->insertedOf(Platform::class)[0];
@@ -153,7 +153,7 @@ class ImportServiceTest extends TestCase {
                 ['season' => 1, 'episode' => 2, 'name' => 'Cat'],
             ],
         ]]]);
-        $result = $this->service->import(5, 'alice', $data);
+        $result = $this->service()->import(5, 'alice', $data);
 
         $this->assertSame(1, $result['imported']['series']);
         $this->assertSame(2, $result['imported']['episodes']);
@@ -175,7 +175,7 @@ class ImportServiceTest extends TestCase {
             ]],
         ]);
 
-        $this->service->import(5, 'alice', $data);
+        $this->service()->import(5, 'alice', $data);
 
         $languages = array_map(fn (MovieWatch $w) => $w->getLanguageWatched(), $this->insertedOf(MovieWatch::class));
         $this->assertSame(['de', null, 'en'], $languages);
@@ -187,21 +187,23 @@ class ImportServiceTest extends TestCase {
             ['tmdbId' => 10, 'title' => 'Show', 'mediaType' => 'series'],
             ['tmdbId' => 10, 'title' => 'Movie again', 'mediaType' => 'movie'],
         ]]);
-        $result = $this->service->import(5, 'alice', $data);
+        $result = $this->service()->import(5, 'alice', $data);
 
         $this->assertSame(2, $result['imported']['watchlist']);
         $this->assertSame(1, $result['skippedDuplicates']['watchlist']);
     }
 
     public function testRunsInOneTransactionAndCommits(): void {
+        $this->db = $this->createMock(IDBConnection::class);
         $this->db->expects($this->once())->method('beginTransaction');
         $this->db->expects($this->once())->method('commit');
         $this->db->expects($this->never())->method('rollBack');
 
-        $this->service->import(5, 'alice', $this->validated(['movies' => [['title' => 'A']]]));
+        $this->service()->import(5, 'alice', $this->validated(['movies' => [['title' => 'A']]]));
     }
 
     public function testRollsBackAndRethrowsOnFailure(): void {
+        $this->db = $this->createMock(IDBConnection::class);
         $failing = $this->createStub(MovieMapper::class);
         $failing->method('findAllByLibrary')->willReturn([]);
         $failing->method('insert')->willThrowException(new \RuntimeException('db down'));

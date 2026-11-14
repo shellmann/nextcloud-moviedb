@@ -15,20 +15,18 @@ use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 use Psr\Log\LoggerInterface;
 
-#[AllowMockObjectsWithoutExpectations]
 class SeriesControllerTest extends TestCase {
 
     private IRequest&Stub $request;
-    private SeriesService&MockObject $service;
-    private LibraryService&MockObject $libraryService;
-    private SeriesProgressService&MockObject $progressService;
-    private SeriesRefreshService&MockObject $refreshService;
+    private SeriesService&Stub $service;
+    private LibraryService&Stub $libraryService;
+    private SeriesProgressService&Stub $progressService;
+    private SeriesRefreshService&Stub $refreshService;
     private IUserSession&Stub $userSession;
 
     private const LIB = 4;
@@ -36,10 +34,10 @@ class SeriesControllerTest extends TestCase {
     protected function setUp(): void {
         parent::setUp();
         $this->request = $this->createStub(IRequest::class);
-        $this->service = $this->createMock(SeriesService::class);
-        $this->libraryService = $this->createMock(LibraryService::class);
-        $this->progressService = $this->createMock(SeriesProgressService::class);
-        $this->refreshService = $this->createMock(SeriesRefreshService::class);
+        $this->service = $this->createStub(SeriesService::class);
+        $this->libraryService = $this->createStub(LibraryService::class);
+        $this->progressService = $this->createStub(SeriesProgressService::class);
+        $this->refreshService = $this->createStub(SeriesRefreshService::class);
 
         $user = $this->createStub(IUser::class);
         $user->method('getUID')->willReturn('alice');
@@ -53,7 +51,7 @@ class SeriesControllerTest extends TestCase {
             $this->service,
             $this->libraryService,
             $session ?? $this->userSession,
-            $this->createMock(LoggerInterface::class),
+            $this->createStub(LoggerInterface::class),
             $this->progressService,
             $this->refreshService,
         );
@@ -75,6 +73,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testContinueWatchingPassesLibraryAndLimit(): void {
+        $this->progressService = $this->createMock(SeriesProgressService::class);
         $this->params(['limit' => '7']);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
         $this->progressService->expects($this->once())->method('continueWatching')->with(self::LIB, 7)
@@ -84,6 +83,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testContinueWatchingDefaultsToTen(): void {
+        $this->progressService = $this->createMock(SeriesProgressService::class);
         $this->params([]);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
         $this->progressService->expects($this->once())->method('continueWatching')->with(self::LIB, 10)->willReturn([]);
@@ -92,6 +92,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testComingUpPassesLibraryDaysAndLimit(): void {
+        $this->progressService = $this->createMock(SeriesProgressService::class);
         $this->params(['days' => '14', 'limit' => '5']);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
         $this->progressService->expects($this->once())->method('comingUp')->with(self::LIB, 14, 5)
@@ -101,6 +102,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testComingUpDefaultsToThirtyDaysAndTenShows(): void {
+        $this->progressService = $this->createMock(SeriesProgressService::class);
         $this->params([]);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
         $this->progressService->expects($this->once())->method('comingUp')->with(self::LIB, 30, 10)->willReturn([]);
@@ -109,6 +111,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testRefreshRequiresEditPermission(): void {
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
         $this->params([]);
         $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
         $this->libraryService->method('canEdit')->willReturn(false);
@@ -125,6 +128,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testRefreshWithoutAnyTmdbKeyIsABadRequestWithACode(): void {
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
         $this->params([]);
         $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
         $this->libraryService->method('canEdit')->willReturn(true);
@@ -138,6 +142,8 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testRefreshFallsBackToTheLibraryOwnersKeyForAnEditorWithoutOne(): void {
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
+        $this->libraryService = $this->createMock(LibraryService::class);
         $this->params(['language' => 'en-US']);
         $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
         $this->libraryService->method('canEdit')->willReturn(true);
@@ -153,6 +159,8 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testRefreshPrefersTheUsersOwnKeyOverTheOwners(): void {
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
+        $this->libraryService = $this->createMock(LibraryService::class);
         $this->params([]);
         $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
         $this->libraryService->method('canEdit')->willReturn(true);
@@ -168,6 +176,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testRefreshWithNeitherUserNorOwnerKeyIsABadRequest(): void {
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
         $this->params([]);
         $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
         $this->libraryService->method('canEdit')->willReturn(true);
@@ -189,6 +198,8 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testRefreshReadsEverySeasonWithTheCurrentUsersKeyAndTheRequestedLanguage(): void {
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
+        $this->service = $this->createMock(SeriesService::class);
         $this->params(['language' => 'de-DE']);
         $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
         $this->libraryService->method('canEdit')->willReturn(true);
@@ -232,6 +243,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testStoppedRequiresEditPermission(): void {
+        $this->service = $this->createMock(SeriesService::class);
         $this->params(['stopped' => 'true']);
         $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
         $this->libraryService->method('canEdit')->willReturn(false);
@@ -258,6 +270,7 @@ class SeriesControllerTest extends TestCase {
 
     #[DataProvider('stoppedProvider')]
     public function testStoppedSetsOrClearsTheFlag(string $param, bool $stopped): void {
+        $this->service = $this->createMock(SeriesService::class);
         $this->params(['stopped' => $param]);
         $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
         $this->libraryService->method('canEdit')->willReturn(true);
@@ -275,6 +288,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testIndexPassesAKnownWatchStatusToTheQuery(): void {
+        $this->service = $this->createMock(SeriesService::class);
         $this->params(['watchStatus' => 'finished']);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
         $this->service->expects($this->once())->method('findAll')
@@ -287,6 +301,7 @@ class SeriesControllerTest extends TestCase {
     }
 
     public function testIndexWithoutWatchStatusListsAllShows(): void {
+        $this->service = $this->createMock(SeriesService::class);
         $this->params(['watchStatus' => '']);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
         $this->service->expects($this->once())->method('findAll')
@@ -298,6 +313,7 @@ class SeriesControllerTest extends TestCase {
 
     #[DataProvider('badWatchStatusProvider')]
     public function testIndexRejectsAnUnknownWatchStatus(mixed $value): void {
+        $this->service = $this->createMock(SeriesService::class);
         $this->params(['watchStatus' => $value]);
         $this->libraryService->method('resolveReadLibraryId')->willReturn(self::LIB);
         $this->service->expects($this->never())->method('findAll');

@@ -15,32 +15,31 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Config\IUserConfig;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use Psr\Log\LoggerInterface;
 
-#[AllowMockObjectsWithoutExpectations]
 class RefreshSeriesJobTest extends TestCase {
-    private SeriesMapper&MockObject $seriesMapper;
-    private LibraryMapper&MockObject $libraryMapper;
-    private SeriesRefreshService&MockObject $refreshService;
-    private TmdbService&MockObject $tmdb;
-    private IUserConfig&MockObject $userConfig;
-    private LoggerInterface&MockObject $logger;
+    private SeriesMapper&Stub $seriesMapper;
+    private LibraryMapper&Stub $libraryMapper;
+    private SeriesRefreshService&Stub $refreshService;
+    private TmdbService&Stub $tmdb;
+    private IUserConfig&Stub $userConfig;
+    private LoggerInterface&Stub $logger;
 
     protected function setUp(): void {
         parent::setUp();
-        $this->seriesMapper = $this->createMock(SeriesMapper::class);
-        $this->libraryMapper = $this->createMock(LibraryMapper::class);
-        $this->refreshService = $this->createMock(SeriesRefreshService::class);
-        $this->tmdb = $this->createMock(TmdbService::class);
-        $this->userConfig = $this->createMock(IUserConfig::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->seriesMapper = $this->createStub(SeriesMapper::class);
+        $this->libraryMapper = $this->createStub(LibraryMapper::class);
+        $this->refreshService = $this->createStub(SeriesRefreshService::class);
+        $this->tmdb = $this->createStub(TmdbService::class);
+        $this->userConfig = $this->createStub(IUserConfig::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
     }
 
     private function job(): RefreshSeriesJob {
         return new class (
-            $this->createMock(ITimeFactory::class),
+            $this->createStub(ITimeFactory::class),
             $this->seriesMapper,
             $this->libraryMapper,
             $this->refreshService,
@@ -76,6 +75,7 @@ class RefreshSeriesJobTest extends TestCase {
     }
 
     public function testAsksForOngoingShowsAfterTwentyThreeHoursAndEndedOnesAfterThirtyDays(): void {
+        $this->seriesMapper = $this->createMock(SeriesMapper::class);
         $this->seriesMapper->expects($this->once())->method('findDueForRefresh')
             ->with(500, $this->callback(function (string $ongoing): bool {
                 $age = time() - strtotime($ongoing);
@@ -90,6 +90,10 @@ class RefreshSeriesJobTest extends TestCase {
     }
 
     public function testRefreshesWithTheLibraryOwnersKeyAndLanguage(): void {
+        $this->userConfig = $this->createMock(IUserConfig::class);
+        $this->tmdb = $this->createMock(TmdbService::class);
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $this->seriesMapper->method('findDueForRefresh')->willReturn([$this->series(1, 9)]);
         $this->libraryMapper->method('find')->with(9)->willReturn($this->library('owner'));
         $this->tmdb->method('hasApiKey')->with('owner')->willReturn(true);
@@ -102,6 +106,8 @@ class RefreshSeriesJobTest extends TestCase {
     }
 
     public function testLooksUpEachLibraryOwnerOnce(): void {
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $this->seriesMapper->method('findDueForRefresh')->willReturn([$this->series(1, 9), $this->series(2, 9)]);
         $this->libraryMapper->expects($this->once())->method('find')->willReturn($this->library('owner'));
         $this->tmdb->method('hasApiKey')->willReturn(true);
@@ -111,6 +117,8 @@ class RefreshSeriesJobTest extends TestCase {
     }
 
     public function testFallsBackToTheCreatorWhenTheLibraryIsGone(): void {
+        $this->tmdb = $this->createMock(TmdbService::class);
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
         $this->seriesMapper->method('findDueForRefresh')->willReturn([$this->series(1, 9)]);
         $this->libraryMapper->method('find')->willThrowException(new DoesNotExistException('x'));
         $this->tmdb->method('hasApiKey')->with('creator')->willReturn(true);
@@ -120,6 +128,7 @@ class RefreshSeriesJobTest extends TestCase {
     }
 
     public function testSkipsShowsWithoutAnyKeyButStampsThemSoTheyDoNotFillTheBatch(): void {
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
         $show = $this->series(1);
         $this->seriesMapper->method('findDueForRefresh')->willReturn([$show]);
         $this->libraryMapper->method('find')->willReturn($this->library('owner'));
@@ -131,6 +140,8 @@ class RefreshSeriesJobTest extends TestCase {
     }
 
     public function testOneFailingShowDoesNotStopTheBatchAndIsMarked(): void {
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
         $first = $this->series(1);
         $second = $this->series(2);
         $this->seriesMapper->method('findDueForRefresh')->willReturn([$first, $second]);
@@ -153,6 +164,7 @@ class RefreshSeriesJobTest extends TestCase {
     }
 
     public function testStopsWhenTmdbAsksToSlowDownAndLeavesTheRestForTheNextRun(): void {
+        $this->refreshService = $this->createMock(SeriesRefreshService::class);
         $this->seriesMapper->method('findDueForRefresh')->willReturn([$this->series(1), $this->series(2)]);
         $this->libraryMapper->method('find')->willReturn($this->library('owner'));
         $this->tmdb->method('hasApiKey')->willReturn(true);

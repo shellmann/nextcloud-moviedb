@@ -9,24 +9,24 @@ use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\Config\IUserConfig;
 use OCP\IGroupManager;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\Attributes\DataProvider;
 
-#[AllowMockObjectsWithoutExpectations]
 class SettingsServiceTest extends TestCase {
     private IUserConfig $userConfig;
     private TmdbService $tmdbService;
     private IGroupManager $groupManager;
-    private SettingsService $service;
+    private ?SettingsService $service = null;
 
     protected function setUp(): void {
         parent::setUp();
 
         $this->userConfig = $this->createStub(IUserConfig::class);
         $this->tmdbService = $this->createStub(TmdbService::class);
-        $this->groupManager = $this->createMock(IGroupManager::class);
+        $this->groupManager = $this->createStub(IGroupManager::class);
+    }
 
-        $this->service = new SettingsService($this->userConfig, $this->tmdbService, $this->groupManager);
+    private function service(): SettingsService {
+        return $this->service ??= new SettingsService($this->userConfig, $this->tmdbService, $this->groupManager);
     }
 
     private function givenUserKey(string $userKey): void {
@@ -40,7 +40,7 @@ class SettingsServiceTest extends TestCase {
         $this->givenUserKey($userKey);
         $this->tmdbService->method('hasInstanceApiKey')->willReturn($instanceKey);
 
-        $settings = $this->service->getUserSettings('alice');
+        $settings = $this->service()->getUserSettings('alice');
 
         $this->assertSame($hasApiKey, $settings['hasApiKey']);
         $this->assertSame($hasUserApiKey, $settings['hasUserApiKey']);
@@ -59,7 +59,7 @@ class SettingsServiceTest extends TestCase {
     public function testKeyIsMasked(): void {
         $this->givenUserKey('user-key');
 
-        $settings = $this->service->getUserSettings('alice');
+        $settings = $this->service()->getUserSettings('alice');
 
         $this->assertSame('••••••••', $settings['tmdbApiKey']);
         $this->assertNotContains('user-key', $settings);
@@ -68,7 +68,7 @@ class SettingsServiceTest extends TestCase {
     public function testLanguagesUseDefaults(): void {
         $this->givenUserKey('');
 
-        $settings = $this->service->getUserSettings('alice');
+        $settings = $this->service()->getUserSettings('alice');
 
         $this->assertSame('de-DE', $settings['defaultLanguage']);
         $this->assertSame('auto', $settings['appLanguage']);
@@ -77,7 +77,7 @@ class SettingsServiceTest extends TestCase {
     public function testContinueWatchingIsOnByDefault(): void {
         $this->givenUserKey('');
 
-        $this->assertTrue($this->service->getUserSettings('alice')['showContinueWatching']);
+        $this->assertTrue($this->service()->getUserSettings('alice')['showContinueWatching']);
     }
 
     public function testContinueWatchingCanBeSwitchedOff(): void {
@@ -85,13 +85,13 @@ class SettingsServiceTest extends TestCase {
             fn (string $userId, string $app, string $key, string $default) => $key === 'show_continue_watching' ? '0' : $default
         );
 
-        $this->assertFalse($this->service->getUserSettings('alice')['showContinueWatching']);
+        $this->assertFalse($this->service()->getUserSettings('alice')['showContinueWatching']);
     }
 
     public function testComingUpIsOnByDefault(): void {
         $this->givenUserKey('');
 
-        $this->assertTrue($this->service->getUserSettings('alice')['showComingUp']);
+        $this->assertTrue($this->service()->getUserSettings('alice')['showComingUp']);
     }
 
     public function testComingUpCanBeSwitchedOffIndependently(): void {
@@ -99,7 +99,7 @@ class SettingsServiceTest extends TestCase {
             fn (string $userId, string $app, string $key, string $default) => $key === 'show_coming_up' ? '0' : $default
         );
 
-        $settings = $this->service->getUserSettings('alice');
+        $settings = $this->service()->getUserSettings('alice');
         $this->assertFalse($settings['showComingUp']);
         $this->assertTrue($settings['showContinueWatching']);
     }
@@ -107,7 +107,7 @@ class SettingsServiceTest extends TestCase {
     public function testNotificationsAndCalendarAreOnByDefault(): void {
         $this->givenUserKey('');
 
-        $settings = $this->service->getUserSettings('alice');
+        $settings = $this->service()->getUserSettings('alice');
         $this->assertTrue($settings['notifyReleases']);
         $this->assertTrue($settings['showCalendar']);
     }
@@ -117,15 +117,16 @@ class SettingsServiceTest extends TestCase {
             fn (string $userId, string $app, string $key, string $default) => $key === 'notify_releases' ? '0' : $default
         );
 
-        $settings = $this->service->getUserSettings('alice');
+        $settings = $this->service()->getUserSettings('alice');
         $this->assertFalse($settings['notifyReleases']);
         $this->assertTrue($settings['showCalendar']);
     }
 
     public function testIsAdmin(): void {
+        $this->groupManager = $this->createMock(IGroupManager::class);
         $this->givenUserKey('');
         $this->groupManager->method('isAdmin')->with('alice')->willReturn(true);
 
-        $this->assertTrue($this->service->getUserSettings('alice')['isAdmin']);
+        $this->assertTrue($this->service()->getUserSettings('alice')['isAdmin']);
     }
 }

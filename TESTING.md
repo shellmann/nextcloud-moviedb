@@ -52,8 +52,12 @@ minimal stub to `NextcloudStubs.php`.
 The tests use PHPUnit 12, and `phpunit.xml` fails the run on any PHPUnit notice or
 deprecation. Use `createStub()` for a test double that only returns values, and
 `createMock()` only when the test sets expectations on it (`expects()`, `with()`).
-Classes whose `setUp()` builds shared mocks that some tests leave without
-expectations carry `#[AllowMockObjectsWithoutExpectations]`. Data providers are
+`setUp()` creates the shared doubles as stubs. A test that sets expectations on
+one replaces it with a mock at its start, e.g.
+`$this->mapper = $this->createMock(MovieMapper::class);`. The class under test
+is therefore built lazily by a helper such as `service()` or `controller()`
+(`return $this->service ??= new ...;`), so it picks up the replaced double. Do
+not use `#[AllowMockObjectsWithoutExpectations]`. Data providers are
 `public static` methods and are named with `#[DataProvider('...')]`.
 
 Migrations (`lib/Migration/`) have no unit tests and are excluded from coverage

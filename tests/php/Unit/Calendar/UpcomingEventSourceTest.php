@@ -13,28 +13,30 @@ use OCA\MovieDB\Db\WatchlistMapper;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\IL10N;
 use OCP\IURLGenerator;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 
-#[AllowMockObjectsWithoutExpectations]
 class UpcomingEventSourceTest extends TestCase {
     private LibraryMapper&Stub $libraries;
-    private EpisodeMapper&MockObject $episodes;
-    private WatchlistMapper&MockObject $watchlist;
-    private UpcomingEventSource $source;
+    private EpisodeMapper&Stub $episodes;
+    private WatchlistMapper&Stub $watchlist;
+    private IURLGenerator&Stub $url;
+    private ?UpcomingEventSource $source = null;
     private IL10N $l;
 
     protected function setUp(): void {
         parent::setUp();
         $this->libraries = $this->createStub(LibraryMapper::class);
-        $this->episodes = $this->createMock(EpisodeMapper::class);
-        $this->watchlist = $this->createMock(WatchlistMapper::class);
-        $url = $this->createStub(IURLGenerator::class);
-        $url->method('linkToRouteAbsolute')->willReturn('https://nc.example/apps/moviedb/');
-        $this->source = new UpcomingEventSource($this->libraries, $this->episodes, $this->watchlist, $url);
+        $this->episodes = $this->createStub(EpisodeMapper::class);
+        $this->watchlist = $this->createStub(WatchlistMapper::class);
+        $this->url = $this->createStub(IURLGenerator::class);
+        $this->url->method('linkToRouteAbsolute')->willReturn('https://nc.example/apps/moviedb/');
         $this->l = $this->createStub(IL10N::class);
         $this->l->method('t')->willReturnCallback(fn (string $t, $p = []) => vsprintf($t, $p));
+    }
+
+    private function source(): UpcomingEventSource {
+        return $this->source ??= new UpcomingEventSource($this->libraries, $this->episodes, $this->watchlist, $this->url);
     }
 
     private function library(int $id, string $name): Library {
@@ -68,7 +70,7 @@ class UpcomingEventSourceTest extends TestCase {
         $this->episodes->method('airingBetween')->willReturn([$this->episodeRow()]);
         $this->watchlist->method('releasingBetween')->willReturn([$this->item(5, 438631, 'movie', '2026-11-10')]);
 
-        $events = $this->source->eventsFor('alice', $this->l, '2026-11-06');
+        $events = $this->source()->eventsFor('alice', $this->l, '2026-11-06');
 
         $this->assertCount(2, $events);
         $this->assertSame('moviedb-wl-movie-438631', $events[0]['uid']);
@@ -86,7 +88,7 @@ class UpcomingEventSourceTest extends TestCase {
         $this->episodes->method('airingBetween')->willReturn([$this->episodeRow(), $this->episodeRow(['id' => 22, 'episode_number' => 3, 'series_refreshed_at' => null])]);
         $this->watchlist->method('releasingBetween')->willReturn([]);
 
-        $events = $this->source->eventsFor('alice', $this->l, '2026-11-06');
+        $events = $this->source()->eventsFor('alice', $this->l, '2026-11-06');
 
         $this->assertSame('2026-11-05 03:00:00', $events[0]['lastModified']);
         $this->assertSame('2026-09-01 09:00:00', $events[1]['lastModified']);
@@ -97,7 +99,7 @@ class UpcomingEventSourceTest extends TestCase {
         $this->episodes->method('airingBetween')->willReturn([$this->episodeRow()]);
         $this->watchlist->method('releasingBetween')->willReturn([$this->item(5, 438631, 'movie', '2026-11-10')]);
 
-        $events = $this->source->eventsFor('alice', $this->l, '2026-11-06');
+        $events = $this->source()->eventsFor('alice', $this->l, '2026-11-06');
 
         $this->assertCount(2, $events);
         $this->assertSame('Personal', $events[1]['description']);
@@ -108,17 +110,19 @@ class UpcomingEventSourceTest extends TestCase {
         $this->episodes->method('airingBetween')->willReturn([$this->episodeRow(['series_tmdb_id' => null])]);
         $this->watchlist->method('releasingBetween')->willReturn([$this->item(9, null, 'series', '2026-12-01')]);
 
-        $uids = array_column($this->source->eventsFor('alice', $this->l, '2026-11-06'), 'uid');
+        $uids = array_column($this->source()->eventsFor('alice', $this->l, '2026-11-06'), 'uid');
 
         $this->assertSame(['moviedb-ep-local-21', 'moviedb-wl-local-9'], $uids);
     }
 
     public function testAsksForTheWindowAroundToday(): void {
+        $this->watchlist = $this->createMock(WatchlistMapper::class);
+        $this->episodes = $this->createMock(EpisodeMapper::class);
         $this->libraries->method('findAccessible')->willReturn([$this->library(4, 'Personal')]);
         $this->episodes->expects($this->once())->method('airingBetween')->with(4, '2026-10-07', '2027-05-05')->willReturn([]);
         $this->watchlist->expects($this->once())->method('releasingBetween')->with(4, '2026-10-07', '2027-05-05')->willReturn([]);
 
-        $this->assertSame([], $this->source->eventsFor('alice', $this->l, '2026-11-06'));
+        $this->assertSame([], $this->source()->eventsFor('alice', $this->l, '2026-11-06'));
     }
 
     public function testEpisodeWithoutNameStillHasASummary(): void {
@@ -126,7 +130,7 @@ class UpcomingEventSourceTest extends TestCase {
         $this->episodes->method('airingBetween')->willReturn([$this->episodeRow(['name' => ' '])]);
         $this->watchlist->method('releasingBetween')->willReturn([]);
 
-        $this->assertSame('Severance S03E02', $this->source->eventsFor('alice', $this->l, '2026-11-06')[0]['summary']);
+        $this->assertSame('Severance S03E02', $this->source()->eventsFor('alice', $this->l, '2026-11-06')[0]['summary']);
     }
 
     public function testAWindowNarrowsTheQueriesButNeverWidensThem(): void {
@@ -138,8 +142,8 @@ class UpcomingEventSourceTest extends TestCase {
         });
         $this->watchlist->method('releasingBetween')->willReturn([]);
 
-        $this->source->eventsFor('alice', $this->l, '2026-11-06', '2026-11-10', '2026-11-20');
-        $this->source->eventsFor('alice', $this->l, '2026-11-06', '2000-01-01', '2100-01-01');
+        $this->source()->eventsFor('alice', $this->l, '2026-11-06', '2026-11-10', '2026-11-20');
+        $this->source()->eventsFor('alice', $this->l, '2026-11-06', '2000-01-01', '2100-01-01');
 
         $this->assertSame([['2026-11-10', '2026-11-20'], ['2026-10-07', '2027-05-05']], $seen);
     }

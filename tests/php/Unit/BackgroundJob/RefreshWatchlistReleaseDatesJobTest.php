@@ -15,32 +15,31 @@ use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Utility\ITimeFactory;
 use OCP\Config\IUserConfig;
-use PHPUnit\Framework\Attributes\AllowMockObjectsWithoutExpectations;
 use PHPUnit\Framework\MockObject\MockObject;
+use PHPUnit\Framework\MockObject\Stub;
 use Psr\Log\LoggerInterface;
 
-#[AllowMockObjectsWithoutExpectations]
 class RefreshWatchlistReleaseDatesJobTest extends TestCase {
-    private WatchlistMapper&MockObject $mapper;
-    private LibraryMapper&MockObject $libraryMapper;
-    private WatchlistReleaseService&MockObject $releaseService;
-    private TmdbService&MockObject $tmdb;
-    private IUserConfig&MockObject $userConfig;
-    private LoggerInterface&MockObject $logger;
+    private WatchlistMapper&Stub $mapper;
+    private LibraryMapper&Stub $libraryMapper;
+    private WatchlistReleaseService&Stub $releaseService;
+    private TmdbService&Stub $tmdb;
+    private IUserConfig&Stub $userConfig;
+    private LoggerInterface&Stub $logger;
 
     protected function setUp(): void {
         parent::setUp();
-        $this->mapper = $this->createMock(WatchlistMapper::class);
-        $this->libraryMapper = $this->createMock(LibraryMapper::class);
-        $this->releaseService = $this->createMock(WatchlistReleaseService::class);
-        $this->tmdb = $this->createMock(TmdbService::class);
-        $this->userConfig = $this->createMock(IUserConfig::class);
-        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->mapper = $this->createStub(WatchlistMapper::class);
+        $this->libraryMapper = $this->createStub(LibraryMapper::class);
+        $this->releaseService = $this->createStub(WatchlistReleaseService::class);
+        $this->tmdb = $this->createStub(TmdbService::class);
+        $this->userConfig = $this->createStub(IUserConfig::class);
+        $this->logger = $this->createStub(LoggerInterface::class);
     }
 
     private function job(): RefreshWatchlistReleaseDatesJob {
         return new class (
-            $this->createMock(ITimeFactory::class),
+            $this->createStub(ITimeFactory::class),
             $this->mapper,
             $this->libraryMapper,
             $this->releaseService,
@@ -76,6 +75,7 @@ class RefreshWatchlistReleaseDatesJobTest extends TestCase {
     }
 
     public function testAsksForItemsWithoutDateOrWithADateFromTodayOn(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $this->mapper->expects($this->once())->method('findDueForReleaseCheck')
             ->with(500, date('Y-m-d'))
             ->willReturn([]);
@@ -84,6 +84,10 @@ class RefreshWatchlistReleaseDatesJobTest extends TestCase {
     }
 
     public function testChecksWithTheLibraryOwnersKeyAndLanguage(): void {
+        $this->userConfig = $this->createMock(IUserConfig::class);
+        $this->tmdb = $this->createMock(TmdbService::class);
+        $this->releaseService = $this->createMock(WatchlistReleaseService::class);
+        $this->libraryMapper = $this->createMock(LibraryMapper::class);
         $this->mapper->method('findDueForReleaseCheck')->willReturn([$this->item(1, 9)]);
         $this->libraryMapper->method('find')->with(9)->willReturn($this->library('owner'));
         $this->tmdb->method('hasApiKey')->with('owner')->willReturn(true);
@@ -96,6 +100,8 @@ class RefreshWatchlistReleaseDatesJobTest extends TestCase {
     }
 
     public function testFallsBackToTheCreatorWhenTheLibraryIsGone(): void {
+        $this->tmdb = $this->createMock(TmdbService::class);
+        $this->releaseService = $this->createMock(WatchlistReleaseService::class);
         $this->mapper->method('findDueForReleaseCheck')->willReturn([$this->item(1, 9)]);
         $this->libraryMapper->method('find')->willThrowException(new DoesNotExistException('x'));
         $this->tmdb->method('hasApiKey')->with('creator')->willReturn(true);
@@ -105,6 +111,7 @@ class RefreshWatchlistReleaseDatesJobTest extends TestCase {
     }
 
     public function testSkipsItemsWithoutAnyKey(): void {
+        $this->releaseService = $this->createMock(WatchlistReleaseService::class);
         $this->mapper->method('findDueForReleaseCheck')->willReturn([$this->item(1)]);
         $this->libraryMapper->method('find')->willReturn($this->library('owner'));
         $this->tmdb->method('hasApiKey')->willReturn(false);
@@ -114,6 +121,7 @@ class RefreshWatchlistReleaseDatesJobTest extends TestCase {
     }
 
     public function testOneFailingItemDoesNotStopTheBatch(): void {
+        $this->logger = $this->createMock(LoggerInterface::class);
         $this->mapper->method('findDueForReleaseCheck')->willReturn([$this->item(1), $this->item(2)]);
         $this->libraryMapper->method('find')->willReturn($this->library('owner'));
         $this->tmdb->method('hasApiKey')->willReturn(true);
@@ -133,6 +141,7 @@ class RefreshWatchlistReleaseDatesJobTest extends TestCase {
     }
 
     public function testStopsWhenTmdbAsksToSlowDown(): void {
+        $this->releaseService = $this->createMock(WatchlistReleaseService::class);
         $this->mapper->method('findDueForReleaseCheck')->willReturn([$this->item(1), $this->item(2)]);
         $this->libraryMapper->method('find')->willReturn($this->library('owner'));
         $this->tmdb->method('hasApiKey')->willReturn(true);
@@ -158,6 +167,7 @@ class RefreshWatchlistReleaseDatesJobTest extends TestCase {
     }
 
     public function testAnEntryThatIsRateLimitedEveryTimeDoesNotPinTheQueue(): void {
+        $this->mapper = $this->createMock(WatchlistMapper::class);
         $this->mapper->method('findDueForReleaseCheck')->willReturn([$this->item(1), $this->item(2)]);
         $this->libraryMapper->method('find')->willReturn($this->library('owner'));
         $this->tmdb->method('hasApiKey')->willReturn(true);
