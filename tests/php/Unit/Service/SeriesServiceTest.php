@@ -17,6 +17,8 @@ use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
+use OCP\Lock\ILockingProvider;
+use OCP\Lock\LockedException;
 
 /**
  * Unit tests for SeriesService — the episode-level TV layer.
@@ -718,5 +720,78 @@ class SeriesServiceTest extends TestCase {
         $ep->setWatched($watched);
         $ep->setCreatedAt('2026-01-01 12:00:00');
         return $ep;
+    }
+
+    // ---- withImportLock (#147 review: concurrent imports of one show) ----
+
+    private function serviceWithLocks(ILockingProvider $locks): SeriesService {
+        return new SeriesService($this->mapper, $this->episodeMapper, $this->watchMapper, $this->platformMapper, $this->tmdbService, $this->db, null, $locks);
+    }
+
+    public function testImportLockIsPerShowAndLibraryAndReleasedAfterwards(): void {
+        $locks = $this->createMock(ILockingProvider::class);
+        $calls = [];
+        $locks->expects($this->once())->method('acquireLock')
+            ->willReturnCallback(function (string $key, int $type) use (&$calls) {
+                $calls[] = ['acquire', $key, $type];
+            });
+        $locks->expects($this->once())->method('releaseLock')
+            ->willReturnCallback(function (string $key, int $type) use (&$calls) {
+                $calls[] = ['release', $key, $type];
+            });
+
+        $result = $this->serviceWithLocks($locks)->withImportLock(3, 1399, function () use (&$calls) {
+            $calls[] = ['run'];
+            return 'done';
+        });
+
+        $this->assertSame('done', $result);
+        $key = 'moviedb/series-import/3/1399';
+        $this->assertSame([
+            ['acquire', $key, ILockingProvider::LOCK_EXCLUSIVE],
+            ['run'],
+            ['release', $key, ILockingProvider::LOCK_EXCLUSIVE],
+        ], $calls);
+    }
+
+    public function testImportLockIsReleasedWhenTheImportFails(): void {
+        $locks = $this->createMock(ILockingProvider::class);
+        $locks->expects($this->once())->method('releaseLock');
+
+        $this->expectException(\RuntimeException::class);
+        $this->serviceWithLocks($locks)->withImportLock(3, 1399, fn () => throw new \RuntimeException('TMDB down'));
+    }
+
+    public function testASecondImportWaitsForTheFirstInsteadOfFailing(): void {
+        $locks = $this->createMock(ILockingProvider::class);
+        $attempts = 0;
+        $locks->method('acquireLock')->willReturnCallback(function (string $key) use (&$attempts) {
+            if (++$attempts < 3) {
+                throw new LockedException($key);
+            }
+        });
+        $locks->expects($this->once())->method('releaseLock');
+        $service = $this->serviceWithLocks($locks);
+        $service->setImportLockWait(5.0);
+
+        $this->assertSame('ran', $service->withImportLock(3, 1399, fn () => 'ran'));
+        $this->assertSame(3, $attempts);
+    }
+
+    public function testAnImportThatWaitsTooLongGivesUpWithoutRunning(): void {
+        $locks = $this->createStub(ILockingProvider::class);
+        $locks->method('acquireLock')->willThrowException(new LockedException('moviedb/series-import/3/1399'));
+        $service = $this->serviceWithLocks($locks);
+        $service->setImportLockWait(0.0);
+        $ran = false;
+
+        try {
+            $service->withImportLock(3, 1399, function () use (&$ran) {
+                $ran = true;
+            });
+            $this->fail('expected LockedException');
+        } catch (LockedException $e) {
+            $this->assertFalse($ran);
+        }
     }
 }

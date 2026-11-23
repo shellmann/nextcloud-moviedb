@@ -332,6 +332,8 @@ export default {
 			],
 
 			saving: false,
+			// Watchlist ids of shows whose import is running; repeat clicks are ignored (#147).
+			movingSeriesIds: [],
 		}
 	},
 
@@ -510,9 +512,20 @@ export default {
 			// Series don't have a single watch event — importing the show tracks it
 			// at 0% and the user marks episodes/seasons afterward. Skip the modal.
 			if (this.isSeries(item)) {
-				const result = await this.watchlistStore.moveToWatched(item.id, {
-					language: this.settingsStore.defaultLanguage || 'en-US',
-				})
+				// The import takes a few seconds; a double-click must not start it twice.
+				// The button stays enabled (a disabled button drops keyboard focus).
+				if (this.movingSeriesIds.includes(item.id)) {
+					return
+				}
+				this.movingSeriesIds.push(item.id)
+				let result
+				try {
+					result = await this.watchlistStore.moveToWatched(item.id, {
+						language: this.settingsStore.defaultLanguage || 'en-US',
+					})
+				} finally {
+					this.movingSeriesIds = this.movingSeriesIds.filter((id) => id !== item.id)
+				}
 				if (result?.series) {
 					this.$router.push({ name: 'series-detail', params: { id: String(result.series.id) } })
 				}

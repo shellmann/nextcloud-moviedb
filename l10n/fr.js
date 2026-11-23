@@ -560,6 +560,7 @@ OC.L10N.register(
         "The TV show page shows network logos and when the show was last synced with TMDB.": "La page de la série affiche les logos des chaînes et la date de la dernière synchronisation avec TMDB.",
         "MovieDB has a new app icon.": "MovieDB a une nouvelle icône d’application.",
         "This show is already in your TV shows.": "Cette série est déjà dans vos séries.",
-        "Added to watchlist. This show is already in your TV shows.": "Ajoutée à la liste. Cette série est déjà dans vos séries."
+        "Added to watchlist. This show is already in your TV shows.": "Ajoutée à la liste. Cette série est déjà dans vos séries.",
+        "This show is still being added. Please try again in a moment.": "Cette série est encore en cours d'ajout. Veuillez réessayer dans un instant."
     },
 "nplurals=2; plural=(n > 1);");

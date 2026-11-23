@@ -559,7 +559,8 @@
 		"The TV show page shows network logos and when the show was last synced with TMDB.": "La página de la serie muestra los logotipos de las cadenas y cuándo se sincronizó por última vez con TMDB.",
 		"MovieDB has a new app icon.": "MovieDB tiene un nuevo icono de aplicación.",
 		"This show is already in your TV shows.": "Esta serie ya está en tus series.",
-		"Added to watchlist. This show is already in your TV shows.": "Añadida a la lista. Esta serie ya está en tus series."
+		"Added to watchlist. This show is already in your TV shows.": "Añadida a la lista. Esta serie ya está en tus series.",
+		"This show is still being added. Please try again in a moment.": "Esta serie se está añadiendo todavía. Inténtalo de nuevo en un momento."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

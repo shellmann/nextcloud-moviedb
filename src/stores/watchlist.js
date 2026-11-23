@@ -306,7 +306,12 @@ export const useWatchlistStore = defineStore('watchlist', {
 				return response.data
 			} catch (error) {
 				console.error('Failed to move to watched:', error)
-				showError(t('moviedb', 'Failed to move to watched. Please try again.'))
+				if (error.response?.status === 409) {
+					// Another request (a second tab) is still importing this show.
+					showError(t('moviedb', 'This show is still being added. Please try again in a moment.'))
+				} else {
+					showError(t('moviedb', 'Failed to move to watched. Please try again.'))
+				}
 				return null
 			}
 		},

@@ -117,6 +117,15 @@ describe('Series Store', () => {
 			expect(store.series).toHaveLength(0)
 		})
 
+		it('says the show is still being added on a 409 without an existing id (#147)', async () => {
+			api.createSeries.mockRejectedValue({ response: { status: 409, data: { error: 'busy' } } })
+
+			const result = await store.create({ title: 'Silo', tmdbId: 1 })
+
+			expect(result).toBeNull()
+			expect(showError).toHaveBeenCalledWith('This show is still being added. Please try again in a moment.')
+		})
+
 		it('should return null on generic error', async () => {
 			api.createSeries.mockRejectedValue(new Error('server'))
 			const result = await store.create({ title: 'X' })
