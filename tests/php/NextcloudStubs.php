@@ -124,6 +124,21 @@ namespace OCP\Config {
     }
 }
 
+namespace OCP\Lock {
+    interface ILockingProvider {
+        public const LOCK_SHARED = 1;
+        public const LOCK_EXCLUSIVE = 2;
+        public function acquireLock(string $path, int $type, ?string $readablePath = null): void;
+        public function releaseLock(string $path, int $type): void;
+    }
+
+    class LockedException extends \Exception {
+        public function __construct(string $path, ?\Exception $previous = null, ?string $existing = null, ?string $readablePath = null) {
+            parent::__construct('"' . $path . '" is locked', 0, $previous);
+        }
+    }
+}
+
 namespace OCP\Http\Client {
     interface IResponse {
         public function getBody();

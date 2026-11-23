@@ -565,6 +565,7 @@ OC.L10N.register(
         "Fill in today's date as the watch date": "Datum van vandaag invullen als kijkdatum",
         "When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.": "Als dit uit staat, blijft het datumveld leeg wanneer je een film of serie toevoegt of een keer kijken vastlegt. Handig als je titels toevoegt die je een tijd geleden hebt gezien.",
         "Favorite: {title}": "Favoriet: {title}",
-        "Could not change the favorite. Please try again.": "De favoriet kon niet worden gewijzigd. Probeer het opnieuw."
+        "Could not change the favorite. Please try again.": "De favoriet kon niet worden gewijzigd. Probeer het opnieuw.",
+        "This show is still being added. Please try again in a moment.": "Deze serie wordt nog toegevoegd. Probeer het zo meteen opnieuw."
     },
 "nplurals=2; plural=(n != 1);");

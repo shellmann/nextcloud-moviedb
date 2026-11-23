@@ -17,6 +17,8 @@ use OCA\MovieDB\Util\TmdbEpisode;
 use OCA\MovieDB\Util\TmdbSeriesFields;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
+use OCP\Lock\ILockingProvider;
+use OCP\Lock\LockedException;
 
 class SeriesService {
     private SeriesMapper $mapper;
@@ -26,6 +28,9 @@ class SeriesService {
     private TmdbService $tmdbService;
     private IDBConnection $db;
 
+    /** How long a second import of the same show waits for the first one (seconds). */
+    private float $importLockWait = 20.0;
+
     public function __construct(
         SeriesMapper $mapper,
         EpisodeMapper $episodeMapper,
@@ -33,7 +38,8 @@ class SeriesService {
         PlatformMapper $platformMapper,
         TmdbService $tmdbService,
         IDBConnection $db,
-        private ?ReleaseNotificationService $notifications = null
+        private ?ReleaseNotificationService $notifications = null,
+        private ?ILockingProvider $lockingProvider = null,
     ) {
         $this->mapper = $mapper;
         $this->episodeMapper = $episodeMapper;
@@ -41,6 +47,50 @@ class SeriesService {
         $this->platformMapper = $platformMapper;
         $this->tmdbService = $tmdbService;
         $this->db = $db;
+    }
+
+    /**
+     * Runs $fn while holding the import lock of one show in one library, so two requests
+     * can't both pass the "already tracked?" check and import it twice (#147: double-click
+     * on "Add to TV Shows", two tabs). $fn must do the check, the import and the commit;
+     * the lock is released only afterwards, so a waiting request sees the committed show.
+     *
+     * A second request waits for the first instead of failing. Nextcloud's lock is
+     * non-blocking, hence the polling. Without a locking provider (tests, or
+     * `filelocking.enabled` off) $fn runs unguarded.
+     *
+     * @template T
+     * @param callable(): T $fn
+     * @return T
+     * @throws LockedException when the other import does not finish within the wait
+     */
+    public function withImportLock(int $libraryId, int $tmdbId, callable $fn): mixed {
+        if ($this->lockingProvider === null) {
+            return $fn();
+        }
+        $key = 'moviedb/series-import/' . $libraryId . '/' . $tmdbId;
+        $deadline = microtime(true) + $this->importLockWait;
+        while (true) {
+            try {
+                $this->lockingProvider->acquireLock($key, ILockingProvider::LOCK_EXCLUSIVE, 'MovieDB import of TV show ' . $tmdbId);
+                break;
+            } catch (LockedException $e) {
+                if (microtime(true) >= $deadline) {
+                    throw $e;
+                }
+                usleep(250_000);
+            }
+        }
+        try {
+            return $fn();
+        } finally {
+            $this->lockingProvider->releaseLock($key, ILockingProvider::LOCK_EXCLUSIVE);
+        }
+    }
+
+    /** @internal Tests only: shorten the wait for a held import lock. */
+    public function setImportLockWait(float $seconds): void {
+        $this->importLockWait = $seconds;
     }
 
     /**

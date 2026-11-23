@@ -565,6 +565,7 @@ OC.L10N.register(
         "Fill in today's date as the watch date": "Inserisci la data di oggi come data di visione",
         "When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.": "Se è disattivato, il campo della data resta vuoto quando aggiungi un film o una serie TV o registri una visione. Utile se aggiungi titoli che hai visto tempo fa.",
         "Favorite: {title}": "Preferito: {title}",
-        "Could not change the favorite. Please try again.": "Impossibile modificare il preferito. Riprova."
+        "Could not change the favorite. Please try again.": "Impossibile modificare il preferito. Riprova.",
+        "This show is still being added. Please try again in a moment.": "Questa serie è ancora in fase di aggiunta. Riprova tra un momento."
     },
 "nplurals=2; plural=(n != 1);");

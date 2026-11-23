@@ -19,6 +19,7 @@ use OCP\IDBConnection;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
+use OCP\Lock\LockedException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -84,6 +85,12 @@ class WatchlistControllerTest extends TestCase {
         );
     }
 
+    /** Lets a SeriesService double run the callback of withImportLock, as the real lock does. */
+    private function runImportLockCallbacks(): void {
+        $this->seriesService->method('withImportLock')
+            ->willReturnCallback(fn (int $libraryId, int $tmdbId, callable $fn) => $fn());
+    }
+
     private function makeItem(int $id, string $mediaType, ?int $tmdbId = null): WatchlistItem {
         $item = new WatchlistItem();
         $item->setId($id);
@@ -96,6 +103,7 @@ class WatchlistControllerTest extends TestCase {
 
     public function testMoveSeriesImportsShowAndReturnsSeries(): void {
         $this->seriesService = $this->createMock(SeriesService::class);
+        $this->runImportLockCallbacks();
         $this->watchService = $this->createMock(MovieWatchService::class);
         $this->movieService = $this->createMock(MovieService::class);
         $this->service = $this->createMock(WatchlistService::class);
@@ -137,6 +145,7 @@ class WatchlistControllerTest extends TestCase {
 
     public function testMoveSeriesThatIsAlreadyTrackedReturnsTheExistingShow(): void {
         $this->seriesService = $this->createMock(SeriesService::class);
+        $this->runImportLockCallbacks();
         $this->tmdbService = $this->createMock(TmdbService::class);
         $this->service = $this->createMock(WatchlistService::class);
         $item = $this->makeItem(5, 'series', 1399);
@@ -159,6 +168,66 @@ class WatchlistControllerTest extends TestCase {
         $data = $response->getData();
         $this->assertSame(42, $data['series']->getId());
         $this->assertTrue($data['alreadyTracked']);
+    }
+
+    public function testMoveSeriesChecksAndImportsUnderTheShowsLock(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->service->method('find')->willReturn($this->makeItem(5, 'series', 1399));
+        $this->request->method('getParam')->willReturnCallback(fn($k, $d = null) => $d);
+
+        // Nothing may look up or import the show outside the lock (#147 review).
+        $insideLock = false;
+        $this->seriesService->expects($this->once())
+            ->method('withImportLock')
+            ->with(self::LIBRARY_ID, 1399, $this->anything())
+            ->willReturnCallback(function (int $libraryId, int $tmdbId, callable $fn) use (&$insideLock) {
+                $insideLock = true;
+                try {
+                    return $fn();
+                } finally {
+                    $insideLock = false;
+                }
+            });
+        $this->seriesService->method('findByTmdbId')->willReturnCallback(function () use (&$insideLock) {
+            $this->assertTrue($insideLock, 'duplicate check ran outside the import lock');
+            return null;
+        });
+        $this->seriesService->expects($this->once())->method('createFromTmdb')
+            ->willReturnCallback(function () use (&$insideLock) {
+                $this->assertTrue($insideLock, 'import ran outside the import lock');
+                return new Series();
+            });
+
+        $this->assertEquals(Http::STATUS_OK, $this->controller()->moveToWatched(5)->getStatus());
+    }
+
+    public function testSecondOfTwoConcurrentMovesGetsTheShowTheFirstImported(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->runImportLockCallbacks();
+        $this->service = $this->createMock(WatchlistService::class);
+        $existing = new Series();
+        $existing->setId(42);
+
+        // The second request found the row before it waited; the first one has removed it since.
+        $this->service->method('find')->willReturn($this->makeItem(5, 'series', 1399));
+        $this->service->expects($this->once())->method('delete')->willThrowException(new \OCP\AppFramework\Db\DoesNotExistException('gone'));
+        $this->seriesService->method('findByTmdbId')->willReturn($existing);
+        $this->seriesService->expects($this->never())->method('createFromTmdb');
+
+        $response = $this->controller()->moveToWatched(5);
+
+        $this->assertEquals(Http::STATUS_OK, $response->getStatus());
+        $this->assertSame(42, $response->getData()['series']->getId());
+        $this->assertTrue($response->getData()['alreadyTracked']);
+    }
+
+    public function testMoveSeriesAnswersConflictWhenTheOtherImportTakesTooLong(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->service->method('find')->willReturn($this->makeItem(5, 'series', 1399));
+        $this->seriesService->method('withImportLock')->willThrowException(new LockedException('moviedb/series-import/1/1399'));
+        $this->seriesService->expects($this->never())->method('createFromTmdb');
+
+        $this->assertEquals(Http::STATUS_CONFLICT, $this->controller()->moveToWatched(5)->getStatus());
     }
 
     public function testCreateFlagsAShowThatIsAlreadyTracked(): void {
