@@ -259,7 +259,7 @@ import { useLibrariesStore } from '../stores/libraries.js'
 import { usePlatformsStore } from '../stores/platforms.js'
 import { useSettingsStore } from '../stores/settings.js'
 import { useWatchlistStore } from '../stores/watchlist.js'
-import { formatDate, todayLocal } from '../utils/formatters.js'
+import { formatDate } from '../utils/formatters.js'
 
 export default {
 	name: 'Watchlist',
@@ -307,7 +307,7 @@ export default {
 			watchedData: {
 				platform: null,
 				language: null,
-				dateWatched: todayLocal(),
+				dateWatched: this.settingsStore.defaultWatchDate(),
 				rating: null,
 			},
 
@@ -522,7 +522,7 @@ export default {
 			this.watchedData = {
 				platform: null,
 				language: this.languageOptions[0], // Default to English (first in list)
-				dateWatched: todayLocal(),
+				dateWatched: this.settingsStore.defaultWatchDate(),
 				rating: null,
 			}
 			this.showWatchedModal = true

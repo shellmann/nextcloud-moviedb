@@ -12,6 +12,7 @@ use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
+use OCA\MovieDB\Util\DateValue;
 use OCA\MovieDB\Util\TmdbEpisode;
 use OCA\MovieDB\Util\TmdbSeriesFields;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -381,7 +382,13 @@ class SeriesService {
             $watch->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
         }
 
-        $watch->setWatchedAt($data['watchedAt'] ?? $watch->getWatchedAt() ?? (new DateTime())->format('Y-m-d'));
+        // A sent date wins, and an empty one means "no date" (#137: the Add form can start
+        // blank). Without the key the stored date stays; only a brand-new row gets today.
+        if (array_key_exists('watchedAt', $data)) {
+            $watch->setWatchedAt(DateValue::normalize($data['watchedAt']));
+        } elseif ($isNew) {
+            $watch->setWatchedAt((new DateTime())->format('Y-m-d'));
+        }
         if (array_key_exists('rating', $data)) {
             $watch->setRating($data['rating'] !== null ? (int)$data['rating'] : null);
         }

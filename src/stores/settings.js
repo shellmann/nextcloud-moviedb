@@ -3,6 +3,7 @@ import { loadState } from '@nextcloud/initial-state'
 import { translate as t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
+import { todayLocal } from '../utils/formatters.js'
 
 /**
  * Picks the store fields from a settings payload (GET /api/settings or the
@@ -33,6 +34,8 @@ function fromServer(data) {
 		notifyReleases: data.notifyReleases !== false,
 		/** @type {boolean} Whether the "MovieDB – Upcoming" calendar is shown in the Calendar app (on unless switched off) */
 		showCalendar: data.showCalendar !== false,
+		/** @type {boolean} Whether new viewings start with today's date (on unless switched off) */
+		prefillWatchDate: data.prefillWatchDate !== false,
 	}
 }
 
@@ -52,6 +55,17 @@ export const useSettingsStore = defineStore('settings', {
 	}),
 
 	actions: {
+		/**
+		 * The date a new viewing starts with: today, or empty when the user
+		 * switched prefilling off (#137). An action, not a getter, so it is
+		 * never cached across midnight.
+		 *
+		 * @return {string} Y-m-d date or ''
+		 */
+		defaultWatchDate() {
+			return this.prefillWatchDate ? todayLocal() : ''
+		},
+
 		/**
 		 * Fetches current settings from the API.
 		 *

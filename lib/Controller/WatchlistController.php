@@ -15,6 +15,7 @@ use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
+use OCA\MovieDB\Util\DateValue;
 use OCA\MovieDB\Util\TmdbSeriesFields;
 use OCP\IDBConnection;
 use OCP\IRequest;
@@ -322,6 +323,11 @@ class WatchlistController extends AuthenticatedController {
 
             // Get additional watch data from request
             $watchData = $this->request->getParams();
+            // An empty date means "no date" (#137); only a request without the field
+            // falls back to today, so older clients keep their behaviour.
+            $dateWatched = array_key_exists('dateWatched', $watchData)
+                ? DateValue::normalize($watchData['dateWatched'])
+                : date('Y-m-d');
 
             // Create movie from watchlist item
             $movieData = [
@@ -333,7 +339,7 @@ class WatchlistController extends AuthenticatedController {
                 'releaseDate' => $item->getReleaseDate(),
                 'platformId' => $watchData['platformId'] ?? null,
                 'languageWatched' => $watchData['languageWatched'] ?? null,
-                'dateWatched' => $watchData['dateWatched'] ?? date('Y-m-d'),
+                'dateWatched' => $dateWatched,
                 'rating' => $watchData['rating'] ?? null,
                 'review' => $watchData['review'] ?? null,
             ];
@@ -364,7 +370,7 @@ class WatchlistController extends AuthenticatedController {
                 if ($existingMovie !== null) {
                     // Movie already tracked — add a new watch entry (rewatch)
                     $newWatch = [
-                        'watchedAt' => $watchData['dateWatched'] ?? date('Y-m-d'),
+                        'watchedAt' => $dateWatched,
                         'rating' => $watchData['rating'] ?? null,
                         'review' => $watchData['review'] ?? null,
                         'platformId' => $watchData['platformId'] ?? null,

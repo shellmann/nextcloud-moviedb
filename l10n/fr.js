@@ -560,6 +560,9 @@ OC.L10N.register(
         "The TV show page shows network logos and when the show was last synced with TMDB.": "La page de la série affiche les logos des chaînes et la date de la dernière synchronisation avec TMDB.",
         "MovieDB has a new app icon.": "MovieDB a une nouvelle icône d’application.",
         "This show is already in your TV shows.": "Cette série est déjà dans vos séries.",
-        "Added to watchlist. This show is already in your TV shows.": "Ajoutée à la liste. Cette série est déjà dans vos séries."
+        "Added to watchlist. This show is already in your TV shows.": "Ajoutée à la liste. Cette série est déjà dans vos séries.",
+        "Adding titles": "Ajout de titres",
+        "Fill in today's date as the watch date": "Indiquer la date du jour comme date de visionnage",
+        "When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.": "Si cette option est désactivée, le champ de date est vide quand vous ajoutez un film ou une série ou enregistrez un visionnage. Pratique si vous ajoutez des titres vus il y a un moment."
     },
 "nplurals=2; plural=(n > 1);");
