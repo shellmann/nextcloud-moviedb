@@ -43,6 +43,20 @@ function favoriteSaverFor(store) {
 }
 
 /**
+ * One movie or show from a server answer, with its favourite flag corrected if a heart
+ * click was saved after the request started (#136): the answer may predate the save.
+ *
+ * @param {object} store - The movies store
+ * @param {object|null|undefined} item - Item from the server
+ * @param {number} since - favoriteSaverFor(store).version() taken before the request
+ * @param {number|null} libraryId - Library of the request
+ * @return {object|null|undefined} The item, corrected where needed
+ */
+function withSavedFavorite(store, item, since, libraryId) {
+	return item ? favoriteSaverFor(store).reconcile([item], since, libraryId, 'isFavorite')[0] : item
+}
+
+/**
  * Movies store - Manages movie collection state and CRUD operations.
  * Handles pagination, filtering, and sorting of watched movies.
  */
@@ -132,7 +146,9 @@ export const useMoviesStore = defineStore('movies', {
 			this.loading = true
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.getMovie(id, libraryId !== null ? libraryId : undefined)
+				response.data.movie = withSavedFavorite(this, response.data.movie, favoritesSince, libraryId)
 				if (requestNo === latestFetchOne) {
 					this.currentMovie = response.data.movie
 				}
@@ -206,9 +222,10 @@ export const useMoviesStore = defineStore('movies', {
 		async update(id, data) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const payload = libraryId !== null ? { ...data, libraryId } : data
 				const response = await api.updateMovie(id, payload)
-				const updatedMovie = response.data.movie
+				const updatedMovie = withSavedFavorite(this, response.data.movie, favoritesSince, libraryId)
 				const index = this.movies.findIndex((m) => m.id === updatedMovie.id)
 				if (index !== -1) {
 					this.movies.splice(index, 1, updatedMovie)

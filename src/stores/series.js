@@ -43,6 +43,20 @@ function favoriteSaverFor(store) {
 }
 
 /**
+ * One movie or show from a server answer, with its favourite flag corrected if a heart
+ * click was saved after the request started (#136): the answer may predate the save.
+ *
+ * @param {object} store - The series store
+ * @param {object|null|undefined} item - Item from the server
+ * @param {number} since - favoriteSaverFor(store).version() taken before the request
+ * @param {number|null} libraryId - Library of the request
+ * @return {object|null|undefined} The item, corrected where needed
+ */
+function withSavedFavorite(store, item, since, libraryId) {
+	return item ? favoriteSaverFor(store).reconcile([item], since, libraryId, 'isFavorite')[0] : item
+}
+
+/**
  * One sentence for the toast after "Update from TMDB". Whole texts instead of
  * plural forms, like the rest of the app.
  *
@@ -192,7 +206,9 @@ export const useSeriesStore = defineStore('series', {
 			this.loading = true
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.getSeriesItem(id, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				if (requestNo === latestFetchOne) {
 					this.currentSeries = response.data.series
 				}
@@ -269,9 +285,10 @@ export const useSeriesStore = defineStore('series', {
 		async update(id, data) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const payload = libraryId !== null ? { ...data, libraryId } : data
 				const response = await api.updateSeries(id, payload)
-				const updated = response.data.series
+				const updated = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				const index = this.series.findIndex((s) => s.id === updated.id)
 				if (index !== -1) {
 					this.series.splice(index, 1, updated)
@@ -333,7 +350,9 @@ export const useSeriesStore = defineStore('series', {
 		async markEpisodeWatched(id, episodeId, watched = true) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.markEpisodeWatched(id, episodeId, watched, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				this.applyToCurrent(response.data.series)
 				return response.data.series
 			} catch (error) {
@@ -354,7 +373,9 @@ export const useSeriesStore = defineStore('series', {
 		async markSeasonWatched(id, seasonNumber, watched = true) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.markSeasonWatched(id, seasonNumber, watched, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				this.applyToCurrent(response.data.series)
 				showSuccess(watched
 					? t('moviedb', 'Season marked as watched.')
@@ -377,7 +398,9 @@ export const useSeriesStore = defineStore('series', {
 		async markSeriesWatched(id, watched = true) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.markSeriesWatched(id, watched, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				this.applyToCurrent(response.data.series)
 				showSuccess(watched
 					? t('moviedb', 'Series marked as watched.')
@@ -401,7 +424,9 @@ export const useSeriesStore = defineStore('series', {
 		async refresh(id, language) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.refreshSeries(id, language, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				if (this.currentSeries?.id === id) {
 					this.currentSeries = response.data.series
 				}
@@ -435,7 +460,9 @@ export const useSeriesStore = defineStore('series', {
 		async setStopped(id, stopped = true, { toast = true } = {}) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.setSeriesStopped(id, stopped, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				if (this.currentSeries?.id === id) {
 					this.currentSeries = response.data.series
 				}

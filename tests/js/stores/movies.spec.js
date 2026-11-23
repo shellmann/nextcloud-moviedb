@@ -391,6 +391,32 @@ describe('Movies Store toggleFavorite (#136)', () => {
 		expect(store.movies[0].isFavorite).toBe(true)
 	})
 
+	it('a detail load that answers after the save keeps the saved favourite (#150 review)', async () => {
+		let finishSave
+		let answerDetail
+		api.updateMovie.mockReturnValue(new Promise((resolve) => { finishSave = resolve }))
+		api.getMovie.mockReturnValue(new Promise((resolve) => { answerDetail = resolve }))
+
+		const saved = store.toggleFavorite(1) // click the heart …
+		const detail = store.fetchOne(1) // … and open the movie right away
+		finishSave({ data: {} })
+		await saved
+		answerDetail({ data: { movie: { id: 1, title: 'Heat', isFavorite: false } } }) // read before the save
+
+		expect((await detail).isFavorite).toBe(true)
+		expect(store.currentMovie.isFavorite).toBe(true)
+	})
+
+	it('a detail load started after the save trusts the server', async () => {
+		api.updateMovie.mockResolvedValue({ data: {} })
+		await store.toggleFavorite(1)
+		api.getMovie.mockResolvedValue({ data: { movie: { id: 1, title: 'Heat', isFavorite: false } } })
+
+		await store.fetchOne(1) // changed elsewhere since: the fresh answer wins
+
+		expect(store.currentMovie.isFavorite).toBe(false)
+	})
+
 	it('ignores a movie that is not in the list', async () => {
 		expect(await store.toggleFavorite(99)).toBe(false)
 		expect(api.updateMovie).not.toHaveBeenCalled()

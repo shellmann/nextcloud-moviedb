@@ -446,6 +446,25 @@ describe('Series Store toggleFavorite (#136)', () => {
 		expect(showSuccess).not.toHaveBeenCalled()
 	})
 
+	it('a detail load or episode answer from before the save keeps the saved favourite (#150 review)', async () => {
+		let finishSave
+		const answers = []
+		api.updateSeries.mockReturnValue(new Promise((resolve) => { finishSave = resolve }))
+		api.getSeriesItem.mockReturnValue(new Promise((resolve) => answers.push(resolve)))
+		api.markEpisodeWatched.mockReturnValue(new Promise((resolve) => answers.push(resolve)))
+
+		const saved = store.toggleFavorite(2) // true → false
+		const detail = store.fetchOne(2)
+		const marked = store.markEpisodeWatched(2, 9)
+		finishSave({ data: {} })
+		await saved
+		answers.forEach((answer) => answer({ data: { series: { id: 2, title: 'Silo', isFavorite: true } } }))
+
+		expect((await detail).isFavorite).toBe(false)
+		expect((await marked).isFavorite).toBe(false)
+		expect(store.currentSeries.isFavorite).toBe(false)
+	})
+
 	it('rolls back and reports the error when saving fails', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {})
 		api.updateSeries.mockRejectedValue(new Error('nope'))
