@@ -30,7 +30,8 @@ class SeriesService {
 
     /**
      * When an import lock runs out if its request dies without releasing it (seconds).
-     * A running import renews it after every TMDB season call (renewImportLock), so only
+     * A running import renews it after every TMDB season call and as the first write of
+     * its transaction, which holds the lock row until commit (renewImportLock), so only
      * a dead request lets it expire.
      */
     private const IMPORT_LOCK_TTL = 300;
@@ -176,10 +177,15 @@ class SeriesService {
             }
         }
 
-        // Last check before writing: the lease covers the (short) transaction below.
-        $this->renewImportLock();
         $this->db->beginTransaction();
         try {
+            // First write of the transaction: renewing the lock row also locks that row
+            // until commit (and on SQLite the whole database). Another request clearing
+            // "expired" locks or inserting its own waits for the commit, however long the
+            // episode writes take, and then finds this show as already tracked (#147).
+            // A lease that was lost before this point rolls back before anything is written.
+            $this->renewImportLock();
+
             $series = new Series();
             $series->setUserId($userId);
             $series->setLibraryId($libraryId);
