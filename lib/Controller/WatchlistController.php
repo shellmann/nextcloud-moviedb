@@ -9,6 +9,7 @@ use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\WatchlistService;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Service\MovieWatchService;
+use OCA\MovieDB\Service\ImportLockedException;
 use OCA\MovieDB\Service\SeriesService;
 use OCA\MovieDB\Service\TmdbService;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -19,7 +20,6 @@ use OCA\MovieDB\Util\TmdbSeriesFields;
 use OCP\IDBConnection;
 use OCP\IRequest;
 use OCP\IUserSession;
-use OCP\Lock\LockedException;
 use Psr\Log\LoggerInterface;
 
 class WatchlistController extends AuthenticatedController {
@@ -418,7 +418,7 @@ class WatchlistController extends AuthenticatedController {
                 $item->getTmdbId(),
                 fn (): JSONResponse => $this->importSeriesFromWatchlist($id, $item, $libraryId),
             );
-        } catch (LockedException $e) {
+        } catch (ImportLockedException $e) {
             return new JSONResponse(
                 ['error' => 'This show is still being added. Please try again in a moment.'],
                 Http::STATUS_CONFLICT

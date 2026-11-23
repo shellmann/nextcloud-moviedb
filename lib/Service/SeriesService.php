@@ -16,8 +16,6 @@ use OCA\MovieDB\Util\TmdbEpisode;
 use OCA\MovieDB\Util\TmdbSeriesFields;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\IDBConnection;
-use OCP\Lock\ILockingProvider;
-use OCP\Lock\LockedException;
 
 class SeriesService {
     private SeriesMapper $mapper;
@@ -30,6 +28,9 @@ class SeriesService {
     /** How long a second import of the same show waits for the first one (seconds). */
     private float $importLockWait = 20.0;
 
+    /** When an import lock runs out if its request dies without releasing it (seconds). */
+    private const IMPORT_LOCK_TTL = 300;
+
     public function __construct(
         SeriesMapper $mapper,
         EpisodeMapper $episodeMapper,
@@ -38,7 +39,7 @@ class SeriesService {
         TmdbService $tmdbService,
         IDBConnection $db,
         private ?ReleaseNotificationService $notifications = null,
-        private ?ILockingProvider $lockingProvider = null,
+        private ?ImportLockService $importLock = null,
     ) {
         $this->mapper = $mapper;
         $this->episodeMapper = $episodeMapper;
@@ -54,36 +55,32 @@ class SeriesService {
      * on "Add to TV Shows", two tabs). $fn must do the check, the import and the commit;
      * the lock is released only afterwards, so a waiting request sees the committed show.
      *
-     * A second request waits for the first instead of failing. Nextcloud's lock is
-     * non-blocking, hence the polling. Without a locking provider (tests, or
-     * `filelocking.enabled` off) $fn runs unguarded.
+     * The lock is a row in moviedb_import_locks (ImportLockService), so it works whatever
+     * the instance's file locking setting. A second request waits for the first instead
+     * of failing; the lock is non-blocking, hence the polling. Call it outside a
+     * transaction. Without an ImportLockService (unit tests only) $fn runs unguarded.
      *
      * @template T
      * @param callable(): T $fn
      * @return T
-     * @throws LockedException when the other import does not finish within the wait
+     * @throws ImportLockedException when the other import does not finish within the wait
      */
     public function withImportLock(int $libraryId, int $tmdbId, callable $fn): mixed {
-        if ($this->lockingProvider === null) {
+        if ($this->importLock === null) {
             return $fn();
         }
-        $key = 'moviedb/series-import/' . $libraryId . '/' . $tmdbId;
+        $key = 'series/' . $libraryId . '/' . $tmdbId;
         $deadline = microtime(true) + $this->importLockWait;
-        while (true) {
-            try {
-                $this->lockingProvider->acquireLock($key, ILockingProvider::LOCK_EXCLUSIVE, 'MovieDB import of TV show ' . $tmdbId);
-                break;
-            } catch (LockedException $e) {
-                if (microtime(true) >= $deadline) {
-                    throw $e;
-                }
-                usleep(250_000);
+        while (($token = $this->importLock->tryAcquire($key, self::IMPORT_LOCK_TTL)) === null) {
+            if (microtime(true) >= $deadline) {
+                throw new ImportLockedException('TV show ' . $tmdbId . ' is being imported by another request');
             }
+            usleep(250_000);
         }
         try {
             return $fn();
         } finally {
-            $this->lockingProvider->releaseLock($key, ILockingProvider::LOCK_EXCLUSIVE);
+            $this->importLock->release($key, $token);
         }
     }
 

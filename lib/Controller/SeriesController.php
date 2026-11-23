@@ -8,6 +8,7 @@ use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\SeriesProgressService;
 use OCA\MovieDB\Service\SeriesRefreshService;
+use OCA\MovieDB\Service\ImportLockedException;
 use OCA\MovieDB\Service\SeriesService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -17,7 +18,6 @@ use OCP\AppFramework\Http\JSONResponse;
 use OCP\IRequest;
 use OCP\IUserSession;
 use Psr\Log\LoggerInterface;
-use OCP\Lock\LockedException;
 
 /**
  * Controller for TV series CRUD, episode listing, and mark-watched fan-out.
@@ -149,7 +149,7 @@ class SeriesController extends AuthenticatedController {
             return !empty($data['tmdbId'])
                 ? $this->service->withImportLock($libraryId, (int)$data['tmdbId'], $create)
                 : $create();
-        } catch (LockedException $e) {
+        } catch (ImportLockedException $e) {
             return new JSONResponse(
                 ['error' => 'This show is still being added. Please try again in a moment.'],
                 Http::STATUS_CONFLICT

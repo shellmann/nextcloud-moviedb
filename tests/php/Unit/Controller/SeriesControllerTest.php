@@ -8,6 +8,7 @@ use OCA\MovieDB\Controller\SeriesController;
 use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\SeriesProgressService;
 use OCA\MovieDB\Service\SeriesRefreshService;
+use OCA\MovieDB\Service\ImportLockedException;
 use OCA\MovieDB\Service\SeriesService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -15,7 +16,6 @@ use OCP\AppFramework\Http;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
-use OCP\Lock\LockedException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
@@ -378,7 +378,7 @@ class SeriesControllerTest extends TestCase {
 
     public function testCreateAnswersConflictWhenTheOtherImportTakesTooLong(): void {
         $this->allowEditing();
-        $this->service->method('withImportLock')->willThrowException(new LockedException('moviedb/series-import/1/125988'));
+        $this->service->method('withImportLock')->willThrowException(new ImportLockedException('busy'));
 
         $response = $this->controller()->create();
 

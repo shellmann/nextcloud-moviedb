@@ -10,6 +10,7 @@ use OCA\MovieDB\Db\WatchlistItem;
 use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Service\MovieWatchService;
+use OCA\MovieDB\Service\ImportLockedException;
 use OCA\MovieDB\Service\SeriesService;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Service\WatchlistService;
@@ -19,7 +20,6 @@ use OCP\IDBConnection;
 use OCP\IRequest;
 use OCP\IUser;
 use OCP\IUserSession;
-use OCP\Lock\LockedException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -224,7 +224,7 @@ class WatchlistControllerTest extends TestCase {
     public function testMoveSeriesAnswersConflictWhenTheOtherImportTakesTooLong(): void {
         $this->seriesService = $this->createMock(SeriesService::class);
         $this->service->method('find')->willReturn($this->makeItem(5, 'series', 1399));
-        $this->seriesService->method('withImportLock')->willThrowException(new LockedException('moviedb/series-import/1/1399'));
+        $this->seriesService->method('withImportLock')->willThrowException(new ImportLockedException('busy'));
         $this->seriesService->expects($this->never())->method('createFromTmdb');
 
         $this->assertEquals(Http::STATUS_CONFLICT, $this->controller()->moveToWatched(5)->getStatus());
