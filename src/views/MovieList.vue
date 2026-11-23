@@ -72,7 +72,9 @@
 				v-for="movie in movies"
 				:key="movie.id"
 				:movie="movie"
-				@click="goToMovie(movie.id)" />
+				:canEdit="activeCanEdit"
+				@click="goToMovie(movie.id)"
+				@toggleFavorite="moviesStore.toggleFavorite(movie.id)" />
 		</div>
 
 		<NcEmptyContent v-else :name="emptyStateMessage">

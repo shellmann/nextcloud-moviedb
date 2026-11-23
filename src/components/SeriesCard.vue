@@ -1,14 +1,9 @@
 <template>
-	<div
-		class="series-card"
-		role="button"
-		tabindex="0"
-		:aria-labelledby="'series-title-' + series.id"
-		:aria-describedby="description ? 'series-desc-' + series.id : undefined"
-		@click="$emit('click')"
-		@keydown.enter="$emit('click')"
-		@keydown.space.prevent="$emit('click')">
-		<!-- A role="button" exposes only its name, so status, progress and language go into its description. -->
+	<!-- The title is the card's one real button (keyboard and screen readers); a click anywhere
+		 else on the card does the same for the mouse. The favourite toggle is a separate button
+		 next to it, never inside it (no nested interactive controls). -->
+	<div class="series-card" @click="$emit('click')">
+		<!-- Status, progress and language are read as the description of the title button. -->
 		<span
 			v-if="description"
 			:id="'series-desc-' + series.id"
@@ -25,7 +20,20 @@
 			<div class="type-badge">
 				{{ t('moviedb', 'TV') }}
 			</div>
-			<div v-if="series.isFavorite" class="favorite-badge">
+			<button
+				v-if="canEdit"
+				type="button"
+				class="favorite-toggle"
+				:class="{ active: series.isFavorite }"
+				:aria-pressed="series.isFavorite ? 'true' : 'false'"
+				:aria-label="t('moviedb', 'Favorite: {title}', { title: series.title })"
+				@click.stop="$emit('toggleFavorite')">
+				<span class="favorite-circle">
+					<Heart v-if="series.isFavorite" :size="16" />
+					<HeartOutline v-else :size="16" />
+				</span>
+			</button>
+			<div v-else-if="series.isFavorite" class="favorite-badge">
 				<Heart :size="16" />
 			</div>
 			<div v-if="series.lastRating" class="rating-badge">
@@ -36,8 +44,14 @@
 			</div>
 		</div>
 		<div class="info">
-			<h3 :id="'series-title-' + series.id" class="title">
-				{{ series.title }}
+			<h3 class="title">
+				<button
+					type="button"
+					class="card-link"
+					:aria-describedby="description ? 'series-desc-' + series.id : undefined"
+					@click.stop="$emit('click')">
+					{{ series.title }}
+				</button>
 			</h3>
 			<span v-if="series.firstAirYear" class="year">{{ series.firstAirYear }}</span>
 			<div v-if="genreLabels.length" class="genre-pills">
@@ -67,6 +81,7 @@
 import { translate as t } from '@nextcloud/l10n'
 import Calendar from 'vue-material-design-icons/Calendar.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
+import HeartOutline from 'vue-material-design-icons/HeartOutline.vue'
 import Television from 'vue-material-design-icons/Television.vue'
 import EpisodeProgress from './EpisodeProgress.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
@@ -81,6 +96,7 @@ export default {
 	components: {
 		Television,
 		Heart,
+		HeartOutline,
 		Calendar,
 		EpisodeProgress,
 	},
@@ -95,6 +111,15 @@ export default {
 			type: Object,
 			required: true,
 		},
+
+		/**
+		 * Whether the user may edit the library: shows the favourite toggle
+		 * instead of the read-only heart badge.
+		 */
+		canEdit: {
+			type: Boolean,
+			default: false,
+		},
 	},
 
 	emits: [
@@ -102,6 +127,10 @@ export default {
 		 * Emitted when the card is clicked
 		 */
 		'click',
+		/**
+		 * Emitted when the favourite heart is clicked (only with canEdit)
+		 */
+		'toggleFavorite',
 	],
 
 	computed: {
@@ -151,6 +180,7 @@ export default {
 
 <style lang="scss" scoped>
 @use '../assets/design-tokens' as tokens;
+@use '../assets/card-controls' as controls;
 
 .series-card {
     cursor: pointer;
@@ -160,11 +190,7 @@ export default {
     box-shadow: tokens.$shadow-sm;
     transition: transform tokens.$transition-base, box-shadow tokens.$transition-base;
 
-    &:hover,
-    &:focus-visible {
-        transform: translateY(-4px);
-        box-shadow: tokens.$shadow-md;
-    }
+    @include controls.card-focus;
 }
 
 .poster {
@@ -238,6 +264,10 @@ export default {
     z-index: 1;
 }
 
+.favorite-toggle {
+    @include controls.favorite-toggle;
+}
+
 .type-badge {
     position: absolute;
     top: 8px;
@@ -277,6 +307,10 @@ export default {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .card-link {
+        @include controls.card-link;
     }
 
     .year {

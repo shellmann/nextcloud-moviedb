@@ -296,3 +296,43 @@ describe('Movies store fetchOne ordering', () => {
 		expect(store.currentMovie.id).toBe(6)
 	})
 })
+
+describe('Movies Store toggleFavorite (#136)', () => {
+	let store
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		store = useMoviesStore()
+		vi.clearAllMocks()
+		store.movies = [{ id: 1, title: 'Heat', isFavorite: false, lastRating: 9, lastWatchedAt: '2024-01-01' }]
+	})
+
+	it('flips the flag right away, keeps the list fields and saves only the flag', async () => {
+		let finish
+		api.updateMovie.mockReturnValue(new Promise((resolve) => { finish = resolve }))
+
+		const done = store.toggleFavorite(1)
+		expect(store.movies[0].isFavorite).toBe(true)
+		finish({ data: { movie: { id: 1, isFavorite: true } } })
+
+		expect(await done).toBe(true)
+		expect(store.movies[0]).toEqual({ id: 1, title: 'Heat', isFavorite: true, lastRating: 9, lastWatchedAt: '2024-01-01' })
+		expect(api.updateMovie).toHaveBeenCalledWith(1, expect.objectContaining({ isFavorite: true }))
+		expect(Object.keys(api.updateMovie.mock.calls[0][1]).filter((k) => k !== 'libraryId')).toEqual(['isFavorite'])
+	})
+
+	it('rolls back and reports the error when saving fails', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		const { showError } = await import('@nextcloud/dialogs')
+		api.updateMovie.mockRejectedValue(new Error('nope'))
+
+		expect(await store.toggleFavorite(1)).toBe(false)
+		expect(store.movies[0].isFavorite).toBe(false)
+		expect(showError).toHaveBeenCalled()
+	})
+
+	it('ignores a movie that is not in the list', async () => {
+		expect(await store.toggleFavorite(99)).toBe(false)
+		expect(api.updateMovie).not.toHaveBeenCalled()
+	})
+})

@@ -415,3 +415,34 @@ describe('refreshMessage', () => {
 		expect(refreshMessage(undefined)).toBe('Already up to date.')
 	})
 })
+
+describe('Series Store toggleFavorite (#136)', () => {
+	let store
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		store = useSeriesStore()
+		vi.clearAllMocks()
+		store.series = [{ id: 2, title: 'Silo', isFavorite: true, watchedEpisodeCount: 3 }]
+	})
+
+	it('flips the flag right away and keeps the list fields', async () => {
+		api.updateSeries.mockResolvedValue({ data: { series: { id: 2, isFavorite: false } } })
+
+		const done = store.toggleFavorite(2)
+		expect(store.series[0].isFavorite).toBe(false)
+		expect(await done).toBe(true)
+		expect(store.series[0]).toEqual({ id: 2, title: 'Silo', isFavorite: false, watchedEpisodeCount: 3 })
+		expect(api.updateSeries).toHaveBeenCalledWith(2, expect.objectContaining({ isFavorite: false }))
+		expect(showSuccess).not.toHaveBeenCalled()
+	})
+
+	it('rolls back and reports the error when saving fails', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		api.updateSeries.mockRejectedValue(new Error('nope'))
+
+		expect(await store.toggleFavorite(2)).toBe(false)
+		expect(store.series[0].isFavorite).toBe(true)
+		expect(showError).toHaveBeenCalled()
+	})
+})

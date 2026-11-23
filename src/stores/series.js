@@ -203,6 +203,43 @@ export const useSeriesStore = defineStore('series', {
 		 * @param {object} data - Updated series data
 		 * @return {Promise<object | null>} The updated series or null on error
 		 */
+		/**
+		 * Flips the favourite flag of a show in the list (#136). The tile updates right
+		 * away and rolls back if saving fails. Only the flag is patched in place: the
+		 * update response lacks the list fields (last watch, rating) the tile shows.
+		 * With the favourites filter on, an unfavourited tile stays until the next load,
+		 * so it doesn't vanish under the cursor.
+		 *
+		 * @param {number} id - Show ID
+		 * @return {Promise<boolean>} Whether the change was saved
+		 */
+		async toggleFavorite(id) {
+			const index = this.series.findIndex((x) => x.id === id)
+			if (index === -1) { return false }
+			const previous = Boolean(this.series[index].isFavorite)
+			const setFlag = (value) => {
+				const i = this.series.findIndex((x) => x.id === id)
+				if (i !== -1) {
+					this.series.splice(i, 1, { ...this.series[i], isFavorite: value })
+				}
+				if (this.currentSeries?.id === id) {
+					this.currentSeries = { ...this.currentSeries, isFavorite: value }
+				}
+			}
+			setFlag(!previous)
+			try {
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = { isFavorite: !previous }
+				await api.updateSeries(id, libraryId !== null ? { ...payload, libraryId } : payload)
+				return true
+			} catch (error) {
+				console.error('Failed to change favorite:', error)
+				setFlag(previous)
+				showError(t('moviedb', 'Could not change the favorite. Please try again.'))
+				return false
+			}
+		},
+
 		async update(id, data) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId

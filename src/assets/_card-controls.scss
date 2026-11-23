@@ -1,0 +1,84 @@
+// Shared styles for the MovieCard and SeriesCard controls (#136): the title is the
+// card's button, the favourite heart is a separate toggle on the poster.
+@use 'design-tokens' as tokens;
+
+// On the card container: lift and draw the focus ring of the title button around
+// the whole card.
+@mixin card-focus {
+    &:hover,
+    &:has(.card-link:focus-visible) {
+        transform: translateY(-4px);
+        box-shadow: tokens.$shadow-md;
+    }
+
+    &:has(.card-link:focus-visible) {
+        outline: 2px solid var(--color-main-text);
+        outline-offset: 2px;
+    }
+
+    // On devices with a mouse an empty heart only shows on hover or focus, so the
+    // grid stays calm; a set favourite always shows. Touch devices always show it.
+    @media (hover: hover) {
+        .favorite-toggle:not(.active) {
+            opacity: 0;
+            transition: opacity tokens.$transition-base;
+        }
+
+        &:hover .favorite-toggle:not(.active),
+        .favorite-toggle:not(.active):focus-visible {
+            opacity: 1;
+        }
+    }
+}
+
+// The title button looks like plain text; Nextcloud's global button styles are reset.
+@mixin card-link {
+    all: unset;
+    display: block;
+    width: 100%;
+    cursor: pointer;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+// 44×44 px target (WCAG 2.5.8) around a 28 px circle like the read-only badge.
+@mixin favorite-toggle {
+    all: unset;
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 2;
+
+    .favorite-circle {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(0, 0, 0, 0.6);
+        color: white;
+        box-shadow: tokens.$shadow-sm;
+        transition: background tokens.$transition-base, transform tokens.$transition-base;
+    }
+
+    &.active .favorite-circle {
+        background: rgba(231, 76, 60, 0.9);
+    }
+
+    &:hover .favorite-circle {
+        transform: scale(1.1);
+    }
+
+    &:focus-visible .favorite-circle {
+        outline: 2px solid white;
+        box-shadow: 0 0 0 4px rgba(0, 0, 0, 0.8);
+    }
+}

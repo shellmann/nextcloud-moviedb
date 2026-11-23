@@ -563,6 +563,8 @@ OC.L10N.register(
         "Added to watchlist. This show is already in your TV shows.": "Añadida a la lista. Esta serie ya está en tus series.",
         "Adding titles": "Añadir títulos",
         "Fill in today's date as the watch date": "Poner la fecha de hoy como fecha de visionado",
-        "When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.": "Si está desactivado, el campo de fecha aparece vacío al añadir una película o serie o al registrar un visionado. Útil si añades títulos que viste hace tiempo."
+        "When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.": "Si está desactivado, el campo de fecha aparece vacío al añadir una película o serie o al registrar un visionado. Útil si añades títulos que viste hace tiempo.",
+        "Favorite: {title}": "Favorito: {title}",
+        "Could not change the favorite. Please try again.": "No se pudo cambiar el favorito. Inténtalo de nuevo."
     },
 "nplurals=2; plural=(n != 1);");

@@ -1,14 +1,8 @@
 <template>
-	<div
-		class="movie-card"
-		role="button"
-		tabindex="0"
-		:aria-labelledby="'movie-title-' + movie.id"
-		:aria-describedby="languageName ? 'movie-desc-' + movie.id : undefined"
-		@click="$emit('click')"
-		@keydown.enter="$emit('click')"
-		@keydown.space.prevent="$emit('click')">
-		<!-- A role="button" exposes only its name, so the language goes into its description. -->
+	<!-- The title is the card's one real button (keyboard and screen readers); a click anywhere
+		 else on the card does the same for the mouse. The favourite toggle is a separate button
+		 next to it, never inside it (no nested interactive controls). -->
+	<div class="movie-card" @click="$emit('click')">
 		<span
 			v-if="languageName"
 			:id="'movie-desc-' + movie.id"
@@ -25,7 +19,20 @@
 			<div class="type-badge">
 				{{ t('moviedb', 'Movie') }}
 			</div>
-			<div v-if="movie.isFavorite" class="favorite-badge">
+			<button
+				v-if="canEdit"
+				type="button"
+				class="favorite-toggle"
+				:class="{ active: movie.isFavorite }"
+				:aria-pressed="movie.isFavorite ? 'true' : 'false'"
+				:aria-label="t('moviedb', 'Favorite: {title}', { title: movie.title })"
+				@click.stop="$emit('toggleFavorite')">
+				<span class="favorite-circle">
+					<Heart v-if="movie.isFavorite" :size="16" />
+					<HeartOutline v-else :size="16" />
+				</span>
+			</button>
+			<div v-else-if="movie.isFavorite" class="favorite-badge">
 				<Heart :size="16" />
 			</div>
 			<div v-if="movie.lastRating" class="rating-badge">
@@ -33,8 +40,14 @@
 			</div>
 		</div>
 		<div class="info">
-			<h3 :id="'movie-title-' + movie.id" class="title">
-				{{ movie.title }}
+			<h3 class="title">
+				<button
+					type="button"
+					class="card-link"
+					:aria-describedby="languageName ? 'movie-desc-' + movie.id : undefined"
+					@click.stop="$emit('click')">
+					{{ movie.title }}
+				</button>
 			</h3>
 			<span v-if="movie.releaseYear" class="year">{{ movie.releaseYear }}</span>
 			<div v-if="genreLabels.length" class="genre-pills">
@@ -58,6 +71,7 @@
 <script>
 import Calendar from 'vue-material-design-icons/Calendar.vue'
 import Heart from 'vue-material-design-icons/Heart.vue'
+import HeartOutline from 'vue-material-design-icons/HeartOutline.vue'
 import Movie from 'vue-material-design-icons/Movie.vue'
 import { getPosterUrl } from '../composables/usePosterUrl.js'
 import { GENRE_OPTIONS, getLanguageFlag, getLanguageName } from '../constants.js'
@@ -71,6 +85,7 @@ export default {
 	components: {
 		Movie,
 		Heart,
+		HeartOutline,
 		Calendar,
 	},
 
@@ -84,6 +99,15 @@ export default {
 			type: Object,
 			required: true,
 		},
+
+		/**
+		 * Whether the user may edit the library: shows the favourite toggle
+		 * instead of the read-only heart badge.
+		 */
+		canEdit: {
+			type: Boolean,
+			default: false,
+		},
 	},
 
 	emits: [
@@ -91,6 +115,10 @@ export default {
 		 * Emitted when the card is clicked
 		 */
 		'click',
+		/**
+		 * Emitted when the favourite heart is clicked (only with canEdit)
+		 */
+		'toggleFavorite',
 	],
 
 	computed: {
@@ -122,6 +150,7 @@ export default {
 
 <style lang="scss" scoped>
 @use '../assets/design-tokens' as tokens;
+@use '../assets/card-controls' as controls;
 
 .hidden-visually {
     position: absolute;
@@ -140,11 +169,7 @@ export default {
     box-shadow: tokens.$shadow-sm;
     transition: transform tokens.$transition-base, box-shadow tokens.$transition-base;
 
-    &:hover,
-    &:focus-visible {
-        transform: translateY(-4px);
-        box-shadow: tokens.$shadow-md;
-    }
+    @include controls.card-focus;
 }
 
 .poster {
@@ -192,6 +217,10 @@ export default {
     z-index: 1;
 }
 
+.favorite-toggle {
+    @include controls.favorite-toggle;
+}
+
 .type-badge {
     position: absolute;
     top: 8px;
@@ -231,6 +260,10 @@ export default {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
+    }
+
+    .card-link {
+        @include controls.card-link;
     }
 
     .year {
