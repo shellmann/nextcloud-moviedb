@@ -4,6 +4,7 @@ import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Watchlist from '@/views/Watchlist.vue'
 import { useLibrariesStore } from '@/stores/libraries.js'
+import { useSettingsStore } from '@/stores/settings.js'
 import { useWatchlistStore } from '@/stores/watchlist.js'
 
 vi.mock('@/components/WatchlistPicker.vue', () => ({ default: { template: '<div />' } }))
@@ -293,6 +294,35 @@ describe('Watchlist cold links and removed links', () => {
 
 		expect(store.fetchAll.mock.calls.length).toBe(callsBefore) // nothing is requested behind the user's back
 		expect(wrapper.exists()).toBe(true)
+	})
+})
+
+describe('Watchlist "Mark as Watched" date (#137)', () => {
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		const store = useWatchlistStore()
+		store.fetchAll = vi.fn().mockResolvedValue()
+		store.items = [{ id: 1, title: 'Dune', mediaType: 'movie', priority: 0 }]
+	})
+
+	it('starts with today by default', async () => {
+		vi.useFakeTimers()
+		vi.setSystemTime(new Date(2026, 10, 23, 12))
+		const wrapper = mountView()
+		await wrapper.vm.openWatchedModal({ id: 1, title: 'Dune', mediaType: 'movie' })
+		expect(wrapper.vm.watchedData.dateWatched).toBe('2026-11-23')
+		vi.useRealTimers()
+	})
+
+	it('starts empty when prefilling is switched off', async () => {
+		useSettingsStore().prefillWatchDate = false
+		const wrapper = mountView()
+		await wrapper.vm.openWatchedModal({ id: 1, title: 'Dune', mediaType: 'movie' })
+		expect(wrapper.vm.watchedData.dateWatched).toBe('')
 	})
 })
 

@@ -1,7 +1,7 @@
 import { showError, showSuccess } from '@nextcloud/dialogs'
 import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 vi.mock('@nextcloud/vue', () => ({
 	NcTextField: { template: '<input />' },
@@ -580,5 +580,45 @@ describe('Settings notifications and calendar', () => {
 		const hints = wrapper.findAll('.hint').map((h) => h.text())
 		expect(hints.some((h) => h.includes('Nextcloud notification'))).toBe(true)
 		expect(hints.some((h) => h.includes('read-only calendar'))).toBe(true)
+	})
+})
+
+describe('Settings watch date prefill (#137)', () => {
+	let wrapper
+	let settings
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		vi.clearAllMocks()
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		settings = useSettingsStore()
+		settings.update = vi.fn().mockResolvedValue()
+		wrapper = mount(Settings, {
+			global: {
+				stubs: { Eye: IconStub, EyeOff: IconStub, ContentSave: IconStub, Delete: IconStub, Download: IconStub, Upload: IconStub, Plus: IconStub },
+				mocks: { t: (app, text) => text },
+			},
+			attachTo: document.body,
+		})
+	})
+
+	afterEach(() => wrapper.unmount())
+
+	const PREFILL = 'Fill in today\'s date as the watch date'
+	const switchFor = (label) => wrapper.findAll('.switch').find((s) => s.text().includes(label))
+
+	it('is on by default, under its own heading', () => {
+		expect(wrapper.findAll('h3').some((h) => h.text() === 'Adding titles')).toBe(true)
+		expect(switchFor(PREFILL).find('input').element.checked).toBe(true)
+	})
+
+	it('saves only this switch when it is turned off', async () => {
+		await switchFor(PREFILL).find('input').setValue(false)
+		await flushPromises()
+
+		expect(settings.update).toHaveBeenCalledTimes(1)
+		expect(settings.update).toHaveBeenCalledWith({ prefillWatchDate: false })
 	})
 })

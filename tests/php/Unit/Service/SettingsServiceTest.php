@@ -122,6 +122,22 @@ class SettingsServiceTest extends TestCase {
         $this->assertTrue($settings['showCalendar']);
     }
 
+    public function testPrefillWatchDateIsOnByDefault(): void {
+        $this->givenUserKey('');
+
+        $this->assertTrue($this->service()->getUserSettings('alice')['prefillWatchDate']);
+    }
+
+    public function testPrefillWatchDateCanBeSwitchedOff(): void {
+        $this->userConfig->method('getValueString')->willReturnCallback(
+            fn (string $userId, string $app, string $key, string $default) => $key === 'prefill_watch_date' ? '0' : $default
+        );
+
+        $settings = $this->service()->getUserSettings('alice');
+        $this->assertFalse($settings['prefillWatchDate']);
+        $this->assertTrue($settings['showCalendar']);
+    }
+
     public function testIsAdmin(): void {
         $this->groupManager = $this->createMock(IGroupManager::class);
         $this->givenUserKey('');

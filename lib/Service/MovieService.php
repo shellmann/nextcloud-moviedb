@@ -106,10 +106,17 @@ class MovieService {
 
         $movie = $this->mapper->insert($movie);
 
-        // Create an initial watch row if any watch-specific data was provided
-        $hasWatchData = isset($data['dateWatched']) || isset($data['rating']) ||
-                        isset($data['review']) || isset($data['platformId']) ||
-                        isset($data['languageWatched']);
+        // Create the first viewing if any watch field was sent, even an empty one: adding a
+        // movie (or moving it from the watchlist) with a blank date still records that it
+        // was watched, just without a date (#137). Only a request without any watch field
+        // creates no viewing.
+        $hasWatchData = false;
+        foreach (['dateWatched', 'rating', 'review', 'platformId', 'languageWatched'] as $field) {
+            if (array_key_exists($field, $data)) {
+                $hasWatchData = true;
+                break;
+            }
+        }
 
         if ($hasWatchData) {
             $watch = new MovieWatch();

@@ -83,6 +83,23 @@ describe('Settings Store', () => {
 		})
 	})
 
+	describe('defaultWatchDate (#137)', () => {
+		it('prefills today by default', () => {
+			vi.useFakeTimers()
+			vi.setSystemTime(new Date(2026, 10, 23, 12))
+			expect(useSettingsStore().defaultWatchDate()).toBe('2026-11-23')
+			vi.useRealTimers()
+		})
+
+		it('starts empty once prefilling is switched off', () => {
+			loadState.mockReturnValueOnce({ prefillWatchDate: false })
+			setActivePinia(createPinia())
+			const store = useSettingsStore()
+			expect(store.prefillWatchDate).toBe(false)
+			expect(store.defaultWatchDate()).toBe('')
+		})
+	})
+
 	describe('update ordering', () => {
 		it('sends the writes one after the other, in the order they were made', async () => {
 			const order = []

@@ -12,6 +12,7 @@ use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
+use OCA\MovieDB\Util\DateValue;
 use OCA\MovieDB\Util\TmdbEpisode;
 use OCA\MovieDB\Util\TmdbSeriesFields;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -437,15 +438,31 @@ class SeriesService {
         return $this->episodeMapper->setWatchedForEpisodes($ids, $watched);
     }
 
+    private const WATCH_FIELDS = ['rating', 'platformId', 'languageWatched', 'watchedAt', 'review'];
+
     /**
-     * Does $data carry any series-level watch metadata worth persisting?
+     * Does $data carry any series-level watch metadata worth persisting (a value, not null)?
      */
     private function hasWatchMetadata(array $data): bool {
-        return isset($data['rating'])
-            || isset($data['platformId'])
-            || isset($data['languageWatched'])
-            || isset($data['watchedAt'])
-            || isset($data['review']);
+        foreach (self::WATCH_FIELDS as $field) {
+            if (isset($data[$field])) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Does $data send any series-level watch field at all, null included? An edit that
+     * clears a field (watchedAt: null) must still reach the watch row (#137).
+     */
+    private function sendsWatchMetadata(array $data): bool {
+        foreach (self::WATCH_FIELDS as $field) {
+            if (array_key_exists($field, $data)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -455,6 +472,11 @@ class SeriesService {
     public function upsertSeriesWatch(int $seriesId, string $userId, int $libraryId, array $data): void {
         $watch = $this->watchMapper->findSeriesWatch($seriesId, $libraryId);
         $isNew = $watch === null;
+        // Clearing fields of a show that has no watch row: nothing to store, and no
+        // empty row (an edit that only changed the title sends every field as null).
+        if ($isNew && !$this->hasWatchMetadata($data)) {
+            return;
+        }
         if ($isNew) {
             $watch = new MovieWatch();
             $watch->setSeriesId($seriesId);
@@ -463,7 +485,13 @@ class SeriesService {
             $watch->setCreatedAt((new DateTime())->format('Y-m-d H:i:s'));
         }
 
-        $watch->setWatchedAt($data['watchedAt'] ?? $watch->getWatchedAt() ?? (new DateTime())->format('Y-m-d'));
+        // A sent date wins, and an empty one means "no date" (#137: the Add form can start
+        // blank). Without the key the stored date stays; only a brand-new row gets today.
+        if (array_key_exists('watchedAt', $data)) {
+            $watch->setWatchedAt(DateValue::normalize($data['watchedAt']));
+        } elseif ($isNew) {
+            $watch->setWatchedAt((new DateTime())->format('Y-m-d'));
+        }
         if (array_key_exists('rating', $data)) {
             $watch->setRating($data['rating'] !== null ? (int)$data['rating'] : null);
         }
@@ -514,8 +542,9 @@ class SeriesService {
         $updated = $this->mapper->update($series);
 
         // Series-level watch metadata (rating/platform/language/date) lives in a
-        // dedicated watch row, not on the series entity. Persist it if present.
-        if ($this->hasWatchMetadata($data)) {
+        // dedicated watch row, not on the series entity. Persist it if sent, a cleared
+        // field (null) included, so the Edit form can remove the date (#137).
+        if ($this->sendsWatchMetadata($data)) {
             $this->upsertSeriesWatch($id, $series->getUserId(), $libraryId, $data);
         }
 

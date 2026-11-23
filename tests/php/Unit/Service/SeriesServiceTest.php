@@ -402,6 +402,61 @@ class SeriesServiceTest extends TestCase {
         $this->service()->upsertSeriesWatch($seriesId, $userId, self::LIBRARY_ID, ['rating' => 8]);
     }
 
+    public function testUpsertSeriesWatchKeepsAnEmptyDateEmpty(): void {
+        $this->stubSummary(mock: true);
+        $this->watchMapper->method('findSeriesWatch')->willReturn(null);
+        // #137: an Add form that starts blank must not get today's date filled in.
+        $this->watchMapper->expects($this->once())
+            ->method('insert')
+            ->with($this->callback(fn (MovieWatch $w) => $w->getWatchedAt() === null && $w->getLanguageWatched() === 'de'))
+            ->willReturnArgument(0);
+
+        $this->service()->upsertSeriesWatch(1, 'testuser', self::LIBRARY_ID, [
+            'languageWatched' => 'de',
+            'watchedAt' => null,
+        ]);
+    }
+
+    public function testUpsertSeriesWatchDatesANewRowTodayWithoutADateField(): void {
+        $this->stubSummary(mock: true);
+        $this->watchMapper->method('findSeriesWatch')->willReturn(null);
+        $today = (new \DateTime())->format('Y-m-d');
+        $this->watchMapper->expects($this->once())
+            ->method('insert')
+            ->with($this->callback(fn (MovieWatch $w) => $w->getWatchedAt() === $today))
+            ->willReturnArgument(0);
+
+        $this->service()->upsertSeriesWatch(1, 'testuser', self::LIBRARY_ID, ['rating' => 7]);
+    }
+
+    public function testUpsertSeriesWatchKeepsTheStoredDateWithoutADateField(): void {
+        $this->stubSummary(mock: true);
+        $existing = new MovieWatch();
+        $existing->setId(50);
+        $existing->setWatchedAt('2019-01-02');
+        $this->watchMapper->method('findSeriesWatch')->willReturn($existing);
+        $this->watchMapper->expects($this->once())
+            ->method('update')
+            ->with($this->callback(fn (MovieWatch $w) => $w->getWatchedAt() === '2019-01-02'))
+            ->willReturnArgument(0);
+
+        $this->service()->upsertSeriesWatch(1, 'testuser', self::LIBRARY_ID, ['rating' => 7]);
+    }
+
+    public function testUpsertSeriesWatchClearsTheDateWhenSentEmpty(): void {
+        $this->stubSummary(mock: true);
+        $existing = new MovieWatch();
+        $existing->setId(50);
+        $existing->setWatchedAt('2019-01-02');
+        $this->watchMapper->method('findSeriesWatch')->willReturn($existing);
+        $this->watchMapper->expects($this->once())
+            ->method('update')
+            ->with($this->callback(fn (MovieWatch $w) => $w->getWatchedAt() === null))
+            ->willReturnArgument(0);
+
+        $this->service()->upsertSeriesWatch(1, 'testuser', self::LIBRARY_ID, ['watchedAt' => '']);
+    }
+
     // ---- cascade delete ----
 
     // ---- stop watching ----
@@ -695,6 +750,45 @@ class SeriesServiceTest extends TestCase {
         $this->watchMapper->expects($this->never())->method('update');
 
         $this->service()->update($seriesId, self::LIBRARY_ID, ['title' => 'Renamed', 'isFavorite' => true]);
+    }
+
+    public function testUpdateClearsTheOnlyWatchDateOfAShow(): void {
+        $this->stubSummary(mock: true);
+        $series = $this->makeSeries(1);
+        $this->mapper->method('find')->willReturn($series);
+        $this->mapper->method('update')->willReturnArgument(0);
+        $existing = new MovieWatch();
+        $existing->setId(50);
+        $existing->setWatchedAt('2019-01-02');
+        $this->watchMapper->method('findSeriesWatch')->willReturn($existing);
+
+        // #149 review: the Edit form sends watchedAt: null to clear it; isset() used to drop that.
+        $this->watchMapper->expects($this->once())
+            ->method('update')
+            ->with($this->callback(fn (MovieWatch $w) => $w->getId() === 50 && $w->getWatchedAt() === null))
+            ->willReturnArgument(0);
+
+        $this->service()->update(1, self::LIBRARY_ID, ['title' => 'Silo', 'watchedAt' => null]);
+    }
+
+    public function testUpdateWithOnlyEmptyWatchFieldsCreatesNoWatchRow(): void {
+        $this->stubSummary(mock: true);
+        $series = $this->makeSeries(1);
+        $this->mapper->method('find')->willReturn($series);
+        $this->mapper->method('update')->willReturnArgument(0);
+        $this->watchMapper->method('findSeriesWatch')->willReturn(null);
+
+        // Edit saves every field; with nothing set and no row yet there is nothing to store.
+        $this->watchMapper->expects($this->never())->method('insert');
+        $this->watchMapper->expects($this->never())->method('update');
+
+        $this->service()->update(1, self::LIBRARY_ID, [
+            'title' => 'Renamed',
+            'rating' => null,
+            'platformId' => null,
+            'languageWatched' => null,
+            'watchedAt' => null,
+        ]);
     }
 
     // ---- helpers ----

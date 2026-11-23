@@ -112,6 +112,19 @@
 		</div>
 
 		<div class="settings-section">
+			<h3>{{ t('moviedb', 'Adding titles') }}</h3>
+			<NcCheckboxRadioSwitch
+				:modelValue="prefillWatchDate"
+				type="switch"
+				@update:modelValue="saveDashboardSwitch('prefillWatchDate', $event)">
+				{{ t('moviedb', 'Fill in today\'s date as the watch date') }}
+			</NcCheckboxRadioSwitch>
+			<p class="hint">
+				{{ t('moviedb', 'When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.') }}
+			</p>
+		</div>
+
+		<div class="settings-section">
 			<h3>{{ t('moviedb', 'Custom Platforms') }}</h3>
 			<p class="section-description">
 				{{ t('moviedb', 'Add your own streaming platforms or sources.') }}
@@ -366,6 +379,7 @@ export default {
 			showComingUp: this.settingsStore.showComingUp,
 			notifyReleases: this.settingsStore.notifyReleases,
 			showCalendar: this.settingsStore.showCalendar,
+			prefillWatchDate: this.settingsStore.prefillWatchDate,
 			showDeletePlatformDialog: false,
 			showRemoveApiKeyDialog: false,
 			pendingDeletePlatformId: null,
@@ -471,7 +485,7 @@ export default {
 		 * Saves a switch right away; on failure it flips back. The switch is not disabled while
 		 * saving: a disabled input drops keyboard focus.
 		 *
-		 * @param {'showContinueWatching'|'showComingUp'|'notifyReleases'|'showCalendar'} field - Setting to change
+		 * @param {'showContinueWatching'|'showComingUp'|'notifyReleases'|'showCalendar'|'prefillWatchDate'} field - Setting to change
 		 * @param {boolean} value - New switch state
 		 */
 		async saveDashboardSwitch(field, value) {

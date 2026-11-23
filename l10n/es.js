@@ -561,6 +561,9 @@ OC.L10N.register(
         "MovieDB has a new app icon.": "MovieDB tiene un nuevo icono de aplicación.",
         "This show is already in your TV shows.": "Esta serie ya está en tus series.",
         "Added to watchlist. This show is already in your TV shows.": "Añadida a la lista. Esta serie ya está en tus series.",
+        "Adding titles": "Añadir títulos",
+        "Fill in today's date as the watch date": "Poner la fecha de hoy como fecha de visionado",
+        "When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.": "Si está desactivado, el campo de fecha aparece vacío al añadir una película o serie o al registrar un visionado. Útil si añades títulos que viste hace tiempo.",
         "This show is still being added. Please try again in a moment.": "Esta serie se está añadiendo todavía. Inténtalo de nuevo en un momento."
     },
 "nplurals=2; plural=(n != 1);");

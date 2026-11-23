@@ -190,6 +190,19 @@ class SettingsControllerTest extends TestCase {
         $this->assertSame(['notify_releases' => $stored, 'show_calendar' => $stored], $written);
     }
 
+    #[DataProvider('continueWatchingProvider')]
+    public function testSavesPrefillWatchDateAsString(mixed $value, string $stored): void {
+        $this->request->method('getParams')->willReturn(['prefillWatchDate' => $value]);
+        $written = [];
+        $this->userConfig->method('setValueString')->willReturnCallback(function ($user, $app, $key, $v) use (&$written) {
+            $written[$key] = $v;
+            return true;
+        });
+
+        $this->assertSame(Http::STATUS_OK, $this->controller()->update()->getStatus());
+        $this->assertSame(['prefill_watch_date' => $stored], $written);
+    }
+
     public function testBadNotificationValueWritesNothing(): void {
         $this->userConfig = $this->createMock(IUserConfig::class);
         $this->request->method('getParams')->willReturn(['defaultLanguage' => 'en-US', 'showCalendar' => 'maybe']);
