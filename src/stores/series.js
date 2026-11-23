@@ -57,6 +57,18 @@ function withSavedFavorite(store, item, since, libraryId) {
 }
 
 /**
+ * The favourite state a title shows right now (list tile or open detail page).
+ *
+ * @param {object} store - The series store
+ * @param {number} id - Item ID
+ * @return {boolean}
+ */
+function shownFavorite(store, id) {
+	const item = store.series.find((x) => x.id === id) ?? (store.currentSeries?.id === id ? store.currentSeries : null)
+	return Boolean(item?.isFavorite)
+}
+
+/**
  * One sentence for the toast after "Update from TMDB". Whole texts instead of
  * plural forms, like the rest of the app.
  *
@@ -286,8 +298,17 @@ export const useSeriesStore = defineStore('series', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const favoritesSince = favoriteSaverFor(this).version()
-				const payload = libraryId !== null ? { ...data, libraryId } : data
+				// The favourite is only ever written by the favourite saver, in line with heart
+				// clicks on the same title; the edit PUT never carries it (#136). The form always
+				// sends it: only a value that differs from what the title shows is a change.
+				const { isFavorite, ...fields } = data
+				const shown = shownFavorite(this, id)
+				const favoriteSaved = isFavorite !== undefined && Boolean(isFavorite) !== shown
+					? favoriteSaverFor(this).set(id, Boolean(isFavorite), shown, libraryId)
+					: Promise.resolve(true)
+				const payload = libraryId !== null ? { ...fields, libraryId } : fields
 				const response = await api.updateSeries(id, payload)
+				await favoriteSaved // a failed favourite save has shown its own error
 				const updated = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				const index = this.series.findIndex((s) => s.id === updated.id)
 				if (index !== -1) {

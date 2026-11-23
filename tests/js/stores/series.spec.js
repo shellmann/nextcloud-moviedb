@@ -465,6 +465,25 @@ describe('Series Store toggleFavorite (#136)', () => {
 		expect(store.currentSeries.isFavorite).toBe(false)
 	})
 
+	it('Edit keeps the favourite out of its PUT while a heart save runs (#150 review)', async () => {
+		const pending = []
+		api.updateSeries.mockImplementation((id, body) => new Promise((resolve) => pending.push({ body, resolve })))
+
+		store.toggleFavorite(2) // heart: false, still saving
+		const edited = store.update(2, { title: 'Silo', isFavorite: false }) // form shows false: no change
+
+		for (let i = 0; i < pending.length; i++) {
+			pending[i].resolve({ data: { series: { id: 2, title: 'Silo', isFavorite: true } } })
+			await new Promise((resolve) => setTimeout(resolve, 0))
+		}
+		await edited
+
+		const bodies = pending.map((p) => p.body)
+		expect(bodies.filter((b) => 'isFavorite' in b).map((b) => b.isFavorite)).toEqual([false])
+		expect(bodies.find((b) => 'title' in b)).not.toHaveProperty('isFavorite')
+		expect(store.series[0].isFavorite).toBe(false)
+	})
+
 	it('rolls back and reports the error when saving fails', async () => {
 		vi.spyOn(console, 'error').mockImplementation(() => {})
 		api.updateSeries.mockRejectedValue(new Error('nope'))

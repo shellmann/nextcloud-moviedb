@@ -417,6 +417,47 @@ describe('Movies Store toggleFavorite (#136)', () => {
 		expect(store.currentMovie.isFavorite).toBe(false)
 	})
 
+	it('Edit never writes the favourite in its PUT; an unchanged value sends nothing extra (#150 review)', async () => {
+		api.updateMovie.mockResolvedValue({ data: { movie: { id: 1, title: 'Heat 2', isFavorite: false } } })
+
+		await store.update(1, { title: 'Heat 2', isFavorite: false })
+
+		expect(api.updateMovie).toHaveBeenCalledTimes(1)
+		expect(api.updateMovie.mock.calls[0][1]).not.toHaveProperty('isFavorite')
+		expect(api.updateMovie.mock.calls[0][1]).toEqual(expect.objectContaining({ title: 'Heat 2' }))
+	})
+
+	it('Edit saves a changed favourite through the favourite saver', async () => {
+		api.updateMovie.mockResolvedValue({ data: { movie: { id: 1, title: 'Heat', isFavorite: false } } })
+
+		await store.update(1, { title: 'Heat', isFavorite: true })
+
+		const bodies = api.updateMovie.mock.calls.map((c) => c[1])
+		expect(bodies.filter((b) => 'isFavorite' in b)).toEqual([expect.objectContaining({ isFavorite: true })])
+		expect(bodies.filter((b) => 'title' in b).every((b) => !('isFavorite' in b))).toBe(true)
+		expect(store.movies[0].isFavorite).toBe(true)
+	})
+
+	it('Edit while a heart save runs: server and tile end on the same, last value', async () => {
+		const pending = []
+		api.updateMovie.mockImplementation((id, body) => new Promise((resolve) => pending.push({ body, resolve })))
+
+		store.toggleFavorite(1) // heart: true, still saving
+		const edited = store.update(1, { title: 'Heat', isFavorite: false }) // the form unticked it
+		expect(store.movies[0].isFavorite).toBe(false)
+
+		// Resolve every request in the order it was sent until nothing is pending.
+		for (let i = 0; i < pending.length; i++) {
+			pending[i].resolve({ data: { movie: { id: 1, title: 'Heat', isFavorite: true } } })
+			await new Promise((resolve) => setTimeout(resolve, 0))
+		}
+		await edited
+
+		const favouriteWrites = pending.map((p) => p.body).filter((b) => 'isFavorite' in b)
+		expect(favouriteWrites.map((b) => b.isFavorite)).toEqual([true, false]) // in order, last = false
+		expect(store.movies[0].isFavorite).toBe(false)
+	})
+
 	it('ignores a movie that is not in the list', async () => {
 		expect(await store.toggleFavorite(99)).toBe(false)
 		expect(api.updateMovie).not.toHaveBeenCalled()

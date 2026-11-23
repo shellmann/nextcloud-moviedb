@@ -57,6 +57,18 @@ function withSavedFavorite(store, item, since, libraryId) {
 }
 
 /**
+ * The favourite state a title shows right now (list tile or open detail page).
+ *
+ * @param {object} store - The movies store
+ * @param {number} id - Item ID
+ * @return {boolean}
+ */
+function shownFavorite(store, id) {
+	const item = store.movies.find((x) => x.id === id) ?? (store.currentMovie?.id === id ? store.currentMovie : null)
+	return Boolean(item?.isFavorite)
+}
+
+/**
  * Movies store - Manages movie collection state and CRUD operations.
  * Handles pagination, filtering, and sorting of watched movies.
  */
@@ -223,8 +235,17 @@ export const useMoviesStore = defineStore('movies', {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
 				const favoritesSince = favoriteSaverFor(this).version()
-				const payload = libraryId !== null ? { ...data, libraryId } : data
+				// The favourite is only ever written by the favourite saver, in line with heart
+				// clicks on the same title; the edit PUT never carries it (#136). The form always
+				// sends it: only a value that differs from what the title shows is a change.
+				const { isFavorite, ...fields } = data
+				const shown = shownFavorite(this, id)
+				const favoriteSaved = isFavorite !== undefined && Boolean(isFavorite) !== shown
+					? favoriteSaverFor(this).set(id, Boolean(isFavorite), shown, libraryId)
+					: Promise.resolve(true)
+				const payload = libraryId !== null ? { ...fields, libraryId } : fields
 				const response = await api.updateMovie(id, payload)
+				await favoriteSaved // a failed favourite save has shown its own error
 				const updatedMovie = withSavedFavorite(this, response.data.movie, favoritesSince, libraryId)
 				const index = this.movies.findIndex((m) => m.id === updatedMovie.id)
 				if (index !== -1) {
