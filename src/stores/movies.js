@@ -12,17 +12,19 @@ const favoriteSavers = new WeakMap()
  * The serial favourite saver of a store (#136).
  *
  * @param {object} store - The movies store
- * @return {(id: number, wanted: boolean, current: boolean) => Promise<boolean>} See createSerialFlagSaver
+ * @return {ReturnType<typeof createSerialFlagSaver>} The saver
  */
 function favoriteSaverFor(store) {
 	if (!favoriteSavers.has(store)) {
 		favoriteSavers.set(store, createSerialFlagSaver({
-			save: (id, value) => {
-				const libraryId = useLibrariesStore().activeLibraryId
+			// The library of the first click, not the one active when a queued save goes out.
+			save: (id, value, libraryId) => {
 				const payload = { isFavorite: value }
 				return api.updateMovie(id, libraryId !== null ? { ...payload, libraryId } : payload)
 			},
-			apply: (id, value) => {
+			apply: (id, value, libraryId) => {
+				// After a switch the list shows another library: leave it alone.
+				if (useLibrariesStore().activeLibraryId !== libraryId) { return }
 				const i = store.movies.findIndex((x) => x.id === id)
 				if (i !== -1) {
 					store.movies.splice(i, 1, { ...store.movies[i], isFavorite: value })
@@ -104,8 +106,10 @@ export const useMoviesStore = defineStore('movies', {
 				const libraryId = useLibrariesStore().activeLibraryId
 				if (libraryId !== null) { params.libraryId = libraryId }
 
+				// Taken before the request: favourites saved meanwhile beat the older answer.
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.getMovies(params)
-				this.movies = response.data.movies
+				this.movies = favoriteSaverFor(this).reconcile(response.data.movies, favoritesSince, libraryId, 'isFavorite')
 				this.total = response.data.total
 				this.page = response.data.page
 				this.totalPages = response.data.totalPages
@@ -196,7 +200,7 @@ export const useMoviesStore = defineStore('movies', {
 			const item = this.movies.find((x) => x.id === id)
 			if (!item) { return Promise.resolve(false) }
 			const current = Boolean(item.isFavorite)
-			return favoriteSaverFor(this)(id, !current, current)
+			return favoriteSaverFor(this).set(id, !current, current, useLibrariesStore().activeLibraryId)
 		},
 
 		async update(id, data) {

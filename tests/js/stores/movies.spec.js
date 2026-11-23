@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useLibrariesStore } from '@/stores/libraries.js'
 import { useMoviesStore } from '@/stores/movies.js'
 
 // Mock API module
@@ -349,6 +350,45 @@ describe('Movies Store toggleFavorite (#136)', () => {
 		expect(await first).toBe(true)
 		expect(await second).toBe(true)
 		expect(store.movies[0].isFavorite).toBe(false)
+	})
+
+	it('a queued save still goes to the library of the click after a switch (#150 review)', async () => {
+		const libraries = useLibrariesStore()
+		libraries.libraries = [
+			{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true },
+			{ id: 2, name: 'Family', isPersonal: false, role: 'owner', permissionEdit: true },
+		]
+		libraries.activeLibraryId = 1
+		const pending = []
+		api.updateMovie.mockImplementation(() => new Promise((resolve) => pending.push(resolve)))
+
+		store.toggleFavorite(1)
+		const second = store.toggleFavorite(1)
+		libraries.activeLibraryId = 2 // switch while the first save runs
+		store.movies = [{ id: 1, title: 'Other library', isFavorite: true }]
+
+		pending[0]({ data: {} })
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		pending[1]({ data: {} })
+		await second
+
+		expect(api.updateMovie.mock.calls.map((c) => c[1].libraryId)).toEqual([1, 1])
+		// The other library's list is not touched.
+		expect(store.movies[0]).toEqual({ id: 1, title: 'Other library', isFavorite: true })
+	})
+
+	it('a list loaded while saving keeps the clicked state (#150 review)', async () => {
+		let finishSave
+		api.updateMovie.mockReturnValue(new Promise((resolve) => { finishSave = resolve }))
+		api.getMovies.mockResolvedValue({ data: { movies: [{ id: 1, title: 'Heat', isFavorite: false }], total: 1, page: 1, totalPages: 1 } })
+
+		const saved = store.toggleFavorite(1)
+		await store.fetchAll() // the server still has the old value
+		expect(store.movies[0].isFavorite).toBe(true)
+
+		finishSave({ data: {} })
+		await saved
+		expect(store.movies[0].isFavorite).toBe(true)
 	})
 
 	it('ignores a movie that is not in the list', async () => {
