@@ -53,6 +53,35 @@ class ImportLockService {
     }
 
     /**
+     * Extends a held lock by $ttl seconds from now (a long import renews its lease as it
+     * goes, so it never expires while the work still runs).
+     *
+     * @return bool false when the lock is no longer ours (it expired and someone else took it)
+     */
+    public function renew(string $key, string $token, int $ttl): bool {
+        $qb = $this->db->getQueryBuilder();
+        $qb->update(self::TABLE)
+            ->set('expires_at', $qb->createNamedParameter($this->time->getTime() + $ttl, IQueryBuilder::PARAM_INT))
+            ->where($qb->expr()->eq('lock_key', $qb->createNamedParameter($key)))
+            ->andWhere($qb->expr()->eq('token', $qb->createNamedParameter($token)))
+            ->executeStatement();
+        // Not the UPDATE's row count: MySQL reports 0 changed rows when expires_at was
+        // already that value (two renewals within the same second).
+        return $this->stillHeld($key, $token);
+    }
+
+    private function stillHeld(string $key, string $token): bool {
+        $qb = $this->db->getQueryBuilder();
+        $qb->select('token')
+            ->from(self::TABLE)
+            ->where($qb->expr()->eq('lock_key', $qb->createNamedParameter($key)));
+        $result = $qb->executeQuery();
+        $row = $result->fetch();
+        $result->closeCursor();
+        return $row !== false && $row['token'] === $token;
+    }
+
+    /**
      * Releases a lock taken with tryAcquire(); a lock that expired and was taken over
      * by another request (different token) is left alone.
      */

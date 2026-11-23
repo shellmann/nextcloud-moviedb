@@ -221,6 +221,28 @@ class WatchlistControllerTest extends TestCase {
         $this->assertTrue($response->getData()['alreadyTracked']);
     }
 
+    public function testMoveSeriesStillReturnsTheShowWhenTheWatchlistRowIsAlreadyGone(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->runImportLockCallbacks();
+        $this->service = $this->createMock(WatchlistService::class);
+        $this->db = $this->createMock(IDBConnection::class);
+        $this->service->method('find')->willReturn($this->makeItem(5, 'series', 1399));
+        $this->request->method('getParam')->willReturnCallback(fn($k, $d = null) => $d);
+        $series = new Series();
+        $series->setId(42);
+        $this->seriesService->method('findByTmdbId')->willReturn(null);
+        $this->seriesService->expects($this->once())->method('createFromTmdb')->willReturn($series);
+        $this->service->expects($this->once())->method('delete')
+            ->willThrowException(new \OCP\AppFramework\Db\DoesNotExistException('gone'));
+        // createFromTmdb has its own transaction; an outer one would hide the lease renewals.
+        $this->db->expects($this->never())->method('beginTransaction');
+
+        $response = $this->controller()->moveToWatched(5);
+
+        $this->assertEquals(Http::STATUS_OK, $response->getStatus());
+        $this->assertSame(42, $response->getData()['series']->getId());
+    }
+
     public function testMoveSeriesAnswersConflictWhenTheOtherImportTakesTooLong(): void {
         $this->seriesService = $this->createMock(SeriesService::class);
         $this->service->method('find')->willReturn($this->makeItem(5, 'series', 1399));

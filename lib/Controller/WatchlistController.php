@@ -403,7 +403,7 @@ class WatchlistController extends AuthenticatedController {
      * Import a series watchlist item as a tracked show and drop the watchlist row.
      *
      * Fetches full TMDB details (seasons drive per-season episode import) and calls
-     * SeriesService::createFromTmdb. Deletes the watchlist row in the same transaction.
+     * SeriesService::createFromTmdb, then deletes the watchlist row.
      * Does NOT mark any episodes watched — the show starts at 0% progress.
      */
     private function moveSeriesToWatched(int $id, \OCA\MovieDB\Db\WatchlistItem $item, int $libraryId): JSONResponse {
@@ -485,14 +485,15 @@ class WatchlistController extends AuthenticatedController {
             }
         }
 
-        $this->db->beginTransaction();
+        // No outer transaction here: createFromTmdb renews the import lock while it fetches
+        // the seasons, and those renewals must be visible to other requests right away.
+        // createFromTmdb writes the show in its own transaction. If removing the watchlist
+        // row fails afterwards, the next move finds the show and removes the row (above).
+        $series = $this->seriesService->createFromTmdb($this->userId, $libraryId, $seriesData, $language);
         try {
-            $series = $this->seriesService->createFromTmdb($this->userId, $libraryId, $seriesData, $language);
             $this->service->delete($id, $libraryId);
-            $this->db->commit();
-        } catch (\Exception $e) {
-            $this->db->rollBack();
-            throw $e;
+        } catch (DoesNotExistException $e) {
+            // Already gone (removed in another tab meanwhile); the show is imported either way.
         }
 
         return new JSONResponse(['series' => $series]);

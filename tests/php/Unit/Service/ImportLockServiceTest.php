@@ -60,4 +60,29 @@ class ImportLockServiceTest extends TestCase {
         $this->assertSame(['DELETE FROM moviedb_import_locks WHERE lock_key = :p1 AND token = :p2'], $this->rec->executed);
         $this->assertSame(['series/3/1399', 'abc'], [$this->rec->params[':p1'], $this->rec->params[':p2']]);
     }
+
+    public function testRenewExtendsTheLeaseOfItsOwnLock(): void {
+        $this->rec->resultSets = [[['token' => 'abc']]];
+
+        $held = (new ImportLockService($this->db, $this->time))->renew('series/3/1399', 'abc', 300);
+
+        $this->assertTrue($held);
+        $this->assertSame([
+            'UPDATE moviedb_import_locks SET expires_at = :p1 WHERE lock_key = :p2 AND token = :p3',
+            'SELECT token FROM moviedb_import_locks WHERE lock_key = :p4',
+        ], $this->rec->executed);
+        $this->assertSame(1_300, $this->rec->params[':p1']);
+    }
+
+    public function testRenewReportsALockThatSomeoneElseTookOver(): void {
+        $this->rec->resultSets = [[['token' => 'other']]];
+
+        $this->assertFalse((new ImportLockService($this->db, $this->time))->renew('series/3/1399', 'abc', 300));
+    }
+
+    public function testRenewReportsALockThatIsGone(): void {
+        $this->rec->resultSets = [[]];
+
+        $this->assertFalse((new ImportLockService($this->db, $this->time))->renew('series/3/1399', 'abc', 300));
+    }
 }
