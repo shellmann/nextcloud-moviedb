@@ -11,6 +11,8 @@ use OCA\MovieDB\Db\MovieWatchMapper;
 use OCA\MovieDB\Db\PlatformMapper;
 use OCA\MovieDB\Db\Series;
 use OCA\MovieDB\Db\SeriesMapper;
+use OCA\MovieDB\Service\ImportLockedException;
+use OCA\MovieDB\Service\ImportLockService;
 use OCA\MovieDB\Service\ReleaseNotificationService;
 use OCA\MovieDB\Service\SeriesService;
 use OCA\MovieDB\Service\TmdbService;
@@ -718,5 +720,183 @@ class SeriesServiceTest extends TestCase {
         $ep->setWatched($watched);
         $ep->setCreatedAt('2026-01-01 12:00:00');
         return $ep;
+    }
+
+    // ---- withImportLock (#147 review: concurrent imports of one show) ----
+
+    private function serviceWithLocks(ImportLockService $locks): SeriesService {
+        return new SeriesService($this->mapper, $this->episodeMapper, $this->watchMapper, $this->platformMapper, $this->tmdbService, $this->db, null, $locks);
+    }
+
+    public function testImportLockIsPerShowAndLibraryAndReleasedAfterwards(): void {
+        $locks = $this->createMock(ImportLockService::class);
+        $calls = [];
+        $locks->expects($this->once())->method('tryAcquire')
+            ->willReturnCallback(function (string $key, int $ttl) use (&$calls) {
+                $calls[] = ['acquire', $key, $ttl];
+                return 'tok';
+            });
+        $locks->expects($this->once())->method('release')
+            ->willReturnCallback(function (string $key, string $token) use (&$calls) {
+                $calls[] = ['release', $key, $token];
+            });
+
+        $result = $this->serviceWithLocks($locks)->withImportLock(3, 1399, function () use (&$calls) {
+            $calls[] = ['run'];
+            return 'done';
+        });
+
+        $this->assertSame('done', $result);
+        $this->assertSame([
+            ['acquire', 'series/3/1399', 300],
+            ['run'],
+            ['release', 'series/3/1399', 'tok'],
+        ], $calls);
+    }
+
+    public function testImportLockIsReleasedWhenTheImportFails(): void {
+        $locks = $this->createMock(ImportLockService::class);
+        $locks->method('tryAcquire')->willReturn('tok');
+        $locks->expects($this->once())->method('release')->with('series/3/1399', 'tok');
+
+        $this->expectException(\RuntimeException::class);
+        $this->serviceWithLocks($locks)->withImportLock(3, 1399, fn () => throw new \RuntimeException('TMDB down'));
+    }
+
+    public function testASecondImportWaitsForTheFirstInsteadOfFailing(): void {
+        $locks = $this->createMock(ImportLockService::class);
+        $attempts = 0;
+        $locks->method('tryAcquire')->willReturnCallback(function () use (&$attempts) {
+            return ++$attempts < 3 ? null : 'tok';
+        });
+        $locks->expects($this->once())->method('release');
+        $service = $this->serviceWithLocks($locks);
+        $service->setImportLockWait(5.0);
+
+        $this->assertSame('ran', $service->withImportLock(3, 1399, fn () => 'ran'));
+        $this->assertSame(3, $attempts);
+    }
+
+    public function testAnImportThatWaitsTooLongGivesUpWithoutRunning(): void {
+        $locks = $this->createMock(ImportLockService::class);
+        $locks->method('tryAcquire')->willReturn(null);
+        $locks->expects($this->never())->method('release');
+        $service = $this->serviceWithLocks($locks);
+        $service->setImportLockWait(0.0);
+        $ran = false;
+
+        try {
+            $service->withImportLock(3, 1399, function () use (&$ran) {
+                $ran = true;
+            });
+            $this->fail('expected ImportLockedException');
+        } catch (ImportLockedException $e) {
+            $this->assertFalse($ran);
+        }
+    }
+
+    public function testALongImportRenewsItsLeaseAfterEverySeasonAndBeforeWriting(): void {
+        $this->tmdbService = $this->createStub(TmdbService::class);
+        $this->mapper = $this->createStub(SeriesMapper::class);
+        $order = [];
+        $this->mapper->method('insert')->willReturnCallback(function (Series $s) use (&$order) {
+            $order[] = 'insert show';
+            $s->setId(1);
+            return $s;
+        });
+        $this->tmdbService->method('getSeasonDetails')->willReturnCallback(function ($tmdbId, $season) use (&$order) {
+            $order[] = 'season ' . $season;
+            return ['episodes' => []];
+        });
+        $this->db = $this->createStub(IDBConnection::class);
+        $this->db->method('beginTransaction')->willReturnCallback(function () use (&$order) {
+            $order[] = 'begin';
+        });
+        $locks = $this->createMock(ImportLockService::class);
+        $locks->method('tryAcquire')->willReturn('tok');
+        $locks->expects($this->exactly(3))->method('renew')
+            ->willReturnCallback(function (string $key, string $token, int $ttl) use (&$order) {
+                $order[] = "renew $key $token $ttl";
+                return true;
+            });
+
+        $service = $this->serviceWithLocks($locks);
+        $service->withImportLock(self::LIBRARY_ID, 1399, fn () => $service->createFromTmdb('testuser', self::LIBRARY_ID, [
+            'tmdbId' => 1399,
+            'title' => 'Long Show',
+            'seasons' => [['season_number' => 1], ['season_number' => 2]],
+        ]));
+
+        $renew = 'renew series/' . self::LIBRARY_ID . '/1399 tok 300';
+        // The last renewal is the first write inside the transaction: it holds the lock row
+        // until commit, so no one can take the lock over while the episodes are written.
+        $this->assertSame(['season 1', $renew, 'season 2', $renew, 'begin', $renew, 'insert show'], $order);
+    }
+
+    public function testAnImportThatLostItsLeaseStopsBeforeWritingAnything(): void {
+        $this->tmdbService = $this->createStub(TmdbService::class);
+        $this->tmdbService->method('getSeasonDetails')->willReturn(['episodes' => []]);
+        $this->mapper = $this->createMock(SeriesMapper::class);
+        $this->db = $this->createMock(IDBConnection::class);
+        $locks = $this->createMock(ImportLockService::class);
+        $locks->method('tryAcquire')->willReturn('tok');
+        // The lease ran out during a stuck TMDB call and another request took the lock.
+        $locks->method('renew')->willReturn(false);
+        $locks->expects($this->once())->method('release');
+
+        $this->mapper->expects($this->never())->method('insert');
+        $this->db->expects($this->never())->method('commit');
+
+        $service = $this->serviceWithLocks($locks);
+        $this->expectException(ImportLockedException::class);
+        $service->withImportLock(self::LIBRARY_ID, 1399, fn () => $service->createFromTmdb('testuser', self::LIBRARY_ID, [
+            'tmdbId' => 1399,
+            'title' => 'Long Show',
+            'seasons' => [['season_number' => 1]],
+        ]));
+    }
+
+    public function testCreateFromTmdbWithoutALockDoesNotRenew(): void {
+        $this->tmdbService = $this->createStub(TmdbService::class);
+        $this->tmdbService->method('getSeasonDetails')->willReturn(['episodes' => []]);
+        $this->mapper = $this->createStub(SeriesMapper::class);
+        $this->mapper->method('insert')->willReturnCallback(function (Series $s) {
+            $s->setId(1);
+            return $s;
+        });
+        $locks = $this->createMock(ImportLockService::class);
+        $locks->expects($this->never())->method('renew');
+
+        // Called outside withImportLock (no lock held): nothing to renew.
+        $this->serviceWithLocks($locks)->createFromTmdb('testuser', self::LIBRARY_ID, [
+            'tmdbId' => 1399,
+            'title' => 'Show',
+            'seasons' => [['season_number' => 1]],
+        ]);
+    }
+
+    public function testALeaseLostRightBeforeWritingRollsTheTransactionBack(): void {
+        $this->tmdbService = $this->createStub(TmdbService::class);
+        $this->tmdbService->method('getSeasonDetails')->willReturn(['episodes' => []]);
+        $this->mapper = $this->createMock(SeriesMapper::class);
+        $this->db = $this->createMock(IDBConnection::class);
+        $locks = $this->createMock(ImportLockService::class);
+        $locks->method('tryAcquire')->willReturn('tok');
+        // Still ours after the season call, taken over by the time the transaction starts.
+        $locks->method('renew')->willReturnOnConsecutiveCalls(true, false);
+        $locks->expects($this->once())->method('release')->with('series/' . self::LIBRARY_ID . '/1399', 'tok');
+
+        $this->mapper->expects($this->never())->method('insert');
+        $this->db->expects($this->once())->method('beginTransaction');
+        $this->db->expects($this->once())->method('rollBack');
+        $this->db->expects($this->never())->method('commit');
+
+        $service = $this->serviceWithLocks($locks);
+        $this->expectException(ImportLockedException::class);
+        $service->withImportLock(self::LIBRARY_ID, 1399, fn () => $service->createFromTmdb('testuser', self::LIBRARY_ID, [
+            'tmdbId' => 1399,
+            'title' => 'Show',
+            'seasons' => [['season_number' => 1]],
+        ]));
     }
 }

@@ -8,6 +8,7 @@ use OCA\MovieDB\AppInfo\Application;
 use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\SeriesProgressService;
 use OCA\MovieDB\Service\SeriesRefreshService;
+use OCA\MovieDB\Service\ImportLockedException;
 use OCA\MovieDB\Service\SeriesService;
 use OCP\AppFramework\Db\DoesNotExistException;
 use OCP\AppFramework\Http;
@@ -126,22 +127,33 @@ class SeriesController extends AuthenticatedController {
             return new JSONResponse(['error' => 'Title is required'], Http::STATUS_BAD_REQUEST);
         }
 
-        // Check if series is already tracked.
-        if (!empty($data['tmdbId'])) {
-            $existing = $this->service->findByTmdbId($libraryId, (int)$data['tmdbId']);
-            if ($existing !== null) {
-                return new JSONResponse([
-                    'error' => 'Series already in your list',
-                    'existingId' => $existing->getId(),
-                ], Http::STATUS_CONFLICT);
-            }
-        }
-
         $language = $this->request->getParam('language', 'en-US');
 
-        try {
+        // Check and import under one lock per show, so a double submit or a second tab
+        // can't pass the check twice and import the show twice (#147).
+        $create = function () use ($libraryId, $data, $language): JSONResponse {
+            if (!empty($data['tmdbId'])) {
+                $existing = $this->service->findByTmdbId($libraryId, (int)$data['tmdbId']);
+                if ($existing !== null) {
+                    return new JSONResponse([
+                        'error' => 'Series already in your list',
+                        'existingId' => $existing->getId(),
+                    ], Http::STATUS_CONFLICT);
+                }
+            }
             $series = $this->service->createFromTmdb($this->userId, $libraryId, $data, $language);
             return new JSONResponse(['series' => $series], Http::STATUS_CREATED);
+        };
+
+        try {
+            return !empty($data['tmdbId'])
+                ? $this->service->withImportLock($libraryId, (int)$data['tmdbId'], $create)
+                : $create();
+        } catch (ImportLockedException $e) {
+            return new JSONResponse(
+                ['error' => 'This show is still being added. Please try again in a moment.'],
+                Http::STATUS_CONFLICT
+            );
         } catch (\Exception $e) {
             $this->logger->error('Failed to create series', [
                 'exception' => $e,

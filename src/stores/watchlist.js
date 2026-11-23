@@ -192,6 +192,8 @@ export const useWatchlistStore = defineStore('watchlist', {
 				this.totalUnfiltered++
 				if (response.data.alreadyWatched) {
 					showSuccess(t('moviedb', 'Added to watchlist. You\'ve seen this one before — this will be logged as a rewatch when you mark it watched.'))
+				} else if (response.data.alreadyTracked) {
+					showSuccess(t('moviedb', 'Added to watchlist. This show is already in your TV shows.'))
 				} else {
 					showSuccess(t('moviedb', 'Added to watchlist.'))
 				}
@@ -294,7 +296,9 @@ export const useWatchlistStore = defineStore('watchlist', {
 				this.items = this.items.filter((i) => i.id !== id)
 				this.total--
 				this.totalUnfiltered--
-				if (response.data.series) {
+				if (response.data.alreadyTracked) {
+					showSuccess(t('moviedb', 'This show is already in your TV shows.'))
+				} else if (response.data.series) {
 					showSuccess(t('moviedb', 'Added to your TV shows.'))
 				} else {
 					showSuccess(t('moviedb', 'Moved to watched movies.'))
@@ -302,7 +306,12 @@ export const useWatchlistStore = defineStore('watchlist', {
 				return response.data
 			} catch (error) {
 				console.error('Failed to move to watched:', error)
-				showError(t('moviedb', 'Failed to move to watched. Please try again.'))
+				if (error.response?.status === 409) {
+					// Another request (a second tab) is still importing this show.
+					showError(t('moviedb', 'This show is still being added. Please try again in a moment.'))
+				} else {
+					showError(t('moviedb', 'Failed to move to watched. Please try again.'))
+				}
 				return null
 			}
 		},

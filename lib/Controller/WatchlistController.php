@@ -9,6 +9,7 @@ use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\WatchlistService;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Service\MovieWatchService;
+use OCA\MovieDB\Service\ImportLockedException;
 use OCA\MovieDB\Service\SeriesService;
 use OCA\MovieDB\Service\TmdbService;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -177,9 +178,19 @@ class WatchlistController extends AuthenticatedController {
             && !empty($data['tmdbId'])
             && $this->movieService->findByTmdbId($libraryId, (int)$data['tmdbId']) !== null;
 
+        // A show that is already tracked can still go on the watchlist; moving it later
+        // opens the existing show instead of importing a second copy.
+        $alreadyTracked = $mediaType === 'series'
+            && !empty($data['tmdbId'])
+            && $this->seriesService->findByTmdbId($libraryId, (int)$data['tmdbId']) !== null;
+
         try {
             $item = $this->service->create($this->userId, $libraryId, $data);
-            return new JSONResponse(['item' => $item, 'alreadyWatched' => $alreadyWatched], Http::STATUS_CREATED);
+            return new JSONResponse([
+                'item' => $item,
+                'alreadyWatched' => $alreadyWatched,
+                'alreadyTracked' => $alreadyTracked,
+            ], Http::STATUS_CREATED);
         } catch (\Exception $e) {
             $this->logger->error('Failed to create watchlist item', [
                 'exception' => $e,
@@ -392,10 +403,49 @@ class WatchlistController extends AuthenticatedController {
      * Import a series watchlist item as a tracked show and drop the watchlist row.
      *
      * Fetches full TMDB details (seasons drive per-season episode import) and calls
-     * SeriesService::createFromTmdb. Deletes the watchlist row in the same transaction.
+     * SeriesService::createFromTmdb, then deletes the watchlist row.
      * Does NOT mark any episodes watched — the show starts at 0% progress.
      */
     private function moveSeriesToWatched(int $id, \OCA\MovieDB\Db\WatchlistItem $item, int $libraryId): JSONResponse {
+        if (!$item->getTmdbId()) {
+            return $this->importSeriesFromWatchlist($id, $item, $libraryId);
+        }
+        // Check and import under one lock per show: a double-click (or a second tab) waits
+        // for the first import and then gets the show it created, never a second copy (#147).
+        try {
+            return $this->seriesService->withImportLock(
+                $libraryId,
+                $item->getTmdbId(),
+                fn (): JSONResponse => $this->importSeriesFromWatchlist($id, $item, $libraryId),
+            );
+        } catch (ImportLockedException $e) {
+            return new JSONResponse(
+                ['error' => 'This show is still being added. Please try again in a moment.'],
+                Http::STATUS_CONFLICT
+            );
+        }
+    }
+
+    /**
+     * The body of moveSeriesToWatched; runs under the show's import lock when it has a TMDB id.
+     */
+    private function importSeriesFromWatchlist(int $id, \OCA\MovieDB\Db\WatchlistItem $item, int $libraryId): JSONResponse {
+        // Already tracked (e.g. added to the watchlist again after it was imported, or the
+        // first of two concurrent moves won): drop the watchlist row and hand back the
+        // existing show instead of importing a duplicate (#147). Mirrors the movie path,
+        // which logs a rewatch.
+        $existing = $item->getTmdbId()
+            ? $this->seriesService->findByTmdbId($libraryId, $item->getTmdbId())
+            : null;
+        if ($existing !== null) {
+            try {
+                $this->service->delete($id, $libraryId);
+            } catch (DoesNotExistException $e) {
+                // The concurrent move that imported the show already removed the row.
+            }
+            return new JSONResponse(['series' => $existing, 'alreadyTracked' => true]);
+        }
+
         $seriesData = [
             'tmdbId' => $item->getTmdbId(),
             'title' => $item->getTitle(),
@@ -435,14 +485,15 @@ class WatchlistController extends AuthenticatedController {
             }
         }
 
-        $this->db->beginTransaction();
+        // No outer transaction here: createFromTmdb renews the import lock while it fetches
+        // the seasons, and those renewals must be visible to other requests right away.
+        // createFromTmdb writes the show in its own transaction. If removing the watchlist
+        // row fails afterwards, the next move finds the show and removes the row (above).
+        $series = $this->seriesService->createFromTmdb($this->userId, $libraryId, $seriesData, $language);
         try {
-            $series = $this->seriesService->createFromTmdb($this->userId, $libraryId, $seriesData, $language);
             $this->service->delete($id, $libraryId);
-            $this->db->commit();
-        } catch (\Exception $e) {
-            $this->db->rollBack();
-            throw $e;
+        } catch (DoesNotExistException $e) {
+            // Already gone (removed in another tab meanwhile); the show is imported either way.
         }
 
         return new JSONResponse(['series' => $series]);

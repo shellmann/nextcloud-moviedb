@@ -8,6 +8,7 @@ use OCA\MovieDB\Controller\SeriesController;
 use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\SeriesProgressService;
 use OCA\MovieDB\Service\SeriesRefreshService;
+use OCA\MovieDB\Service\ImportLockedException;
 use OCA\MovieDB\Service\SeriesService;
 use OCA\MovieDB\Tests\Unit\TestCase;
 use OCP\AppFramework\Db\DoesNotExistException;
@@ -323,5 +324,65 @@ class SeriesControllerTest extends TestCase {
 
     public static function badWatchStatusProvider(): array {
         return [['bogus'], [['finished']]];
+    }
+
+    // ---- create: check and import under the show's lock (#147 review) ----
+
+    private function allowEditing(): void {
+        $this->libraryService->method('resolveLibraryId')->willReturn(self::LIB);
+        $this->libraryService->method('canEdit')->willReturn(true);
+        $this->request->method('getParams')->willReturn(['title' => 'Silo', 'tmdbId' => 125988]);
+        $this->params([]);
+    }
+
+    public function testCreateChecksAndImportsUnderTheShowsLock(): void {
+        $this->allowEditing();
+        $this->service = $this->createMock(SeriesService::class);
+        $insideLock = false;
+        $this->service->expects($this->once())
+            ->method('withImportLock')
+            ->with(self::LIB, 125988, $this->anything())
+            ->willReturnCallback(function (int $libraryId, int $tmdbId, callable $fn) use (&$insideLock) {
+                $insideLock = true;
+                try {
+                    return $fn();
+                } finally {
+                    $insideLock = false;
+                }
+            });
+        $this->service->method('findByTmdbId')->willReturnCallback(function () use (&$insideLock) {
+            $this->assertTrue($insideLock, 'duplicate check ran outside the import lock');
+            return null;
+        });
+        $this->service->expects($this->once())->method('createFromTmdb')
+            ->willReturnCallback(function () use (&$insideLock) {
+                $this->assertTrue($insideLock, 'import ran outside the import lock');
+                return new \OCA\MovieDB\Db\Series();
+            });
+
+        $this->assertSame(Http::STATUS_CREATED, $this->controller()->create()->getStatus());
+    }
+
+    public function testCreateOfATrackedShowStillAnswersConflictWithItsId(): void {
+        $this->allowEditing();
+        $existing = new \OCA\MovieDB\Db\Series();
+        $existing->setId(7);
+        $this->service->method('withImportLock')->willReturnCallback(fn ($l, $t, callable $fn) => $fn());
+        $this->service->method('findByTmdbId')->willReturn($existing);
+
+        $response = $this->controller()->create();
+
+        $this->assertSame(Http::STATUS_CONFLICT, $response->getStatus());
+        $this->assertSame(7, $response->getData()['existingId']);
+    }
+
+    public function testCreateAnswersConflictWhenTheOtherImportTakesTooLong(): void {
+        $this->allowEditing();
+        $this->service->method('withImportLock')->willThrowException(new ImportLockedException('busy'));
+
+        $response = $this->controller()->create();
+
+        $this->assertSame(Http::STATUS_CONFLICT, $response->getStatus());
+        $this->assertArrayNotHasKey('existingId', $response->getData());
     }
 }

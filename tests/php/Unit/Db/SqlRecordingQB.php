@@ -50,6 +50,12 @@ class SqlRecordingQB implements IQueryBuilder {
         return $this;
     }
 
+    public function delete(string $delete, ?string $alias = null): static {
+        $this->type = 'DELETE';
+        $this->from = $delete;
+        return $this;
+    }
+
     public function update(string $table): static {
         $this->type = 'UPDATE';
         $this->from = $table;
@@ -123,6 +129,8 @@ class SqlRecordingQB implements IQueryBuilder {
     public function getSQL(): string {
         if ($this->type === 'UPDATE') {
             $sql = 'UPDATE ' . $this->from . ' SET ' . implode(', ', $this->sets);
+        } elseif ($this->type === 'DELETE') {
+            $sql = 'DELETE FROM ' . $this->from;
         } else {
             $sql = 'SELECT ' . implode(', ', $this->selects) . ' FROM ' . $this->from;
             if ($this->joins) {

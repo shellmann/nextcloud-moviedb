@@ -283,6 +283,7 @@ namespace OCP {
         public function beginTransaction(): void;
         public function commit(): void;
         public function rollBack(): void;
+        public function insertIgnoreConflict(string $table, array $values): int;
     }
 }
 

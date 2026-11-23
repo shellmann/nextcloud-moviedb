@@ -25,6 +25,20 @@ class SeriesService {
     private TmdbService $tmdbService;
     private IDBConnection $db;
 
+    /** How long a second import of the same show waits for the first one (seconds). */
+    private float $importLockWait = 20.0;
+
+    /**
+     * When an import lock runs out if its request dies without releasing it (seconds).
+     * A running import renews it after every TMDB season call and as the first write of
+     * its transaction, which holds the lock row until commit (renewImportLock), so only
+     * a dead request lets it expire.
+     */
+    private const IMPORT_LOCK_TTL = 300;
+
+    /** @var array{key: string, token: string}|null The import lock this request holds */
+    private ?array $heldImportLock = null;
+
     public function __construct(
         SeriesMapper $mapper,
         EpisodeMapper $episodeMapper,
@@ -32,7 +46,8 @@ class SeriesService {
         PlatformMapper $platformMapper,
         TmdbService $tmdbService,
         IDBConnection $db,
-        private ?ReleaseNotificationService $notifications = null
+        private ?ReleaseNotificationService $notifications = null,
+        private ?ImportLockService $importLock = null,
     ) {
         $this->mapper = $mapper;
         $this->episodeMapper = $episodeMapper;
@@ -40,6 +55,64 @@ class SeriesService {
         $this->platformMapper = $platformMapper;
         $this->tmdbService = $tmdbService;
         $this->db = $db;
+    }
+
+    /**
+     * Runs $fn while holding the import lock of one show in one library, so two requests
+     * can't both pass the "already tracked?" check and import it twice (#147: double-click
+     * on "Add to TV Shows", two tabs). $fn must do the check, the import and the commit;
+     * the lock is released only afterwards, so a waiting request sees the committed show.
+     *
+     * The lock is a row in moviedb_import_locks (ImportLockService), so it works whatever
+     * the instance's file locking setting. A second request waits for the first instead
+     * of failing; the lock is non-blocking, hence the polling. Call it outside a
+     * transaction. Without an ImportLockService (unit tests only) $fn runs unguarded.
+     *
+     * @template T
+     * @param callable(): T $fn
+     * @return T
+     * @throws ImportLockedException when the other import does not finish within the wait
+     */
+    public function withImportLock(int $libraryId, int $tmdbId, callable $fn): mixed {
+        if ($this->importLock === null) {
+            return $fn();
+        }
+        $key = 'series/' . $libraryId . '/' . $tmdbId;
+        $deadline = microtime(true) + $this->importLockWait;
+        while (($token = $this->importLock->tryAcquire($key, self::IMPORT_LOCK_TTL)) === null) {
+            if (microtime(true) >= $deadline) {
+                throw new ImportLockedException('TV show ' . $tmdbId . ' is being imported by another request');
+            }
+            usleep(250_000);
+        }
+        $this->heldImportLock = ['key' => $key, 'token' => $token];
+        try {
+            return $fn();
+        } finally {
+            $this->heldImportLock = null;
+            $this->importLock->release($key, $token);
+        }
+    }
+
+    /**
+     * Renews the lease of the import lock this request holds (no-op without one), so a
+     * long import never outlives it. A lease that was lost anyway (one call stuck longer
+     * than the TTL, and another request took over) aborts the import before it writes.
+     *
+     * @throws ImportLockedException when the lock is no longer ours
+     */
+    private function renewImportLock(): void {
+        if ($this->heldImportLock === null || $this->importLock === null) {
+            return;
+        }
+        if (!$this->importLock->renew($this->heldImportLock['key'], $this->heldImportLock['token'], self::IMPORT_LOCK_TTL)) {
+            throw new ImportLockedException('The import lock expired while the import was running');
+        }
+    }
+
+    /** @internal Tests only: shorten the wait for a held import lock. */
+    public function setImportLockWait(float $seconds): void {
+        $this->importLockWait = $seconds;
     }
 
     /**
@@ -99,11 +172,20 @@ class SeriesService {
 
             foreach ($seasonNumbers as $seasonNumber) {
                 $seasonPayloads[$seasonNumber] = $this->tmdbService->getSeasonDetails($tmdbId, $seasonNumber, $userId, $language);
+                // Season calls run one after another; keep the import lock alive (#147).
+                $this->renewImportLock();
             }
         }
 
         $this->db->beginTransaction();
         try {
+            // First write of the transaction: renewing the lock row also locks that row
+            // until commit (and on SQLite the whole database). Another request clearing
+            // "expired" locks or inserting its own waits for the commit, however long the
+            // episode writes take, and then finds this show as already tracked (#147).
+            // A lease that was lost before this point rolls back before anything is written.
+            $this->renewImportLock();
+
             $series = new Series();
             $series->setUserId($userId);
             $series->setLibraryId($libraryId);

@@ -10,6 +10,7 @@ use OCA\MovieDB\Db\WatchlistItem;
 use OCA\MovieDB\Service\LibraryService;
 use OCA\MovieDB\Service\MovieService;
 use OCA\MovieDB\Service\MovieWatchService;
+use OCA\MovieDB\Service\ImportLockedException;
 use OCA\MovieDB\Service\SeriesService;
 use OCA\MovieDB\Service\TmdbService;
 use OCA\MovieDB\Service\WatchlistService;
@@ -84,6 +85,12 @@ class WatchlistControllerTest extends TestCase {
         );
     }
 
+    /** Lets a SeriesService double run the callback of withImportLock, as the real lock does. */
+    private function runImportLockCallbacks(): void {
+        $this->seriesService->method('withImportLock')
+            ->willReturnCallback(fn (int $libraryId, int $tmdbId, callable $fn) => $fn());
+    }
+
     private function makeItem(int $id, string $mediaType, ?int $tmdbId = null): WatchlistItem {
         $item = new WatchlistItem();
         $item->setId($id);
@@ -96,6 +103,7 @@ class WatchlistControllerTest extends TestCase {
 
     public function testMoveSeriesImportsShowAndReturnsSeries(): void {
         $this->seriesService = $this->createMock(SeriesService::class);
+        $this->runImportLockCallbacks();
         $this->watchService = $this->createMock(MovieWatchService::class);
         $this->movieService = $this->createMock(MovieService::class);
         $this->service = $this->createMock(WatchlistService::class);
@@ -133,6 +141,150 @@ class WatchlistControllerTest extends TestCase {
         $this->assertArrayHasKey('series', $data);
         $this->assertArrayNotHasKey('movie', $data);
         $this->assertSame(42, $data['series']->getId());
+    }
+
+    public function testMoveSeriesThatIsAlreadyTrackedReturnsTheExistingShow(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->runImportLockCallbacks();
+        $this->tmdbService = $this->createMock(TmdbService::class);
+        $this->service = $this->createMock(WatchlistService::class);
+        $item = $this->makeItem(5, 'series', 1399);
+
+        $existing = new Series();
+        $existing->setId(42);
+        $existing->setTitle('Game of Thrones');
+
+        $this->service->method('find')->with(5, self::LIBRARY_ID)->willReturn($item);
+        $this->seriesService->method('findByTmdbId')->with(self::LIBRARY_ID, 1399)->willReturn($existing);
+
+        // No second import, no TMDB round trips — the existing show is reused (#147).
+        $this->seriesService->expects($this->never())->method('createFromTmdb');
+        $this->tmdbService->expects($this->never())->method('getSeriesDetails');
+        $this->service->expects($this->once())->method('delete')->with(5, self::LIBRARY_ID);
+
+        $response = $this->controller()->moveToWatched(5);
+
+        $this->assertEquals(Http::STATUS_OK, $response->getStatus());
+        $data = $response->getData();
+        $this->assertSame(42, $data['series']->getId());
+        $this->assertTrue($data['alreadyTracked']);
+    }
+
+    public function testMoveSeriesChecksAndImportsUnderTheShowsLock(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->service->method('find')->willReturn($this->makeItem(5, 'series', 1399));
+        $this->request->method('getParam')->willReturnCallback(fn($k, $d = null) => $d);
+
+        // Nothing may look up or import the show outside the lock (#147 review).
+        $insideLock = false;
+        $this->seriesService->expects($this->once())
+            ->method('withImportLock')
+            ->with(self::LIBRARY_ID, 1399, $this->anything())
+            ->willReturnCallback(function (int $libraryId, int $tmdbId, callable $fn) use (&$insideLock) {
+                $insideLock = true;
+                try {
+                    return $fn();
+                } finally {
+                    $insideLock = false;
+                }
+            });
+        $this->seriesService->method('findByTmdbId')->willReturnCallback(function () use (&$insideLock) {
+            $this->assertTrue($insideLock, 'duplicate check ran outside the import lock');
+            return null;
+        });
+        $this->seriesService->expects($this->once())->method('createFromTmdb')
+            ->willReturnCallback(function () use (&$insideLock) {
+                $this->assertTrue($insideLock, 'import ran outside the import lock');
+                return new Series();
+            });
+
+        $this->assertEquals(Http::STATUS_OK, $this->controller()->moveToWatched(5)->getStatus());
+    }
+
+    public function testSecondOfTwoConcurrentMovesGetsTheShowTheFirstImported(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->runImportLockCallbacks();
+        $this->service = $this->createMock(WatchlistService::class);
+        $existing = new Series();
+        $existing->setId(42);
+
+        // The second request found the row before it waited; the first one has removed it since.
+        $this->service->method('find')->willReturn($this->makeItem(5, 'series', 1399));
+        $this->service->expects($this->once())->method('delete')->willThrowException(new \OCP\AppFramework\Db\DoesNotExistException('gone'));
+        $this->seriesService->method('findByTmdbId')->willReturn($existing);
+        $this->seriesService->expects($this->never())->method('createFromTmdb');
+
+        $response = $this->controller()->moveToWatched(5);
+
+        $this->assertEquals(Http::STATUS_OK, $response->getStatus());
+        $this->assertSame(42, $response->getData()['series']->getId());
+        $this->assertTrue($response->getData()['alreadyTracked']);
+    }
+
+    public function testMoveSeriesStillReturnsTheShowWhenTheWatchlistRowIsAlreadyGone(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->runImportLockCallbacks();
+        $this->service = $this->createMock(WatchlistService::class);
+        $this->db = $this->createMock(IDBConnection::class);
+        $this->service->method('find')->willReturn($this->makeItem(5, 'series', 1399));
+        $this->request->method('getParam')->willReturnCallback(fn($k, $d = null) => $d);
+        $series = new Series();
+        $series->setId(42);
+        $this->seriesService->method('findByTmdbId')->willReturn(null);
+        $this->seriesService->expects($this->once())->method('createFromTmdb')->willReturn($series);
+        $this->service->expects($this->once())->method('delete')
+            ->willThrowException(new \OCP\AppFramework\Db\DoesNotExistException('gone'));
+        // createFromTmdb has its own transaction; an outer one would hide the lease renewals.
+        $this->db->expects($this->never())->method('beginTransaction');
+
+        $response = $this->controller()->moveToWatched(5);
+
+        $this->assertEquals(Http::STATUS_OK, $response->getStatus());
+        $this->assertSame(42, $response->getData()['series']->getId());
+    }
+
+    public function testMoveSeriesAnswersConflictWhenTheOtherImportTakesTooLong(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->service->method('find')->willReturn($this->makeItem(5, 'series', 1399));
+        $this->seriesService->method('withImportLock')->willThrowException(new ImportLockedException('busy'));
+        $this->seriesService->expects($this->never())->method('createFromTmdb');
+
+        $this->assertEquals(Http::STATUS_CONFLICT, $this->controller()->moveToWatched(5)->getStatus());
+    }
+
+    public function testCreateFlagsAShowThatIsAlreadyTracked(): void {
+        $this->service = $this->createMock(WatchlistService::class);
+        $this->request->method('getParams')->willReturn([
+            'title' => 'Game of Thrones',
+            'tmdbId' => 1399,
+            'mediaType' => 'series',
+        ]);
+        $this->service->method('existsByTmdbId')->willReturn(false);
+        $this->seriesService->method('findByTmdbId')->willReturn(new Series());
+        $this->service->expects($this->once())->method('create')->willReturn(new WatchlistItem());
+
+        $response = $this->controller()->create();
+
+        $this->assertEquals(Http::STATUS_CREATED, $response->getStatus());
+        $data = $response->getData();
+        $this->assertTrue($data['alreadyTracked']);
+        $this->assertFalse($data['alreadyWatched']);
+    }
+
+    public function testCreateDoesNotFlagANewShow(): void {
+        $this->request->method('getParams')->willReturn([
+            'title' => 'Severance',
+            'tmdbId' => 95396,
+            'mediaType' => 'series',
+        ]);
+        $this->service->method('existsByTmdbId')->willReturn(false);
+        $this->seriesService->method('findByTmdbId')->willReturn(null);
+        $this->service->method('create')->willReturn(new WatchlistItem());
+
+        $response = $this->controller()->create();
+
+        $this->assertEquals(Http::STATUS_CREATED, $response->getStatus());
+        $this->assertFalse($response->getData()['alreadyTracked']);
     }
 
     public function testMoveMovieCreatesMovieAndReturnsMovie(): void {
