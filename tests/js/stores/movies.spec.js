@@ -331,6 +331,26 @@ describe('Movies Store toggleFavorite (#136)', () => {
 		expect(showError).toHaveBeenCalled()
 	})
 
+	it('sends rapid clicks one after another and ends on the last one (#150 review)', async () => {
+		const pending = []
+		api.updateMovie.mockImplementation(() => new Promise((resolve) => pending.push(resolve)))
+
+		const first = store.toggleFavorite(1) // → true
+		const second = store.toggleFavorite(1) // → false
+		expect(store.movies[0].isFavorite).toBe(false)
+		expect(api.updateMovie).toHaveBeenCalledTimes(1)
+
+		pending[0]({ data: {} })
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		expect(api.updateMovie).toHaveBeenCalledTimes(2)
+		expect(api.updateMovie.mock.calls[1][1]).toEqual(expect.objectContaining({ isFavorite: false }))
+		pending[1]({ data: {} })
+
+		expect(await first).toBe(true)
+		expect(await second).toBe(true)
+		expect(store.movies[0].isFavorite).toBe(false)
+	})
+
 	it('ignores a movie that is not in the list', async () => {
 		expect(await store.toggleFavorite(99)).toBe(false)
 		expect(api.updateMovie).not.toHaveBeenCalled()

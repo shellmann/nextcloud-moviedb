@@ -2,7 +2,43 @@ import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
+import { createSerialFlagSaver } from '../utils/serialFlagSaver.js'
 import { useLibrariesStore } from './libraries.js'
+
+/** One favourite saver per store instance (tests create a fresh store each time). */
+const favoriteSavers = new WeakMap()
+
+/**
+ * The serial favourite saver of a store (#136).
+ *
+ * @param {object} store - The movies store
+ * @return {(id: number, wanted: boolean, current: boolean) => Promise<boolean>} See createSerialFlagSaver
+ */
+function favoriteSaverFor(store) {
+	if (!favoriteSavers.has(store)) {
+		favoriteSavers.set(store, createSerialFlagSaver({
+			save: (id, value) => {
+				const libraryId = useLibrariesStore().activeLibraryId
+				const payload = { isFavorite: value }
+				return api.updateMovie(id, libraryId !== null ? { ...payload, libraryId } : payload)
+			},
+			apply: (id, value) => {
+				const i = store.movies.findIndex((x) => x.id === id)
+				if (i !== -1) {
+					store.movies.splice(i, 1, { ...store.movies[i], isFavorite: value })
+				}
+				if (store.currentMovie?.id === id) {
+					store.currentMovie = { ...store.currentMovie, isFavorite: value }
+				}
+			},
+			onError: (error) => {
+				console.error('Failed to change favorite:', error)
+				showError(t('moviedb', 'Could not change the favorite. Please try again.'))
+			},
+		}))
+	}
+	return favoriteSavers.get(store)
+}
 
 /**
  * Movies store - Manages movie collection state and CRUD operations.
@@ -147,39 +183,20 @@ export const useMoviesStore = defineStore('movies', {
 		 */
 		/**
 		 * Flips the favourite flag of a movie in the list (#136). The tile updates right
-		 * away and rolls back if saving fails. Only the flag is patched in place: the
-		 * update response lacks the list fields (last watch, rating) the tile shows.
-		 * With the favourites filter on, an unfavourited tile stays until the next load,
-		 * so it doesn't vanish under the cursor.
+		 * away; saves run one at a time per movie and end on the last click, and a failed
+		 * save shows the last saved state again (serialFlagSaver). Only the flag is patched
+		 * in place: the update response lacks the list fields (last watch, rating) the tile
+		 * shows. With the favourites filter on, an unfavourited tile stays until the next
+		 * load, so it doesn't vanish under the cursor.
 		 *
 		 * @param {number} id - Movie ID
-		 * @return {Promise<boolean>} Whether the change was saved
+		 * @return {Promise<boolean>} Whether the movie ended on the state clicked last
 		 */
-		async toggleFavorite(id) {
-			const index = this.movies.findIndex((x) => x.id === id)
-			if (index === -1) { return false }
-			const previous = Boolean(this.movies[index].isFavorite)
-			const setFlag = (value) => {
-				const i = this.movies.findIndex((x) => x.id === id)
-				if (i !== -1) {
-					this.movies.splice(i, 1, { ...this.movies[i], isFavorite: value })
-				}
-				if (this.currentMovie?.id === id) {
-					this.currentMovie = { ...this.currentMovie, isFavorite: value }
-				}
-			}
-			setFlag(!previous)
-			try {
-				const libraryId = useLibrariesStore().activeLibraryId
-				const payload = { isFavorite: !previous }
-				await api.updateMovie(id, libraryId !== null ? { ...payload, libraryId } : payload)
-				return true
-			} catch (error) {
-				console.error('Failed to change favorite:', error)
-				setFlag(previous)
-				showError(t('moviedb', 'Could not change the favorite. Please try again.'))
-				return false
-			}
+		toggleFavorite(id) {
+			const item = this.movies.find((x) => x.id === id)
+			if (!item) { return Promise.resolve(false) }
+			const current = Boolean(item.isFavorite)
+			return favoriteSaverFor(this)(id, !current, current)
 		},
 
 		async update(id, data) {
