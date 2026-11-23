@@ -177,9 +177,19 @@ class WatchlistController extends AuthenticatedController {
             && !empty($data['tmdbId'])
             && $this->movieService->findByTmdbId($libraryId, (int)$data['tmdbId']) !== null;
 
+        // A show that is already tracked can still go on the watchlist; moving it later
+        // opens the existing show instead of importing a second copy.
+        $alreadyTracked = $mediaType === 'series'
+            && !empty($data['tmdbId'])
+            && $this->seriesService->findByTmdbId($libraryId, (int)$data['tmdbId']) !== null;
+
         try {
             $item = $this->service->create($this->userId, $libraryId, $data);
-            return new JSONResponse(['item' => $item, 'alreadyWatched' => $alreadyWatched], Http::STATUS_CREATED);
+            return new JSONResponse([
+                'item' => $item,
+                'alreadyWatched' => $alreadyWatched,
+                'alreadyTracked' => $alreadyTracked,
+            ], Http::STATUS_CREATED);
         } catch (\Exception $e) {
             $this->logger->error('Failed to create watchlist item', [
                 'exception' => $e,
@@ -396,6 +406,17 @@ class WatchlistController extends AuthenticatedController {
      * Does NOT mark any episodes watched — the show starts at 0% progress.
      */
     private function moveSeriesToWatched(int $id, \OCA\MovieDB\Db\WatchlistItem $item, int $libraryId): JSONResponse {
+        // Already tracked (e.g. added to the watchlist again after it was imported):
+        // drop the watchlist row and hand back the existing show instead of importing
+        // a duplicate (#147). Mirrors the movie path, which logs a rewatch.
+        $existing = $item->getTmdbId()
+            ? $this->seriesService->findByTmdbId($libraryId, $item->getTmdbId())
+            : null;
+        if ($existing !== null) {
+            $this->service->delete($id, $libraryId);
+            return new JSONResponse(['series' => $existing, 'alreadyTracked' => true]);
+        }
+
         $seriesData = [
             'tmdbId' => $item->getTmdbId(),
             'title' => $item->getTitle(),

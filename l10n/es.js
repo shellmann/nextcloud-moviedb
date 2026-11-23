@@ -558,6 +558,8 @@ OC.L10N.register(
         "Movie and TV show pages have a \"Play trailer\" link.": "Las páginas de películas y series tienen un enlace «Ver tráiler».",
         "A new \"Where to watch\" section shows which streaming services offer a title in your country.": "Una nueva sección «Dónde ver» muestra qué servicios de streaming ofrecen un título en tu país.",
         "The TV show page shows network logos and when the show was last synced with TMDB.": "La página de la serie muestra los logotipos de las cadenas y cuándo se sincronizó por última vez con TMDB.",
-        "MovieDB has a new app icon.": "MovieDB tiene un nuevo icono de aplicación."
+        "MovieDB has a new app icon.": "MovieDB tiene un nuevo icono de aplicación.",
+        "This show is already in your TV shows.": "Esta serie ya está en tus series.",
+        "Added to watchlist. This show is already in your TV shows.": "Añadida a la lista. Esta serie ya está en tus series."
     },
 "nplurals=2; plural=(n != 1);");

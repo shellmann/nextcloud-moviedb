@@ -15,6 +15,7 @@ vi.mock('@/services/api.js', () => ({
 	},
 }))
 
+import { showSuccess } from '@nextcloud/dialogs'
 import api from '@/services/api.js'
 
 describe('Watchlist Store', () => {
@@ -273,6 +274,14 @@ describe('Watchlist Store', () => {
 
 			expect(api.addToWatchlist).toHaveBeenCalledWith(expect.objectContaining({ mediaType: 'series' }))
 		})
+
+		it('should say so when the show is already in the TV shows (#147)', async () => {
+			api.addToWatchlist.mockResolvedValue({ data: { item: { id: 4 }, alreadyWatched: false, alreadyTracked: true } })
+
+			await store.create({ title: 'Show', mediaType: 'series' })
+
+			expect(showSuccess).toHaveBeenCalledWith('Added to watchlist. This show is already in your TV shows.')
+		})
 	})
 
 	describe('update action', () => {
@@ -406,6 +415,20 @@ describe('Watchlist Store', () => {
 			expect(result.series.id).toBe(42)
 			expect(store.items).toHaveLength(0)
 			expect(store.total).toBe(0)
+		})
+
+		it('should announce the existing show instead of a new import (#147)', async () => {
+			store.items = [{ id: 1, title: 'Show', mediaType: 'series' }]
+			store.total = 1
+			const series = { id: 42, title: 'Show' }
+			api.moveToWatched.mockResolvedValue({ data: { series, alreadyTracked: true } })
+
+			const result = await store.moveToWatched(1, {})
+
+			expect(result.series.id).toBe(42)
+			expect(store.items).toHaveLength(0)
+			expect(showSuccess).toHaveBeenCalledWith('This show is already in your TV shows.')
+			expect(showSuccess).not.toHaveBeenCalledWith('Added to your TV shows.')
 		})
 
 		it('should return null on error', async () => {

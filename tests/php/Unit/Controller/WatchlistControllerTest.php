@@ -135,6 +135,67 @@ class WatchlistControllerTest extends TestCase {
         $this->assertSame(42, $data['series']->getId());
     }
 
+    public function testMoveSeriesThatIsAlreadyTrackedReturnsTheExistingShow(): void {
+        $this->seriesService = $this->createMock(SeriesService::class);
+        $this->tmdbService = $this->createMock(TmdbService::class);
+        $this->service = $this->createMock(WatchlistService::class);
+        $item = $this->makeItem(5, 'series', 1399);
+
+        $existing = new Series();
+        $existing->setId(42);
+        $existing->setTitle('Game of Thrones');
+
+        $this->service->method('find')->with(5, self::LIBRARY_ID)->willReturn($item);
+        $this->seriesService->method('findByTmdbId')->with(self::LIBRARY_ID, 1399)->willReturn($existing);
+
+        // No second import, no TMDB round trips — the existing show is reused (#147).
+        $this->seriesService->expects($this->never())->method('createFromTmdb');
+        $this->tmdbService->expects($this->never())->method('getSeriesDetails');
+        $this->service->expects($this->once())->method('delete')->with(5, self::LIBRARY_ID);
+
+        $response = $this->controller()->moveToWatched(5);
+
+        $this->assertEquals(Http::STATUS_OK, $response->getStatus());
+        $data = $response->getData();
+        $this->assertSame(42, $data['series']->getId());
+        $this->assertTrue($data['alreadyTracked']);
+    }
+
+    public function testCreateFlagsAShowThatIsAlreadyTracked(): void {
+        $this->service = $this->createMock(WatchlistService::class);
+        $this->request->method('getParams')->willReturn([
+            'title' => 'Game of Thrones',
+            'tmdbId' => 1399,
+            'mediaType' => 'series',
+        ]);
+        $this->service->method('existsByTmdbId')->willReturn(false);
+        $this->seriesService->method('findByTmdbId')->willReturn(new Series());
+        $this->service->expects($this->once())->method('create')->willReturn(new WatchlistItem());
+
+        $response = $this->controller()->create();
+
+        $this->assertEquals(Http::STATUS_CREATED, $response->getStatus());
+        $data = $response->getData();
+        $this->assertTrue($data['alreadyTracked']);
+        $this->assertFalse($data['alreadyWatched']);
+    }
+
+    public function testCreateDoesNotFlagANewShow(): void {
+        $this->request->method('getParams')->willReturn([
+            'title' => 'Severance',
+            'tmdbId' => 95396,
+            'mediaType' => 'series',
+        ]);
+        $this->service->method('existsByTmdbId')->willReturn(false);
+        $this->seriesService->method('findByTmdbId')->willReturn(null);
+        $this->service->method('create')->willReturn(new WatchlistItem());
+
+        $response = $this->controller()->create();
+
+        $this->assertEquals(Http::STATUS_CREATED, $response->getStatus());
+        $this->assertFalse($response->getData()['alreadyTracked']);
+    }
+
     public function testMoveMovieCreatesMovieAndReturnsMovie(): void {
         $this->seriesService = $this->createMock(SeriesService::class);
         $this->movieService = $this->createMock(MovieService::class);
