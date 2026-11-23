@@ -562,7 +562,8 @@
 		"Added to watchlist. This show is already in your TV shows.": "Zur Merkliste hinzugefügt. Diese Serie ist schon in deinen Serien.",
 		"Adding titles": "Titel hinzufügen",
 		"Fill in today's date as the watch date": "Heutiges Datum als „Gesehen am“ eintragen",
-		"When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.": "Wenn das aus ist, bleibt das Datumsfeld leer, wenn du einen Film oder eine Serie hinzufügst oder eine Sichtung einträgst. Praktisch, wenn du Titel nachträgst, die du vor längerer Zeit gesehen hast."
+		"When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.": "Wenn das aus ist, bleibt das Datumsfeld leer, wenn du einen Film oder eine Serie hinzufügst oder eine Sichtung einträgst. Praktisch, wenn du Titel nachträgst, die du vor längerer Zeit gesehen hast.",
+		"This show is still being added. Please try again in a moment.": "Diese Serie wird gerade noch hinzugefügt. Bitte versuche es gleich noch einmal."
 	},
 	"pluralForm": "nplurals=2; plural=(n != 1);"
 }

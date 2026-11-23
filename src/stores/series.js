@@ -184,11 +184,16 @@ export const useSeriesStore = defineStore('series', {
 				showSuccess(t('moviedb', 'Series added successfully.'))
 				return response.data.series
 			} catch (error) {
-				if (error.response?.status === 409) {
+				if (error.response?.status === 409 && error.response.data?.existingId) {
 					return {
 						duplicate: true,
-						existingId: error.response.data?.existingId ?? null,
+						existingId: error.response.data.existingId,
 					}
+				}
+				if (error.response?.status === 409) {
+					// Another request (a second tab) is still importing this show (#147).
+					showError(t('moviedb', 'This show is still being added. Please try again in a moment.'))
+					return null
 				}
 				console.error('Failed to create series:', error)
 				showError(t('moviedb', 'Failed to add series. Please try again.'))

@@ -325,3 +325,35 @@ describe('Watchlist "Mark as Watched" date (#137)', () => {
 		expect(wrapper.vm.watchedData.dateWatched).toBe('')
 	})
 })
+
+describe('Watchlist "Add to TV Shows" double-click (#147)', () => {
+	let store
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		const libraries = useLibrariesStore()
+		libraries.libraries = [{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true }]
+		libraries.activeLibraryId = 1
+		libraries.whenReady = vi.fn().mockResolvedValue()
+		store = useWatchlistStore()
+		store.fetchAll = vi.fn().mockResolvedValue()
+		store.items = [{ id: 5, title: 'Silo', mediaType: 'series', priority: 0 }]
+	})
+
+	it('starts the import only once while it runs, and again after it ended', async () => {
+		let finish
+		store.moveToWatched = vi.fn().mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+		const wrapper = mountView()
+		const item = { id: 5, title: 'Silo', mediaType: 'series' }
+
+		const first = wrapper.vm.openWatchedModal(item)
+		await wrapper.vm.openWatchedModal(item)
+		expect(store.moveToWatched).toHaveBeenCalledTimes(1)
+
+		finish(null)
+		await first
+		store.moveToWatched.mockResolvedValueOnce(null)
+		await wrapper.vm.openWatchedModal(item)
+		expect(store.moveToWatched).toHaveBeenCalledTimes(2)
+	})
+})

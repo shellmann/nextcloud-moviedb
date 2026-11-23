@@ -15,7 +15,7 @@ vi.mock('@/services/api.js', () => ({
 	},
 }))
 
-import { showSuccess } from '@nextcloud/dialogs'
+import { showError, showSuccess } from '@nextcloud/dialogs'
 import api from '@/services/api.js'
 
 describe('Watchlist Store', () => {
@@ -429,6 +429,14 @@ describe('Watchlist Store', () => {
 			expect(store.items).toHaveLength(0)
 			expect(showSuccess).toHaveBeenCalledWith('This show is already in your TV shows.')
 			expect(showSuccess).not.toHaveBeenCalledWith('Added to your TV shows.')
+		})
+
+		it('says the show is still being added when the server answers 409 (#147)', async () => {
+			vi.spyOn(console, 'error').mockImplementation(() => {})
+			api.moveToWatched.mockRejectedValue({ response: { status: 409 } })
+
+			expect(await store.moveToWatched(1, {})).toBeNull()
+			expect(showError).toHaveBeenCalledWith('This show is still being added. Please try again in a moment.')
 		})
 
 		it('should return null on error', async () => {
