@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Leave the watch date empty**: a new setting, *Settings → Adding titles → Fill in today's
   date as the watch date*. When it is off, the date field starts empty when you add a movie
   or TV show, mark a watchlist movie as watched or log a viewing, so titles you watched long
-  ago don't get today's date. On by default. (#137)
+  ago don't get today's date. A movie saved with an empty date still counts as watched, with
+  a viewing without date. On by default. (#137)
 
 ### Fixed
 - Clearing the watch date of a TV show now removes it; before, the old date stayed (and a
