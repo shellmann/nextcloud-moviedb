@@ -752,6 +752,45 @@ class SeriesServiceTest extends TestCase {
         $this->service()->update($seriesId, self::LIBRARY_ID, ['title' => 'Renamed', 'isFavorite' => true]);
     }
 
+    public function testUpdateClearsTheOnlyWatchDateOfAShow(): void {
+        $this->stubSummary(mock: true);
+        $series = $this->makeSeries(1);
+        $this->mapper->method('find')->willReturn($series);
+        $this->mapper->method('update')->willReturnArgument(0);
+        $existing = new MovieWatch();
+        $existing->setId(50);
+        $existing->setWatchedAt('2019-01-02');
+        $this->watchMapper->method('findSeriesWatch')->willReturn($existing);
+
+        // #149 review: the Edit form sends watchedAt: null to clear it; isset() used to drop that.
+        $this->watchMapper->expects($this->once())
+            ->method('update')
+            ->with($this->callback(fn (MovieWatch $w) => $w->getId() === 50 && $w->getWatchedAt() === null))
+            ->willReturnArgument(0);
+
+        $this->service()->update(1, self::LIBRARY_ID, ['title' => 'Silo', 'watchedAt' => null]);
+    }
+
+    public function testUpdateWithOnlyEmptyWatchFieldsCreatesNoWatchRow(): void {
+        $this->stubSummary(mock: true);
+        $series = $this->makeSeries(1);
+        $this->mapper->method('find')->willReturn($series);
+        $this->mapper->method('update')->willReturnArgument(0);
+        $this->watchMapper->method('findSeriesWatch')->willReturn(null);
+
+        // Edit saves every field; with nothing set and no row yet there is nothing to store.
+        $this->watchMapper->expects($this->never())->method('insert');
+        $this->watchMapper->expects($this->never())->method('update');
+
+        $this->service()->update(1, self::LIBRARY_ID, [
+            'title' => 'Renamed',
+            'rating' => null,
+            'platformId' => null,
+            'languageWatched' => null,
+            'watchedAt' => null,
+        ]);
+    }
+
     // ---- helpers ----
 
     private function makeSeries(int $id): Series {

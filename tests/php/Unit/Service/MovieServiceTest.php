@@ -243,6 +243,22 @@ class MovieServiceTest extends TestCase {
         $this->assertNull($result->getReleaseYear());
     }
 
+    public function testCreateRecordsAnUndatedViewingWhenOnlyAnEmptyDateIsSent(): void {
+        $this->watchMapper = $this->createMock(MovieWatchMapper::class);
+        $this->mapper->method('insert')->willReturnCallback(function (Movie $movie) {
+            $movie->setId(1);
+            return $movie;
+        });
+        // #149 review: moving a watchlist movie (or adding one) with a blank date and nothing
+        // else must still record that it was watched, just without a date.
+        $this->watchMapper->expects($this->once())
+            ->method('insert')
+            ->with($this->callback(fn (MovieWatch $w) => $w->getMovieId() === 1 && $w->getWatchedAt() === null && $w->getRating() === null))
+            ->willReturnArgument(0);
+
+        $this->service()->create('testuser', self::LIBRARY_ID, ['title' => 'Heat', 'dateWatched' => null]);
+    }
+
     public function testCreateStoresNullForAnEmptyDateWatched(): void {
         $this->watchMapper = $this->createMock(MovieWatchMapper::class);
         $this->mapper->method('insert')->willReturnCallback(function (Movie $movie) {

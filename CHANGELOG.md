@@ -11,7 +11,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Leave the watch date empty**: a new setting, *Settings → Adding titles → Fill in today's
   date as the watch date*. When it is off, the date field starts empty when you add a movie
   or TV show, mark a watchlist movie as watched or log a viewing, so titles you watched long
-  ago don't get today's date. On by default. (#137)
+  ago don't get today's date. A movie saved with an empty date still counts as watched, with
+  a viewing without date. On by default. (#137)
 - **Favourite from the overview**: the heart on a movie or TV show tile in the lists now
   switches the favourite on and off without opening the title. An empty heart shows when you
   point at a tile (always on touch screens). Only with edit rights in the library. (#136)

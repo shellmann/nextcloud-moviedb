@@ -333,6 +333,22 @@ class WatchlistControllerTest extends TestCase {
         $this->assertEquals(Http::STATUS_OK, $this->controller()->moveToWatched(7)->getStatus());
     }
 
+    public function testMoveMovieWithOnlyAnEmptyDateStillCreatesTheMovie(): void {
+        $this->movieService = $this->createMock(MovieService::class);
+        $this->service->method('find')->willReturn($this->makeItem(7, 'movie', 27205));
+        // Date-only request (no language, rating or platform), the date left blank.
+        $this->request->method('getParams')->willReturn(['dateWatched' => '']);
+        $this->request->method('getParam')->willReturnCallback(fn($k, $d = null) => $d);
+        $this->movieService->method('findByTmdbId')->willReturn(null);
+        // The watch field is passed on (as null), so MovieService records an undated viewing.
+        $this->movieService->expects($this->once())
+            ->method('create')
+            ->with('testuser', self::LIBRARY_ID, $this->callback(fn($d) => array_key_exists('dateWatched', $d) && $d['dateWatched'] === null))
+            ->willReturn(new \OCA\MovieDB\Db\Movie());
+
+        $this->assertEquals(Http::STATUS_OK, $this->controller()->moveToWatched(7)->getStatus());
+    }
+
     public function testMoveMovieWithoutADateFieldStillUsesToday(): void {
         $this->movieService = $this->createMock(MovieService::class);
         $this->service->method('find')->willReturn($this->makeItem(7, 'movie', 27205));
