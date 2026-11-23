@@ -71,7 +71,9 @@
 				v-for="item in series"
 				:key="item.id"
 				:series="item"
-				@click="goToSeries(item.id)" />
+				:canEdit="activeCanEdit"
+				@click="goToSeries(item.id)"
+				@toggleFavorite="seriesStore.toggleFavorite(item.id)" />
 		</div>
 
 		<NcEmptyContent v-else :name="emptyStateMessage">

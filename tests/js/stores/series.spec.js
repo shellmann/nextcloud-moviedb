@@ -424,3 +424,72 @@ describe('refreshMessage', () => {
 		expect(refreshMessage(undefined)).toBe('Already up to date.')
 	})
 })
+
+describe('Series Store toggleFavorite (#136)', () => {
+	let store
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		store = useSeriesStore()
+		vi.clearAllMocks()
+		store.series = [{ id: 2, title: 'Silo', isFavorite: true, watchedEpisodeCount: 3 }]
+	})
+
+	it('flips the flag right away and keeps the list fields', async () => {
+		api.updateSeries.mockResolvedValue({ data: { series: { id: 2, isFavorite: false } } })
+
+		const done = store.toggleFavorite(2)
+		expect(store.series[0].isFavorite).toBe(false)
+		expect(await done).toBe(true)
+		expect(store.series[0]).toEqual({ id: 2, title: 'Silo', isFavorite: false, watchedEpisodeCount: 3 })
+		expect(api.updateSeries).toHaveBeenCalledWith(2, expect.objectContaining({ isFavorite: false }))
+		expect(showSuccess).not.toHaveBeenCalled()
+	})
+
+	it('a detail load or episode answer from before the save keeps the saved favourite (#150 review)', async () => {
+		let finishSave
+		const answers = []
+		api.updateSeries.mockReturnValue(new Promise((resolve) => { finishSave = resolve }))
+		api.getSeriesItem.mockReturnValue(new Promise((resolve) => answers.push(resolve)))
+		api.markEpisodeWatched.mockReturnValue(new Promise((resolve) => answers.push(resolve)))
+
+		const saved = store.toggleFavorite(2) // true → false
+		const detail = store.fetchOne(2)
+		const marked = store.markEpisodeWatched(2, 9)
+		finishSave({ data: {} })
+		await saved
+		answers.forEach((answer) => answer({ data: { series: { id: 2, title: 'Silo', isFavorite: true } } }))
+
+		expect((await detail).isFavorite).toBe(false)
+		expect((await marked).isFavorite).toBe(false)
+		expect(store.currentSeries.isFavorite).toBe(false)
+	})
+
+	it('Edit keeps the favourite out of its PUT while a heart save runs (#150 review)', async () => {
+		const pending = []
+		api.updateSeries.mockImplementation((id, body) => new Promise((resolve) => pending.push({ body, resolve })))
+
+		store.toggleFavorite(2) // heart: false, still saving
+		const edited = store.update(2, { title: 'Silo', isFavorite: false }) // form shows false: no change
+
+		for (let i = 0; i < pending.length; i++) {
+			pending[i].resolve({ data: { series: { id: 2, title: 'Silo', isFavorite: true } } })
+			await new Promise((resolve) => setTimeout(resolve, 0))
+		}
+		await edited
+
+		const bodies = pending.map((p) => p.body)
+		expect(bodies.filter((b) => 'isFavorite' in b).map((b) => b.isFavorite)).toEqual([false])
+		expect(bodies.find((b) => 'title' in b)).not.toHaveProperty('isFavorite')
+		expect(store.series[0].isFavorite).toBe(false)
+	})
+
+	it('rolls back and reports the error when saving fails', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		api.updateSeries.mockRejectedValue(new Error('nope'))
+
+		expect(await store.toggleFavorite(2)).toBe(false)
+		expect(store.series[0].isFavorite).toBe(true)
+		expect(showError).toHaveBeenCalled()
+	})
+})

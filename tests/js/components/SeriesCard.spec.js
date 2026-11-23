@@ -1,14 +1,15 @@
 import { mount } from '@vue/test-utils'
 import { describe, expect, it } from 'vitest'
 import SeriesCard from '@/components/SeriesCard.vue'
+import { expectNoAxeViolations } from '../a11y.js'
 
 const IconStub = { template: '<span class="icon-stub"></span>' }
 
-function mountCard(series) {
+function mountCard(series, props = {}) {
 	return mount(SeriesCard, {
-		props: { series: { id: 1, title: 'Silo', ...series } },
+		props: { series: { id: 1, title: 'Silo', ...series }, ...props },
 		global: {
-			stubs: { Television: IconStub, Heart: IconStub, Calendar: IconStub },
+			stubs: { Television: IconStub, Heart: IconStub, HeartOutline: IconStub, Calendar: IconStub },
 			mocks: { t: (app, text, vars) => (vars ? text.replace(/\{(\w+)\}/g, (_, k) => vars[k]) : text) },
 		},
 	})
@@ -46,7 +47,7 @@ describe('SeriesCard progress', () => {
 
 	it('puts status and progress into the description of the card button', () => {
 		const wrapper = mountCard({ watchStatus: 'stopped', watchedEpisodeCount: 3, airedEpisodeCount: 26, progress: 12 })
-		const card = wrapper.find('.series-card')
+		const card = wrapper.find('.card-link')
 		const id = card.attributes('aria-describedby')
 
 		expect(id).toBe('series-desc-1')
@@ -54,7 +55,7 @@ describe('SeriesCard progress', () => {
 	})
 
 	it('has no description without status or progress', () => {
-		expect(mountCard({}).find('.series-card').attributes('aria-describedby')).toBeUndefined()
+		expect(mountCard({}).find('.card-link').attributes('aria-describedby')).toBeUndefined()
 	})
 
 	// Lost in 1.2.0 for movies and never shown for shows; guard both now.
@@ -70,5 +71,45 @@ describe('SeriesCard progress', () => {
 
 	it('shows no flag without a language', () => {
 		expect(mountCard({}).find('.language').exists()).toBe(false)
+	})
+})
+
+describe('SeriesCard favourite toggle (#136)', () => {
+	it('opens the show from the title button, which is the only way in for the keyboard', async () => {
+		const wrapper = mountCard({})
+		const link = wrapper.find('.card-link')
+		expect(link.element.tagName).toBe('BUTTON')
+		expect(link.text()).toBe('Silo')
+		expect(wrapper.find('.series-card').attributes('role')).toBeUndefined()
+
+		await link.trigger('click')
+		expect(wrapper.emitted('click')).toHaveLength(1)
+	})
+
+	it('toggles the favourite without opening the show', async () => {
+		const wrapper = mountCard({ isFavorite: false }, { canEdit: true })
+		const toggle = wrapper.find('.favorite-toggle')
+		expect(toggle.attributes('aria-pressed')).toBe('false')
+		expect(toggle.attributes('aria-label')).toBe('Favorite: Silo')
+
+		await toggle.trigger('click')
+		expect(wrapper.emitted('toggleFavorite')).toHaveLength(1)
+		expect(wrapper.emitted('click')).toBeUndefined()
+	})
+
+	it('shows a set favourite as pressed', () => {
+		expect(mountCard({ isFavorite: true }, { canEdit: true }).find('.favorite-toggle').attributes('aria-pressed')).toBe('true')
+	})
+
+	it('shows only the read-only badge without edit permission', () => {
+		const wrapper = mountCard({ isFavorite: true })
+		expect(wrapper.find('.favorite-toggle').exists()).toBe(false)
+		expect(wrapper.find('.favorite-badge').exists()).toBe(true)
+	})
+
+	it('has no axe violations with and without the toggle', async () => {
+		await expectNoAxeViolations(mountCard({ isFavorite: true, watchStatus: 'stopped', watchedEpisodeCount: 3, airedEpisodeCount: 26 }, { canEdit: true }))
+		await expectNoAxeViolations(mountCard({ isFavorite: false }, { canEdit: true }))
+		await expectNoAxeViolations(mountCard({ isFavorite: true }))
 	})
 })

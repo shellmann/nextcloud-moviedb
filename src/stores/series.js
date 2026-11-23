@@ -2,7 +2,71 @@ import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
+import { createSerialFlagSaver } from '../utils/serialFlagSaver.js'
 import { useLibrariesStore } from './libraries.js'
+
+/** One favourite saver per store instance (tests create a fresh store each time). */
+const favoriteSavers = new WeakMap()
+
+/**
+ * The serial favourite saver of a store (#136).
+ *
+ * @param {object} store - The series store
+ * @return {ReturnType<typeof createSerialFlagSaver>} The saver
+ */
+function favoriteSaverFor(store) {
+	if (!favoriteSavers.has(store)) {
+		favoriteSavers.set(store, createSerialFlagSaver({
+			// The library of the first click, not the one active when a queued save goes out.
+			save: (id, value, libraryId) => {
+				const payload = { isFavorite: value }
+				return api.updateSeries(id, libraryId !== null ? { ...payload, libraryId } : payload)
+			},
+			apply: (id, value, libraryId) => {
+				// After a switch the list shows another library: leave it alone.
+				if (useLibrariesStore().activeLibraryId !== libraryId) { return }
+				const i = store.series.findIndex((x) => x.id === id)
+				if (i !== -1) {
+					store.series.splice(i, 1, { ...store.series[i], isFavorite: value })
+				}
+				if (store.currentSeries?.id === id) {
+					store.currentSeries = { ...store.currentSeries, isFavorite: value }
+				}
+			},
+			onError: (error) => {
+				console.error('Failed to change favorite:', error)
+				showError(t('moviedb', 'Could not change the favorite. Please try again.'))
+			},
+		}))
+	}
+	return favoriteSavers.get(store)
+}
+
+/**
+ * One movie or show from a server answer, with its favourite flag corrected if a heart
+ * click was saved after the request started (#136): the answer may predate the save.
+ *
+ * @param {object} store - The series store
+ * @param {object|null|undefined} item - Item from the server
+ * @param {number} since - favoriteSaverFor(store).version() taken before the request
+ * @param {number|null} libraryId - Library of the request
+ * @return {object|null|undefined} The item, corrected where needed
+ */
+function withSavedFavorite(store, item, since, libraryId) {
+	return item ? favoriteSaverFor(store).reconcile([item], since, libraryId, 'isFavorite')[0] : item
+}
+
+/**
+ * The favourite state a title shows right now (list tile or open detail page).
+ *
+ * @param {object} store - The series store
+ * @param {number} id - Item ID
+ * @return {boolean}
+ */
+function shownFavorite(store, id) {
+	const item = store.series.find((x) => x.id === id) ?? (store.currentSeries?.id === id ? store.currentSeries : null)
+	return Boolean(item?.isFavorite)
+}
 
 /**
  * One sentence for the toast after "Update from TMDB". Whole texts instead of
@@ -128,8 +192,10 @@ export const useSeriesStore = defineStore('series', {
 				const libraryId = useLibrariesStore().activeLibraryId
 				if (libraryId !== null) { params.libraryId = libraryId }
 
+				// Taken before the request: favourites saved meanwhile beat the older answer.
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.getSeries(params)
-				this.series = response.data.series
+				this.series = favoriteSaverFor(this).reconcile(response.data.series, favoritesSince, libraryId, 'isFavorite')
 				this.total = response.data.total
 				this.page = response.data.page
 				this.totalPages = response.data.totalPages
@@ -152,7 +218,9 @@ export const useSeriesStore = defineStore('series', {
 			this.loading = true
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.getSeriesItem(id, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				if (requestNo === latestFetchOne) {
 					this.currentSeries = response.data.series
 				}
@@ -208,12 +276,40 @@ export const useSeriesStore = defineStore('series', {
 		 * @param {object} data - Updated series data
 		 * @return {Promise<object | null>} The updated series or null on error
 		 */
+		/**
+		 * Flips the favourite flag of a show in the list (#136). The tile updates right
+		 * away; saves run one at a time per show and end on the last click, and a failed
+		 * save shows the last saved state again (serialFlagSaver). Only the flag is patched
+		 * in place: the update response lacks the list fields (last watch, rating) the tile
+		 * shows. With the favourites filter on, an unfavourited tile stays until the next
+		 * load, so it doesn't vanish under the cursor.
+		 *
+		 * @param {number} id - Show ID
+		 * @return {Promise<boolean>} Whether the show ended on the state clicked last
+		 */
+		toggleFavorite(id) {
+			const item = this.series.find((x) => x.id === id)
+			if (!item) { return Promise.resolve(false) }
+			const current = Boolean(item.isFavorite)
+			return favoriteSaverFor(this).set(id, !current, current, useLibrariesStore().activeLibraryId)
+		},
+
 		async update(id, data) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
-				const payload = libraryId !== null ? { ...data, libraryId } : data
+				const favoritesSince = favoriteSaverFor(this).version()
+				// The favourite is only ever written by the favourite saver, in line with heart
+				// clicks on the same title; the edit PUT never carries it (#136). The form always
+				// sends it: only a value that differs from what the title shows is a change.
+				const { isFavorite, ...fields } = data
+				const shown = shownFavorite(this, id)
+				const favoriteSaved = isFavorite !== undefined && Boolean(isFavorite) !== shown
+					? favoriteSaverFor(this).set(id, Boolean(isFavorite), shown, libraryId)
+					: Promise.resolve(true)
+				const payload = libraryId !== null ? { ...fields, libraryId } : fields
 				const response = await api.updateSeries(id, payload)
-				const updated = response.data.series
+				await favoriteSaved // a failed favourite save has shown its own error
+				const updated = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				const index = this.series.findIndex((s) => s.id === updated.id)
 				if (index !== -1) {
 					this.series.splice(index, 1, updated)
@@ -275,7 +371,9 @@ export const useSeriesStore = defineStore('series', {
 		async markEpisodeWatched(id, episodeId, watched = true) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.markEpisodeWatched(id, episodeId, watched, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				this.applyToCurrent(response.data.series)
 				return response.data.series
 			} catch (error) {
@@ -296,7 +394,9 @@ export const useSeriesStore = defineStore('series', {
 		async markSeasonWatched(id, seasonNumber, watched = true) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.markSeasonWatched(id, seasonNumber, watched, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				this.applyToCurrent(response.data.series)
 				showSuccess(watched
 					? t('moviedb', 'Season marked as watched.')
@@ -319,7 +419,9 @@ export const useSeriesStore = defineStore('series', {
 		async markSeriesWatched(id, watched = true) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.markSeriesWatched(id, watched, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				this.applyToCurrent(response.data.series)
 				showSuccess(watched
 					? t('moviedb', 'Series marked as watched.')
@@ -343,7 +445,9 @@ export const useSeriesStore = defineStore('series', {
 		async refresh(id, language) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.refreshSeries(id, language, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				if (this.currentSeries?.id === id) {
 					this.currentSeries = response.data.series
 				}
@@ -377,7 +481,9 @@ export const useSeriesStore = defineStore('series', {
 		async setStopped(id, stopped = true, { toast = true } = {}) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.setSeriesStopped(id, stopped, libraryId !== null ? libraryId : undefined)
+				response.data.series = withSavedFavorite(this, response.data.series, favoritesSince, libraryId)
 				if (this.currentSeries?.id === id) {
 					this.currentSeries = response.data.series
 				}

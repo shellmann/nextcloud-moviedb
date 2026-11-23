@@ -13,6 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   or TV show, mark a watchlist movie as watched or log a viewing, so titles you watched long
   ago don't get today's date. A movie saved with an empty date still counts as watched, with
   a viewing without date. On by default. (#137)
+- **Favourite from the overview**: the heart on a movie or TV show tile in the lists now
+  switches the favourite on and off without opening the title. An empty heart shows when you
+  point at a tile (always on touch screens). Only with edit rights in the library. (#136)
+
+### Changed
+- Movie and TV show tiles: the title is now the button that opens the title, and the heart is
+  a separate button next to it, so keyboard and screen reader users reach both. A click
+  anywhere else on the tile still opens it. (#136)
 
 ### Fixed
 - Clearing the watch date of a TV show now removes it; before, the old date stayed (and a

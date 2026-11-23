@@ -2,7 +2,71 @@ import { showError, showSuccess } from '@nextcloud/dialogs'
 import { translate as t } from '@nextcloud/l10n'
 import { defineStore } from 'pinia'
 import api from '../services/api.js'
+import { createSerialFlagSaver } from '../utils/serialFlagSaver.js'
 import { useLibrariesStore } from './libraries.js'
+
+/** One favourite saver per store instance (tests create a fresh store each time). */
+const favoriteSavers = new WeakMap()
+
+/**
+ * The serial favourite saver of a store (#136).
+ *
+ * @param {object} store - The movies store
+ * @return {ReturnType<typeof createSerialFlagSaver>} The saver
+ */
+function favoriteSaverFor(store) {
+	if (!favoriteSavers.has(store)) {
+		favoriteSavers.set(store, createSerialFlagSaver({
+			// The library of the first click, not the one active when a queued save goes out.
+			save: (id, value, libraryId) => {
+				const payload = { isFavorite: value }
+				return api.updateMovie(id, libraryId !== null ? { ...payload, libraryId } : payload)
+			},
+			apply: (id, value, libraryId) => {
+				// After a switch the list shows another library: leave it alone.
+				if (useLibrariesStore().activeLibraryId !== libraryId) { return }
+				const i = store.movies.findIndex((x) => x.id === id)
+				if (i !== -1) {
+					store.movies.splice(i, 1, { ...store.movies[i], isFavorite: value })
+				}
+				if (store.currentMovie?.id === id) {
+					store.currentMovie = { ...store.currentMovie, isFavorite: value }
+				}
+			},
+			onError: (error) => {
+				console.error('Failed to change favorite:', error)
+				showError(t('moviedb', 'Could not change the favorite. Please try again.'))
+			},
+		}))
+	}
+	return favoriteSavers.get(store)
+}
+
+/**
+ * One movie or show from a server answer, with its favourite flag corrected if a heart
+ * click was saved after the request started (#136): the answer may predate the save.
+ *
+ * @param {object} store - The movies store
+ * @param {object|null|undefined} item - Item from the server
+ * @param {number} since - favoriteSaverFor(store).version() taken before the request
+ * @param {number|null} libraryId - Library of the request
+ * @return {object|null|undefined} The item, corrected where needed
+ */
+function withSavedFavorite(store, item, since, libraryId) {
+	return item ? favoriteSaverFor(store).reconcile([item], since, libraryId, 'isFavorite')[0] : item
+}
+
+/**
+ * The favourite state a title shows right now (list tile or open detail page).
+ *
+ * @param {object} store - The movies store
+ * @param {number} id - Item ID
+ * @return {boolean}
+ */
+function shownFavorite(store, id) {
+	const item = store.movies.find((x) => x.id === id) ?? (store.currentMovie?.id === id ? store.currentMovie : null)
+	return Boolean(item?.isFavorite)
+}
 
 /**
  * Movies store - Manages movie collection state and CRUD operations.
@@ -68,8 +132,10 @@ export const useMoviesStore = defineStore('movies', {
 				const libraryId = useLibrariesStore().activeLibraryId
 				if (libraryId !== null) { params.libraryId = libraryId }
 
+				// Taken before the request: favourites saved meanwhile beat the older answer.
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.getMovies(params)
-				this.movies = response.data.movies
+				this.movies = favoriteSaverFor(this).reconcile(response.data.movies, favoritesSince, libraryId, 'isFavorite')
 				this.total = response.data.total
 				this.page = response.data.page
 				this.totalPages = response.data.totalPages
@@ -92,7 +158,9 @@ export const useMoviesStore = defineStore('movies', {
 			this.loading = true
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
+				const favoritesSince = favoriteSaverFor(this).version()
 				const response = await api.getMovie(id, libraryId !== null ? libraryId : undefined)
+				response.data.movie = withSavedFavorite(this, response.data.movie, favoritesSince, libraryId)
 				if (requestNo === latestFetchOne) {
 					this.currentMovie = response.data.movie
 				}
@@ -145,12 +213,40 @@ export const useMoviesStore = defineStore('movies', {
 		 * @param {object} data - Updated movie data
 		 * @return {Promise<object | null>} The updated movie or null on error
 		 */
+		/**
+		 * Flips the favourite flag of a movie in the list (#136). The tile updates right
+		 * away; saves run one at a time per movie and end on the last click, and a failed
+		 * save shows the last saved state again (serialFlagSaver). Only the flag is patched
+		 * in place: the update response lacks the list fields (last watch, rating) the tile
+		 * shows. With the favourites filter on, an unfavourited tile stays until the next
+		 * load, so it doesn't vanish under the cursor.
+		 *
+		 * @param {number} id - Movie ID
+		 * @return {Promise<boolean>} Whether the movie ended on the state clicked last
+		 */
+		toggleFavorite(id) {
+			const item = this.movies.find((x) => x.id === id)
+			if (!item) { return Promise.resolve(false) }
+			const current = Boolean(item.isFavorite)
+			return favoriteSaverFor(this).set(id, !current, current, useLibrariesStore().activeLibraryId)
+		},
+
 		async update(id, data) {
 			try {
 				const libraryId = useLibrariesStore().activeLibraryId
-				const payload = libraryId !== null ? { ...data, libraryId } : data
+				const favoritesSince = favoriteSaverFor(this).version()
+				// The favourite is only ever written by the favourite saver, in line with heart
+				// clicks on the same title; the edit PUT never carries it (#136). The form always
+				// sends it: only a value that differs from what the title shows is a change.
+				const { isFavorite, ...fields } = data
+				const shown = shownFavorite(this, id)
+				const favoriteSaved = isFavorite !== undefined && Boolean(isFavorite) !== shown
+					? favoriteSaverFor(this).set(id, Boolean(isFavorite), shown, libraryId)
+					: Promise.resolve(true)
+				const payload = libraryId !== null ? { ...fields, libraryId } : fields
 				const response = await api.updateMovie(id, payload)
-				const updatedMovie = response.data.movie
+				await favoriteSaved // a failed favourite save has shown its own error
+				const updatedMovie = withSavedFavorite(this, response.data.movie, favoritesSince, libraryId)
 				const index = this.movies.findIndex((m) => m.id === updatedMovie.id)
 				if (index !== -1) {
 					this.movies.splice(index, 1, updatedMovie)

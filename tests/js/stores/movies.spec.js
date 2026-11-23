@@ -1,5 +1,6 @@
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { useLibrariesStore } from '@/stores/libraries.js'
 import { useMoviesStore } from '@/stores/movies.js'
 
 // Mock API module
@@ -294,5 +295,171 @@ describe('Movies store fetchOne ordering', () => {
 		await first
 
 		expect(store.currentMovie.id).toBe(6)
+	})
+})
+
+describe('Movies Store toggleFavorite (#136)', () => {
+	let store
+
+	beforeEach(() => {
+		setActivePinia(createPinia())
+		store = useMoviesStore()
+		vi.clearAllMocks()
+		store.movies = [{ id: 1, title: 'Heat', isFavorite: false, lastRating: 9, lastWatchedAt: '2024-01-01' }]
+	})
+
+	it('flips the flag right away, keeps the list fields and saves only the flag', async () => {
+		let finish
+		api.updateMovie.mockReturnValue(new Promise((resolve) => { finish = resolve }))
+
+		const done = store.toggleFavorite(1)
+		expect(store.movies[0].isFavorite).toBe(true)
+		finish({ data: { movie: { id: 1, isFavorite: true } } })
+
+		expect(await done).toBe(true)
+		expect(store.movies[0]).toEqual({ id: 1, title: 'Heat', isFavorite: true, lastRating: 9, lastWatchedAt: '2024-01-01' })
+		expect(api.updateMovie).toHaveBeenCalledWith(1, expect.objectContaining({ isFavorite: true }))
+		expect(Object.keys(api.updateMovie.mock.calls[0][1]).filter((k) => k !== 'libraryId')).toEqual(['isFavorite'])
+	})
+
+	it('rolls back and reports the error when saving fails', async () => {
+		vi.spyOn(console, 'error').mockImplementation(() => {})
+		const { showError } = await import('@nextcloud/dialogs')
+		api.updateMovie.mockRejectedValue(new Error('nope'))
+
+		expect(await store.toggleFavorite(1)).toBe(false)
+		expect(store.movies[0].isFavorite).toBe(false)
+		expect(showError).toHaveBeenCalled()
+	})
+
+	it('sends rapid clicks one after another and ends on the last one (#150 review)', async () => {
+		const pending = []
+		api.updateMovie.mockImplementation(() => new Promise((resolve) => pending.push(resolve)))
+
+		const first = store.toggleFavorite(1) // → true
+		const second = store.toggleFavorite(1) // → false
+		expect(store.movies[0].isFavorite).toBe(false)
+		expect(api.updateMovie).toHaveBeenCalledTimes(1)
+
+		pending[0]({ data: {} })
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		expect(api.updateMovie).toHaveBeenCalledTimes(2)
+		expect(api.updateMovie.mock.calls[1][1]).toEqual(expect.objectContaining({ isFavorite: false }))
+		pending[1]({ data: {} })
+
+		expect(await first).toBe(true)
+		expect(await second).toBe(true)
+		expect(store.movies[0].isFavorite).toBe(false)
+	})
+
+	it('a queued save still goes to the library of the click after a switch (#150 review)', async () => {
+		const libraries = useLibrariesStore()
+		libraries.libraries = [
+			{ id: 1, name: 'Personal', isPersonal: true, role: 'owner', permissionEdit: true },
+			{ id: 2, name: 'Family', isPersonal: false, role: 'owner', permissionEdit: true },
+		]
+		libraries.activeLibraryId = 1
+		const pending = []
+		api.updateMovie.mockImplementation(() => new Promise((resolve) => pending.push(resolve)))
+
+		store.toggleFavorite(1)
+		const second = store.toggleFavorite(1)
+		libraries.activeLibraryId = 2 // switch while the first save runs
+		store.movies = [{ id: 1, title: 'Other library', isFavorite: true }]
+
+		pending[0]({ data: {} })
+		await new Promise((resolve) => setTimeout(resolve, 0))
+		pending[1]({ data: {} })
+		await second
+
+		expect(api.updateMovie.mock.calls.map((c) => c[1].libraryId)).toEqual([1, 1])
+		// The other library's list is not touched.
+		expect(store.movies[0]).toEqual({ id: 1, title: 'Other library', isFavorite: true })
+	})
+
+	it('a list loaded while saving keeps the clicked state (#150 review)', async () => {
+		let finishSave
+		api.updateMovie.mockReturnValue(new Promise((resolve) => { finishSave = resolve }))
+		api.getMovies.mockResolvedValue({ data: { movies: [{ id: 1, title: 'Heat', isFavorite: false }], total: 1, page: 1, totalPages: 1 } })
+
+		const saved = store.toggleFavorite(1)
+		await store.fetchAll() // the server still has the old value
+		expect(store.movies[0].isFavorite).toBe(true)
+
+		finishSave({ data: {} })
+		await saved
+		expect(store.movies[0].isFavorite).toBe(true)
+	})
+
+	it('a detail load that answers after the save keeps the saved favourite (#150 review)', async () => {
+		let finishSave
+		let answerDetail
+		api.updateMovie.mockReturnValue(new Promise((resolve) => { finishSave = resolve }))
+		api.getMovie.mockReturnValue(new Promise((resolve) => { answerDetail = resolve }))
+
+		const saved = store.toggleFavorite(1) // click the heart …
+		const detail = store.fetchOne(1) // … and open the movie right away
+		finishSave({ data: {} })
+		await saved
+		answerDetail({ data: { movie: { id: 1, title: 'Heat', isFavorite: false } } }) // read before the save
+
+		expect((await detail).isFavorite).toBe(true)
+		expect(store.currentMovie.isFavorite).toBe(true)
+	})
+
+	it('a detail load started after the save trusts the server', async () => {
+		api.updateMovie.mockResolvedValue({ data: {} })
+		await store.toggleFavorite(1)
+		api.getMovie.mockResolvedValue({ data: { movie: { id: 1, title: 'Heat', isFavorite: false } } })
+
+		await store.fetchOne(1) // changed elsewhere since: the fresh answer wins
+
+		expect(store.currentMovie.isFavorite).toBe(false)
+	})
+
+	it('Edit never writes the favourite in its PUT; an unchanged value sends nothing extra (#150 review)', async () => {
+		api.updateMovie.mockResolvedValue({ data: { movie: { id: 1, title: 'Heat 2', isFavorite: false } } })
+
+		await store.update(1, { title: 'Heat 2', isFavorite: false })
+
+		expect(api.updateMovie).toHaveBeenCalledTimes(1)
+		expect(api.updateMovie.mock.calls[0][1]).not.toHaveProperty('isFavorite')
+		expect(api.updateMovie.mock.calls[0][1]).toEqual(expect.objectContaining({ title: 'Heat 2' }))
+	})
+
+	it('Edit saves a changed favourite through the favourite saver', async () => {
+		api.updateMovie.mockResolvedValue({ data: { movie: { id: 1, title: 'Heat', isFavorite: false } } })
+
+		await store.update(1, { title: 'Heat', isFavorite: true })
+
+		const bodies = api.updateMovie.mock.calls.map((c) => c[1])
+		expect(bodies.filter((b) => 'isFavorite' in b)).toEqual([expect.objectContaining({ isFavorite: true })])
+		expect(bodies.filter((b) => 'title' in b).every((b) => !('isFavorite' in b))).toBe(true)
+		expect(store.movies[0].isFavorite).toBe(true)
+	})
+
+	it('Edit while a heart save runs: server and tile end on the same, last value', async () => {
+		const pending = []
+		api.updateMovie.mockImplementation((id, body) => new Promise((resolve) => pending.push({ body, resolve })))
+
+		store.toggleFavorite(1) // heart: true, still saving
+		const edited = store.update(1, { title: 'Heat', isFavorite: false }) // the form unticked it
+		expect(store.movies[0].isFavorite).toBe(false)
+
+		// Resolve every request in the order it was sent until nothing is pending.
+		for (let i = 0; i < pending.length; i++) {
+			pending[i].resolve({ data: { movie: { id: 1, title: 'Heat', isFavorite: true } } })
+			await new Promise((resolve) => setTimeout(resolve, 0))
+		}
+		await edited
+
+		const favouriteWrites = pending.map((p) => p.body).filter((b) => 'isFavorite' in b)
+		expect(favouriteWrites.map((b) => b.isFavorite)).toEqual([true, false]) // in order, last = false
+		expect(store.movies[0].isFavorite).toBe(false)
+	})
+
+	it('ignores a movie that is not in the list', async () => {
+		expect(await store.toggleFavorite(99)).toBe(false)
+		expect(api.updateMovie).not.toHaveBeenCalled()
 	})
 })
