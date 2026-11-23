@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed
+- **A TV show could be added twice**: moving a show from the watchlist to your TV shows
+  imported it again when it was already there. It now opens the show you already have and
+  says so. Adding a show you already track to the watchlist shows a hint. Shows that were
+  added twice before stay until you delete the extra copy. (#147)
+
 ## [1.12.0] - 2026-11-14
 
 ### Added
