@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.12.1] - 2026-11-27
+
 ### Added
 - **Leave the watch date empty**: a new setting, *Settings → Adding titles → Fill in today's
   date as the watch date*. When it is off, the date field starts empty when you add a movie
@@ -30,6 +32,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   says so; clicking twice (or adding the same show in two tabs at once) also gives one show.
   Adding a show you already track to the watchlist shows a hint. Shows that were added twice
   before stay until you delete the extra copy. (#147)
+- A TMDB answer "not found" for the trailer and streaming offers of an obscure or removed title is
+  no longer logged as an error in the Nextcloud log; the page behaves as before.
+
+### Upgrade note
+- Adds a small table, `moviedb_import_locks` (short-lived locks that keep a TV show from being imported
+  twice at once). The migration runs with the normal app update (`occ upgrade`); nothing else to do.
 
 ## [1.12.0] - 2026-11-14
 
