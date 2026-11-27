@@ -40,7 +40,7 @@
         "@vitejs/plugin-vue": "^6.0.8",
         "@vitest/coverage-v8": "^5.1.0",
         "@vue/compiler-sfc": "^3.5.45",
-        "@vue/test-utils": "^2.5.1",
+        "@vue/test-utils": "^2.6.0",
         "axe-core": "^4.14.0",
         "eslint": "^10.14.0",
         "eslint-webpack-plugin": "^6.0.0",
