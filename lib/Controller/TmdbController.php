@@ -219,11 +219,20 @@ class TmdbController extends AuthenticatedController {
         } catch (TmdbExtrasUnavailableException) {
             // The failure behind it was logged when it happened; don't log it on every page open.
         } catch (\Exception $e) {
-            $this->logger->error('Failed to get TMDB trailer and providers', [
-                'exception' => $e,
-                'userId' => $this->userId,
-                'tmdbId' => $tmdbId,
-            ]);
+            if ($e->getCode() === Http::STATUS_NOT_FOUND) {
+                // TMDB doesn't know the title (an obscure or removed one): expected, not an error.
+                // Guzzle puts the HTTP status into the exception code.
+                $this->logger->info('TMDB has no trailer and providers for this title', [
+                    'userId' => $this->userId,
+                    'tmdbId' => $tmdbId,
+                ]);
+            } else {
+                $this->logger->error('Failed to get TMDB trailer and providers', [
+                    'exception' => $e,
+                    'userId' => $this->userId,
+                    'tmdbId' => $tmdbId,
+                ]);
+            }
         }
 
         return new JSONResponse(

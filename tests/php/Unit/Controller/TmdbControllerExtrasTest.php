@@ -98,6 +98,20 @@ class TmdbControllerExtrasTest extends TestCase {
         $this->assertSame('tmdb_error', $response->getData()['reason']);
     }
 
+    public function testTmdbNotFoundIsBadGatewayButNotAnError(): void {
+        $this->language('en-US');
+        $this->extras->method('hasApiKey')->willReturn(true);
+        // Guzzle's ClientException carries the HTTP status as its code.
+        $this->extras->method('get')->willThrowException(new \RuntimeException('404 Not Found', 404));
+        $this->logger = $this->createMock(LoggerInterface::class);
+        $this->logger->expects($this->never())->method('error');
+        $this->logger->expects($this->once())->method('info');
+
+        $response = $this->controller()->extras('tv', 84305);
+
+        $this->assertSame(Http::STATUS_BAD_GATEWAY, $response->getStatus());
+    }
+
     public function testRememberedFailureIsBadGatewayWithoutLogging(): void {
         $this->language('en-US');
         $this->extras->method('hasApiKey')->willReturn(true);
