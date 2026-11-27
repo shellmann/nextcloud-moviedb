@@ -566,6 +566,9 @@ OC.L10N.register(
         "When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.": "Se è disattivato, il campo della data resta vuoto quando aggiungi un film o una serie TV o registri una visione. Utile se aggiungi titoli che hai visto tempo fa.",
         "Favorite: {title}": "Preferito: {title}",
         "Could not change the favorite. Please try again.": "Impossibile modificare il preferito. Riprova.",
-        "This show is still being added. Please try again in a moment.": "Questa serie è ancora in fase di aggiunta. Riprova tra un momento."
+        "This show is still being added. Please try again in a moment.": "Questa serie è ancora in fase di aggiunta. Riprova tra un momento.",
+        "You can mark a movie or TV show as a favorite right from the list with the heart on its tile.": "Con il cuore sulla scheda puoi segnare un film o una serie come preferito direttamente dall'elenco.",
+        "A new setting lets you leave the watch date empty when you add a title you watched a while ago.": "Una nuova impostazione permette di lasciare vuota la data di visione quando aggiungi un titolo visto tempo fa.",
+        "A TV show can no longer be added twice, not even by clicking twice.": "Una serie non può più essere aggiunta due volte, nemmeno con un doppio clic."
     },
 "nplurals=2; plural=(n != 1);");

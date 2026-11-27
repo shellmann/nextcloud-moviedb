@@ -18,6 +18,15 @@ import { translate as t } from '@nextcloud/l10n'
 export function releaseNotes() {
 	return [
 		{
+			version: '1.12.1',
+			rateInAppStore: true,
+			items: [
+				t('moviedb', 'You can mark a movie or TV show as a favorite right from the list with the heart on its tile.'),
+				t('moviedb', 'A new setting lets you leave the watch date empty when you add a title you watched a while ago.'),
+				t('moviedb', 'A TV show can no longer be added twice, not even by clicking twice.'),
+			],
+		},
+		{
 			version: '1.12.0',
 			rateInAppStore: true,
 			items: [

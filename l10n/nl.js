@@ -566,6 +566,9 @@ OC.L10N.register(
         "When this is off, the date field starts empty when you add a movie or TV show or log a viewing. Useful if you add titles you watched a while ago.": "Als dit uit staat, blijft het datumveld leeg wanneer je een film of serie toevoegt of een keer kijken vastlegt. Handig als je titels toevoegt die je een tijd geleden hebt gezien.",
         "Favorite: {title}": "Favoriet: {title}",
         "Could not change the favorite. Please try again.": "De favoriet kon niet worden gewijzigd. Probeer het opnieuw.",
-        "This show is still being added. Please try again in a moment.": "Deze serie wordt nog toegevoegd. Probeer het zo meteen opnieuw."
+        "This show is still being added. Please try again in a moment.": "Deze serie wordt nog toegevoegd. Probeer het zo meteen opnieuw.",
+        "You can mark a movie or TV show as a favorite right from the list with the heart on its tile.": "Met het hartje op de tegel markeer je een film of serie direct in de lijst als favoriet.",
+        "A new setting lets you leave the watch date empty when you add a title you watched a while ago.": "Met een nieuwe instelling laat je de kijkdatum leeg als je een titel toevoegt die je een tijd geleden hebt gezien.",
+        "A TV show can no longer be added twice, not even by clicking twice.": "Een serie kan niet meer dubbel worden toegevoegd, ook niet door twee keer te klikken."
     },
 "nplurals=2; plural=(n != 1);");
